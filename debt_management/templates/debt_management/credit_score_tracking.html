@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}Credit Score — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Credit Score{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'debt_management:debt_dashboard' %}">Debt</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Credit Score</span>
+{% endblock %}
+
+{% block nav_credit %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Credit Score</h1>
+      <p class="page-subtitle">Track your score over time and understand what's impacting it.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary btn-sm">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Log Score
+      </button>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:280px 1fr;gap:var(--sp-6);align-items:start;">
+
+  <!-- Score Display -->
+  <div class="card">
+    <div class="card-body" style="text-align:center;padding:var(--sp-8) var(--sp-6);">
+      <!-- Circular score display -->
+      <div style="position:relative;display:inline-block;margin-bottom:var(--sp-4);">
+        <svg width="160" height="160" viewBox="0 0 160 160" aria-hidden="true">
+          <!-- Background ring -->
+          <circle cx="80" cy="80" r="68" fill="none" stroke="var(--color-border-light)" stroke-width="10" stroke-dasharray="360" stroke-dashoffset="90" transform="rotate(-210 80 80)"/>
+          <!-- Score ring (empty state) -->
+          <circle cx="80" cy="80" r="68" fill="none" stroke="var(--color-border)" stroke-width="10" stroke-linecap="round" stroke-dasharray="240" stroke-dashoffset="240" transform="rotate(-210 80 80)" style="transition:stroke-dashoffset 1s ease;"/>
+          <!-- Inner content -->
+          <text x="80" y="75" text-anchor="middle" font-size="38" font-weight="700" font-family="JetBrains Mono, monospace" fill="var(--color-text-primary)">—</text>
+          <text x="80" y="96" text-anchor="middle" font-size="11" font-weight="600" fill="var(--color-text-muted)" letter-spacing="1">YOUR SCORE</text>
+        </svg>
+      </div>
+
+      <!-- Score range band -->
+      <div style="margin-top:var(--sp-2);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:var(--sp-2);">
+          <span class="text-xs text-muted">300</span>
+          <span class="text-xs text-muted">850</span>
+        </div>
+        <div style="height:6px;background:linear-gradient(90deg,var(--red-500),var(--amber-500),var(--amber-400),var(--green-400),var(--green-600));border-radius:var(--r-full);"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:var(--sp-1);">
+          <span class="text-xs text-muted">Poor</span>
+          <span class="text-xs text-muted">Fair</span>
+          <span class="text-xs text-muted">Good</span>
+          <span class="text-xs text-muted">Excellent</span>
+        </div>
+      </div>
+
+      <div class="divider" style="margin:var(--sp-4) 0;"></div>
+
+      <div class="text-xs text-muted" style="line-height:var(--leading-relaxed);">
+        Last updated: <strong>—</strong><br>
+        <a href="#" class="text-accent" style="margin-top:var(--sp-1);display:inline-block;">Log a new score</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column -->
+  <div style="display:flex;flex-direction:column;gap:var(--sp-6);">
+
+    <!-- Score history chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Score History</div>
+        <span class="badge badge-muted">Manual entry</span>
+      </div>
+      <div class="chart-area" style="display:flex;align-items:center;justify-content:center;">
+        <div class="empty-state" style="padding:var(--sp-8) var(--sp-4);">
+          <div class="empty-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 17a10 10 0 0118 0" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M12 4v1M8 5.5l.6.7M16 5.5l-.6.7M5 10h1M18 10h-1" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="empty-title" style="font-size:var(--text-base);">No history yet</div>
+          <p class="empty-desc" style="font-size:var(--text-xs);">
+            Log your score monthly to see your progress over time.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Score factors -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">What Affects Your Score</div>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:var(--sp-4);">
+
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-label">
+            <span>Payment History</span>
+            <span class="progress-pct">35%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill green" style="width:35%;"></div>
+          </div>
+          <span class="form-hint">Most impactful — never miss a payment</span>
+        </div>
+
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-label">
+            <span>Credit Utilization</span>
+            <span class="progress-pct">30%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill teal" style="width:30%;"></div>
+          </div>
+          <span class="form-hint">Keep below 30% of your total limit</span>
+        </div>
+
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-label">
+            <span>Credit Age</span>
+            <span class="progress-pct">15%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill slate" style="width:15%;"></div>
+          </div>
+          <span class="form-hint">Keep older accounts open</span>
+        </div>
+
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-label">
+            <span>Credit Mix</span>
+            <span class="progress-pct">10%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:10%;"></div>
+          </div>
+          <span class="form-hint">Mix of revolving and installment accounts</span>
+        </div>
+
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-label">
+            <span>New Credit Inquiries</span>
+            <span class="progress-pct">10%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill amber" style="width:10%;"></div>
+          </div>
+          <span class="form-hint">Limit hard inquiries — each can drop score 5–10 pts</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

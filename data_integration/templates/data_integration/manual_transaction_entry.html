@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Transaction — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Add Transaction{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Add Transaction</span>
+{% endblock %}
+
+{% block nav_transactions %}active{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;">
+
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div>
+        <h1 class="page-title">Add a Transaction</h1>
+        <p class="page-subtitle">Log a purchase, payment, deposit, or transfer manually.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Transaction Details</div>
+        <div class="card-subtitle">All fields with <span style="color:var(--red-500);">*</span> are required</div>
+      </div>
+    </div>
+    <div class="card-body">
+
+      {% if form.non_field_errors %}
+      <div class="alert alert-error" style="margin-bottom:var(--sp-5);">
+        {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="form-stack">
+
+          <div class="form-group">
+            <label class="form-label" for="{{ form.account.id_for_label }}">
+              Account <span class="label-required">*</span>
+            </label>
+            <select
+              class="form-select {% if form.account.errors %}error{% endif %}"
+              id="{{ form.account.id_for_label }}"
+              name="{{ form.account.html_name }}"
+            >
+              {% for choice in form.account.field.choices %}
+              <option value="{{ choice.0 }}" {% if form.account.value == choice.0|stringformat:"s" %}selected{% endif %}>{{ choice.1 }}</option>
+              {% endfor %}
+            </select>
+            {% for err in form.account.errors %}
+            <span class="form-error">{{ err }}</span>
+            {% endfor %}
+            <span class="form-hint">
+              Don't see your account? <a href="{% url 'data_integration:manual_account_entry' %}">Add one first</a>.
+            </span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="{{ form.date.id_for_label }}">
+                Date <span class="label-required">*</span>
+              </label>
+              <input
+                type="date"
+                class="form-input {% if form.date.errors %}error{% endif %}"
+                id="{{ form.date.id_for_label }}"
+                name="{{ form.date.html_name }}"
+                value="{{ form.date.value|default:'' }}"
+              >
+              {% for err in form.date.errors %}
+              <span class="form-error">{{ err }}</span>
+              {% endfor %}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="{{ form.amount.id_for_label }}">
+                Amount <span class="label-required">*</span>
+                <span class="label-hint">(use negative for expense)</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                class="form-input font-mono {% if form.amount.errors %}error{% endif %}"
+                id="{{ form.amount.id_for_label }}"
+                name="{{ form.amount.html_name }}"
+                value="{{ form.amount.value|default:'' }}"
+                placeholder="0.00"
+              >
+              {% for err in form.amount.errors %}
+              <span class="form-error">{{ err }}</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="{{ form.category.id_for_label }}">
+                Category <span class="label-required">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-input {% if form.category.errors %}error{% endif %}"
+                id="{{ form.category.id_for_label }}"
+                name="{{ form.category.html_name }}"
+                value="{{ form.category.value|default:'' }}"
+                placeholder="e.g. Groceries, Rent, Salary"
+              >
+              {% for err in form.category.errors %}
+              <span class="form-error">{{ err }}</span>
+              {% endfor %}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="{{ form.source.id_for_label }}">
+                Source <span class="label-required">*</span>
+              </label>
+              <select
+                class="form-select {% if form.source.errors %}error{% endif %}"
+                id="{{ form.source.id_for_label }}"
+                name="{{ form.source.html_name }}"
+              >
+                {% for choice in form.source.field.choices %}
+                <option value="{{ choice.0 }}" {% if form.source.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                {% endfor %}
+              </select>
+              {% for err in form.source.errors %}
+              <span class="form-error">{{ err }}</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="{{ form.description.id_for_label }}">
+              Description
+              <span class="label-hint">(optional)</span>
+            </label>
+            <input
+              type="text"
+              class="form-input"
+              id="{{ form.description.id_for_label }}"
+              name="{{ form.description.html_name }}"
+              value="{{ form.description.value|default:'' }}"
+              placeholder="Brief note about this transaction"
+            >
+          </div>
+
+          <div style="display:flex;gap:var(--sp-3);padding-top:var(--sp-2);">
+            <button type="submit" class="btn btn-primary">Save Transaction</button>
+            <a href="{% url 'investments:portfolio_overview' %}" class="btn btn-ghost">Cancel</a>
+          </div>
+
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

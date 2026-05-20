@@ -1,0 +1,24 @@
+# Core Django
+Django>=6.0
+
+# Django REST Framework
+djangorestframework
+
+# OTP / TOTP two-factor authentication
+django-otp
+pyotp
+
+# Production WSGI server
+gunicorn
+
+# PostgreSQL adapter
+psycopg2-binary
+
+# Environment variable loading
+python-dotenv
+
+# Image handling
+Pillow
+
+# QR code generation (for 2FA TOTP setup)
+qrcode

@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Import CSV — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Import CSV{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Import CSV</span>
+{% endblock %}
+
+{% block nav_csv %}active{% endblock %}
+
+{% block content %}
+<div style="max-width:680px;">
+
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div>
+        <h1 class="page-title">Import Transactions</h1>
+        <p class="page-subtitle">Upload a CSV file exported from your bank or financial institution.</p>
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2);margin-bottom:var(--sp-6);">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom:var(--sp-6);">
+    <div class="card-header">
+      <div class="card-title">Upload File</div>
+    </div>
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <div class="form-stack">
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-error">
+            {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+          </div>
+          {% endif %}
+
+          <div class="form-group">
+            <label class="form-file-label" id="dropzone" for="id_file">
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <rect width="40" height="40" rx="10" fill="var(--teal-100)"/>
+                <path d="M20 12v10M16 18l4-4 4 4" stroke="var(--teal-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 28h16" stroke="var(--teal-500)" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span id="dropzoneText">
+                <strong style="color:var(--color-accent);">Click to browse</strong> or drag &amp; drop your CSV
+              </span>
+              <span class="text-xs text-muted">Supported format: .csv, max 10 MB</span>
+              <input type="file" id="id_file" name="file" accept=".csv" required>
+            </label>
+            {% for err in form.file.errors %}
+            <span class="form-error">{{ err }}</span>
+            {% endfor %}
+          </div>
+
+          <div style="display:flex;gap:var(--sp-3);">
+            <button type="submit" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4 14v2a1 1 0 001 1h10a1 1 0 001-1v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M10 3v9M7 9l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Import Transactions
+            </button>
+            <a href="{% url 'investments:portfolio_overview' %}" class="btn btn-ghost">Cancel</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Format Guide -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Expected CSV Format</div>
+    </div>
+    <div class="card-body">
+      <p class="text-sm text-secondary" style="margin-bottom:var(--sp-4);">
+        Your CSV file should have the following columns. The header row is required.
+      </p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Required</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code style="font-family:var(--font-mono);font-size:var(--text-xs);">date</code></td>
+              <td><span class="badge badge-red">Required</span></td>
+              <td class="text-muted text-sm">2025-03-15</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:var(--font-mono);font-size:var(--text-xs);">amount</code></td>
+              <td><span class="badge badge-red">Required</span></td>
+              <td class="text-muted text-sm">-42.50 (negative = expense)</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:var(--font-mono);font-size:var(--text-xs);">category</code></td>
+              <td><span class="badge badge-red">Required</span></td>
+              <td class="text-muted text-sm">Groceries</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:var(--font-mono);font-size:var(--text-xs);">description</code></td>
+              <td><span class="badge badge-muted">Optional</span></td>
+              <td class="text-muted text-sm">Whole Foods Market</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const input = document.getElementById('id_file');
+  const label = document.getElementById('dropzoneText');
+  if (input) {
+    input.addEventListener('change', function() {
+      if (this.files && this.files[0]) {
+        label.innerHTML = '<strong style="color:var(--color-accent);">' + this.files[0].name + '</strong> — ready to import';
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

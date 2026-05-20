@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Snowball Payoff Plan — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Snowball Plan{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'debt_management:debt_dashboard' %}">Debt</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Snowball Plan</span>
+{% endblock %}
+
+{% block nav_snowball %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Snowball Payoff Plan</h1>
+      <p class="page-subtitle">Build momentum by eliminating your smallest debts first.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{% url 'debt_management:payoff_avalanche' %}" class="btn btn-ghost btn-sm">Try Avalanche</a>
+      <a href="{% url 'debt_management:payoff_custom' %}" class="btn btn-secondary btn-sm">Custom Plan</a>
+    </div>
+  </div>
+</div>
+
+<!-- How it works -->
+<div class="info-panel teal" style="margin-bottom:var(--sp-6);">
+  <svg class="info-panel-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+    <circle cx="10" cy="10" r="3" fill="var(--teal-600)" opacity=".6"/>
+    <circle cx="10" cy="10" r="6" stroke="var(--teal-600)" stroke-width="1.5"/>
+    <circle cx="10" cy="10" r="9.5" stroke="var(--teal-500)" stroke-width="1" opacity=".4"/>
+  </svg>
+  <div>
+    <div class="info-panel-title">How the Snowball Method Works</div>
+    <div class="info-panel-body">
+      Pay the minimum on all debts, then direct every extra dollar toward the debt with the
+      <strong>smallest balance</strong>. Once it's paid off, roll that payment into the next smallest.
+      Quick wins keep you motivated to stay the course.
+    </div>
+  </div>
+</div>
+
+<!-- Strategy tabs -->
+<div class="nav-tabs">
+  <a href="{% url 'debt_management:payoff_avalanche' %}" class="nav-tab">Avalanche</a>
+  <a href="{% url 'debt_management:payoff_snowball' %}" class="nav-tab active">Snowball</a>
+  <a href="{% url 'debt_management:payoff_custom' %}" class="nav-tab">Custom</a>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 300px;gap:var(--sp-6);align-items:start;">
+
+  <!-- Payoff Order -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Recommended Payoff Order</div>
+        <div class="card-subtitle">Ranked by balance — smallest to largest</div>
+      </div>
+    </div>
+
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <circle cx="14" cy="14" r="5" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+          <circle cx="14" cy="14" r="10" fill="none" stroke="var(--color-text-muted)" stroke-width="1.2" opacity=".5"/>
+        </svg>
+      </div>
+      <div class="empty-title">No debts to analyze</div>
+      <p class="empty-desc">
+        Add your debts to see your personalized snowball payoff sequence here.
+      </p>
+      <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
+        Add Debts
+      </a>
+    </div>
+  </div>
+
+  <!-- Summary sidebar -->
+  <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Projected Savings</div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:var(--sp-4);">
+        <div>
+          <div class="stat-label">Debts Eliminated</div>
+          <div class="stat-value" style="font-size:var(--text-2xl);margin-top:var(--sp-1);">0</div>
+        </div>
+        <div class="divider"></div>
+        <div>
+          <div class="stat-label">Debt-Free Date</div>
+          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">—</div>
+        </div>
+        <div class="divider"></div>
+        <div>
+          <div class="stat-label">vs. Avalanche</div>
+          <div class="text-xs text-muted" style="margin-top:var(--sp-1);">Snowball may cost more in interest, but wins on motivation</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Extra Monthly Payment</div></div>
+      <div class="card-body">
+        <input type="number" min="0" step="10" class="form-input font-mono" placeholder="$0.00">
+        <span class="form-hint" style="margin-top:var(--sp-2);">Recalculate coming soon</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

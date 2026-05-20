@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Investment Comparison — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Comparison{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'investments:portfolio_overview' %}">Portfolio</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Comparison</span>
+{% endblock %}
+
+{% block nav_comparison %}active{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Investment Comparison</h1>
+      <p class="page-subtitle">Compare the allocation and value of your portfolio by investment type.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{% url 'investments:portfolio_overview' %}" class="btn btn-ghost btn-sm">← Portfolio</a>
+    </div>
+  </div>
+</div>
+
+{% if comparison %}
+
+<div style="display:grid;grid-template-columns:1fr 360px;gap:var(--sp-6);align-items:start;">
+
+  <!-- Comparison Table -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Value by Type</div>
+      <span class="badge badge-muted">{{ comparison|length }} type{{ comparison|length|pluralize }}</span>
+    </div>
+    <div class="table-wrap" style="border:none;border-radius:0;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Investment Type</th>
+            <th class="num">Total Value</th>
+            <th>Allocation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in comparison %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <div style="width:10px;height:10px;border-radius:var(--r-sm);background:var(--teal-{% cycle '500' '400' '300' '600' '700' %});"></div>
+                <span class="font-medium">{{ row.type|default:"Unknown" }}</span>
+                {% if top_type and row.type == top_type %}
+                  <span class="badge badge-gold" style="margin-left:8px;">Top Performer</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="num">
+              <span class="font-mono font-semi">${{ row.total_value|floatformat:2 }}</span>
+            </td>
+            <td>
+              <!-- Allocation bar placeholder — would need total from view -->
+              <div class="progress-track" style="max-width:120px;">
+                <div class="progress-fill" style="width:{{ row.total_value|default:0 }}%;max-width:100%;"></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Donut Chart -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Allocation Chart</div>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:var(--sp-4);">
+      <div style="position:relative;width:200px;height:200px;">
+        <canvas id="allocationChart"></canvas>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2);width:100%;">
+        {% for row in comparison %}
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="text-sm text-secondary">{{ row.type|default:"Unknown" }}</span>
+          <span class="font-mono text-sm font-semi">${{ row.total_value|floatformat:2 }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% else %}
+
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect x="3" y="10" width="7" height="15" rx="2" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+        <rect x="13" y="5" width="7" height="20" rx="2" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+        <rect x="22" y="14" width="3" height="11" rx="1" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <div class="empty-title">Nothing to compare yet</div>
+    <p class="empty-desc">
+      Add investments with different types (stocks, bonds, ETFs, etc.) to see a side-by-side comparison here.
+    </p>
+    <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">Add Investments</a>
+  </div>
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if comparison %}
+<script>
+(function() {
+  const canvas = document.getElementById('allocationChart');
+  if (!canvas) return;
+
+  const labels = [{% for row in comparison %}"{{ row.type|default:'Unknown' }}",{% endfor %}];
+  const values = [{% for row in comparison %}{{ row.total_value|default:0 }},{% endfor %}];
+  const colors = [
+    '#3D9D98', '#4E7A9E', '#4E9B6E', '#C8872A', '#8B7355',
+    '#5BBFB9', '#7099B8', '#6AB887', '#E0A040', '#A68B6A'
+  ];
+
+  new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors.slice(0, labels.length),
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '65%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ' $' + ctx.parsed.toLocaleString();
+            }
+          }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

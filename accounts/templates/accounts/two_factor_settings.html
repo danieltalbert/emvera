@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Two-Factor Authentication Settings</h2>
+<p>Current status: {% if user.two_factor_enabled %}Enabled{% else %}Disabled{% endif %}</p>
+{% if user.two_factor_enabled %}
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="disable" value="1">Disable 2FA</button>
+    </form>
+{% else %}
+    <a href="{% url 'accounts:two_factor_setup' %}">Setup 2FA</a>
+{% endif %}
+{% endblock %}

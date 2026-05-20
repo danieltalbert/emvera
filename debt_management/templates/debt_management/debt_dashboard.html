@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Debt Dashboard — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Debt Dashboard{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Debt Dashboard</span>
+{% endblock %}
+
+{% block nav_debt_dash %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Debt Dashboard</h1>
+      <p class="page-subtitle">An overview of your outstanding debts, payoff timeline, and progress.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-secondary btn-sm">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Add Debt
+      </a>
+      <a href="{% url 'debt_management:payoff_avalanche' %}" class="btn btn-primary btn-sm">View Payoff Plans</a>
+    </div>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="card-grid card-grid-4" style="margin-bottom:var(--sp-8);">
+
+  <div class="stat-card red">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <span class="stat-label">Total Debt</span>
+      <div class="stat-icon red">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 6v4l-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="stat-value">$0.00</div>
+    <div class="stat-meta"><span>Across all accounts</span></div>
+  </div>
+
+  <div class="stat-card amber">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <span class="stat-label">Avg. Interest Rate</span>
+      <div class="stat-icon amber">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M5 15L15 5M8 5h7v7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="stat-value">—%</div>
+    <div class="stat-meta"><span>Weighted average APR</span></div>
+  </div>
+
+  <div class="stat-card teal">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <span class="stat-label">Monthly Minimum</span>
+      <div class="stat-icon teal">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <rect x="3" y="5" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 9h14" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </div>
+    <div class="stat-value">$0.00</div>
+    <div class="stat-meta"><span>Required monthly payments</span></div>
+  </div>
+
+  <div class="stat-card green">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <span class="stat-label">Debt-Free Date</span>
+      <div class="stat-icon green">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M7 10l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M10 3a7 7 0 100 14A7 7 0 0010 3z" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </div>
+    <div class="stat-value" style="font-size:var(--text-xl);">—</div>
+    <div class="stat-meta"><span>At current payment rate</span></div>
+  </div>
+
+</div>
+
+<!-- Main grid -->
+<div style="display:grid;grid-template-columns:1fr 320px;gap:var(--sp-6);align-items:start;">
+
+  <!-- Debt List -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Your Debts</div>
+        <div class="card-subtitle">Sorted by interest rate — highest first</div>
+      </div>
+    </div>
+
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <circle cx="14" cy="14" r="11" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+          <path d="M14 8v6l3 3" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="empty-title">No debts tracked yet</div>
+      <p class="empty-desc">
+        Add your credit cards, loans, and other debts to start building your payoff plan.
+      </p>
+      <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
+        Add Your First Debt
+      </a>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Payoff Strategies</div></div>
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-4);">
+        <a href="{% url 'debt_management:payoff_avalanche' %}" style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3);border-radius:var(--r-lg);border:1px solid var(--color-border-light);text-decoration:none;transition:border-color var(--t-fast);">
+          <div class="stat-icon red" style="flex-shrink:0;width:32px;height:32px;">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 15L8 9l4 3 5-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <div class="font-semi text-sm" style="color:var(--color-text-primary);">Avalanche</div>
+            <div class="text-xs text-muted">Highest interest first</div>
+          </div>
+        </a>
+        <a href="{% url 'debt_management:payoff_snowball' %}" style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3);border-radius:var(--r-lg);border:1px solid var(--color-border-light);text-decoration:none;transition:border-color var(--t-fast);">
+          <div class="stat-icon blue" style="flex-shrink:0;width:32px;height:32px;">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3" fill="currentColor" opacity=".5"/><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.5"/></svg>
+          </div>
+          <div>
+            <div class="font-semi text-sm" style="color:var(--color-text-primary);">Snowball</div>
+            <div class="text-xs text-muted">Smallest balance first</div>
+          </div>
+        </a>
+        <a href="{% url 'debt_management:payoff_custom' %}" style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3);border-radius:var(--r-lg);border:1px solid var(--color-border-light);text-decoration:none;transition:border-color var(--t-fast);">
+          <div class="stat-icon teal" style="flex-shrink:0;width:32px;height:32px;">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 6h12M4 10h8M4 14h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div>
+            <div class="font-semi text-sm" style="color:var(--color-text-primary);">Custom Plan</div>
+            <div class="text-xs text-muted">Your own order</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">More Tools</div></div>
+      <div style="padding:var(--sp-3) var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-1);">
+        <a href="{% url 'debt_management:consolidation_suggestion' %}" class="nav-item" style="color:var(--color-text-secondary);">Consolidation Options</a>
+        <a href="{% url 'debt_management:debt_reminders' %}" class="nav-item" style="color:var(--color-text-secondary);">Payment Reminders</a>
+        <a href="{% url 'debt_management:credit_score_tracking' %}" class="nav-item" style="color:var(--color-text-secondary);">Credit Score</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

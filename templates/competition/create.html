@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}New Competition — Ridge & River Financial{% endblock %}
+{% block nav_competition %}active{% endblock %}
+{% block breadcrumb %}
+  <a href="{% url 'competition:lobby' %}">Competitions</a>
+  <span class="breadcrumb-sep" aria-hidden="true">/</span>
+  <span class="current">New Competition</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .create-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: var(--sp-6);
+    align-items: start;
+  }
+  @media (max-width: 768px) { .create-layout { grid-template-columns: 1fr; } }
+  .form-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-6);
+  }
+  .form-card h2 { font-size: 1.1rem; font-weight: 600; margin: 0 0 var(--sp-5); }
+  .field-group { margin-bottom: var(--sp-4); }
+  .field-group label { display: block; font-size: 0.82rem; font-weight: 500; margin-bottom: var(--sp-1); color: var(--text-secondary); }
+  .field-group input, .field-group textarea {
+    width: 100%; box-sizing: border-box;
+    background: var(--input-bg, rgba(255,255,255,0.05));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--sp-2) var(--sp-3);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: border-color 0.15s;
+  }
+  .field-group input:focus, .field-group textarea:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .field-group .help { font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; }
+  .field-group .errorlist { list-style: none; padding: 0; margin: 4px 0 0; }
+  .field-group .errorlist li { font-size: 0.78rem; color: #f87171; }
+  .preview-card {
+    background: linear-gradient(135deg, #1B3A2D 0%, #1a3a5c 100%);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-5);
+    color: #fff;
+    position: sticky;
+    top: var(--sp-4);
+  }
+  .preview-card h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.6; margin: 0 0 var(--sp-3); }
+  .preview-stat { display: flex; justify-content: space-between; padding: var(--sp-2) 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.88rem; }
+  .preview-stat:last-child { border-bottom: none; }
+  .preview-stat .label { opacity: 0.7; }
+  .preview-stat .val { font-weight: 600; color: #f1c40f; }
+  .rules-list { margin: var(--sp-4) 0 0; padding: 0; list-style: none; }
+  .rules-list li { font-size: 0.8rem; opacity: 0.7; padding: var(--sp-1) 0; display: flex; gap: var(--sp-2); }
+  .rules-list li::before { content: '→'; color: #32dc64; flex-shrink: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="font-size:1.4rem; font-weight:700; margin-bottom:var(--sp-5);">Create a Competition</h1>
+
+<div class="create-layout">
+  <div class="form-card">
+    <h2>Competition Settings</h2>
+    <form method="post" id="createForm">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="field-group">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+        {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      {% endfor %}
+      <div style="display:flex; gap:var(--sp-3); margin-top:var(--sp-2);">
+        <button type="submit" class="btn btn-accent">Create & Enter Lobby</button>
+        <a href="{% url 'competition:lobby' %}" class="btn">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="preview-card">
+    <h3>Preview</h3>
+    <div class="preview-stat">
+      <span class="label">Starting Balance</span>
+      <span class="val" id="prev-start">$1,000</span>
+    </div>
+    <div class="preview-stat">
+      <span class="label">Portfolio Goal</span>
+      <span class="val" id="prev-goal">$5,000</span>
+    </div>
+    <div class="preview-stat">
+      <span class="label">Mini-Game Bonus</span>
+      <span class="val" id="prev-bonus">$50</span>
+    </div>
+    <div class="preview-stat">
+      <span class="label">Max Players</span>
+      <span class="val" id="prev-players">8</span>
+    </div>
+    <ul class="rules-list">
+      <li>All players start with the same balance</li>
+      <li>Win mini-games to earn bonus investments</li>
+      <li>First to reach the goal wins</li>
+      <li>Creator controls when mini-games fire</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function fmt(n) { return '$' + Number(n).toLocaleString(); }
+  function bind(inputId, previewId, transform) {
+    const el = document.getElementById(inputId);
+    const pv = document.getElementById(previewId);
+    if (!el || !pv) return;
+    el.addEventListener('input', () => pv.textContent = transform(el.value));
+  }
+  bind('id_starting_balance', 'prev-start', fmt);
+  bind('id_investment_goal',  'prev-goal',  fmt);
+  bind('id_mini_game_bonus',  'prev-bonus', fmt);
+  bind('id_max_players', 'prev-players', v => v);
+</script>
+{% endblock %}

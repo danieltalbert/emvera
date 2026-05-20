@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+{% block title %}Consolidation Options — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Consolidation{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'debt_management:debt_dashboard' %}">Debt</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Consolidation</span>
+{% endblock %}
+
+{% block nav_consolidation %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Debt Consolidation</h1>
+      <p class="page-subtitle">Explore options to simplify multiple debts into a single lower-interest payment.</p>
+    </div>
+  </div>
+</div>
+
+<!-- What is consolidation -->
+<div class="info-panel forest" style="margin-bottom:var(--sp-6);">
+  <svg class="info-panel-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+    <path d="M10 2a8 8 0 100 16 8 8 0 000-16z" stroke="var(--forest-600)" stroke-width="1.5"/>
+    <path d="M10 9v5M10 6.5v.5" stroke="var(--forest-600)" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+  <div>
+    <div class="info-panel-title">What is debt consolidation?</div>
+    <div class="info-panel-body">
+      Consolidation combines multiple debts — credit cards, personal loans — into a single loan,
+      ideally at a lower interest rate. It simplifies repayment and can reduce total interest paid,
+      but requires discipline to avoid accumulating new debt.
+    </div>
+  </div>
+</div>
+
+<!-- Options Cards -->
+<div class="card-grid card-grid-3" style="margin-bottom:var(--sp-8);">
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Balance Transfer Card</div>
+        <span class="badge badge-green">Low intro APR</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="text-sm text-secondary" style="line-height:var(--leading-relaxed);">
+        Transfer high-interest balances to a card with a 0% introductory APR period (typically 12–21 months).
+        Best for credit card debt under $15,000.
+      </p>
+      <div style="margin-top:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-2);">
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-xs text-muted">Typical intro rate</span>
+          <span class="text-xs font-semi">0% for 12–21 mo.</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-xs text-muted">Transfer fee</span>
+          <span class="text-xs font-semi">3–5%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-xs text-muted">Best for</span>
+          <span class="text-xs font-semi">Credit card debt</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="text-xs text-muted">Good credit usually required (700+)</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Personal Loan</div>
+        <span class="badge badge-teal">Fixed rate</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="text-sm text-secondary" style="line-height:var(--leading-relaxed);">
+        Take out a fixed-rate personal loan to pay off all your debts, leaving you with one monthly payment.
+        Predictable and often lower than credit card rates.
+      </p>
+      <div style="margin-top:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-2);">
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-xs text-muted">Typical APR range</span>
+          <span class="text-xs font-semi">6–36%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-xs text-muted">Loan terms</span>
+          <span class="text-xs font-semi">2–7 years</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-xs text-muted">Best for</span>
+          <span class="text-xs font-semi">Mixed debt types</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="text-xs text-muted">Rate depends on credit score &amp; income</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Home Equity Loan</div>
+        <span class="badge badge-amber">Secured</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="text-sm text-secondary" style="line-height:var(--leading-relaxed);">
+        Use your home's equity as collateral for a low-rate loan. Lowest rates available,
+        but your home is at risk if you can't repay.
+      </p>
+      <div style="margin-top:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-2);">
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-xs text-muted">Typical APR range</span>
+          <span class="text-xs font-semi">5–10%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-xs text-muted">Loan terms</span>
+          <span class="text-xs font-semi">5–30 years</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span class="text-xs text-muted">Best for</span>
+          <span class="text-xs font-semi">Large amounts</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="text-xs text-muted" style="color:var(--amber-600);">Risk: home used as collateral</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Personalized analysis placeholder -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Personalized Analysis</div>
+  </div>
+  <div class="empty-state">
+    <div class="empty-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <path d="M5 15L15 5" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+        <path d="M15 5L23 15" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+        <circle cx="14" cy="19" r="4" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <div class="empty-title">Add your debts to get a recommendation</div>
+    <p class="empty-desc">
+      Once you've added your debts, Ridge &amp; River will analyze your interest rates,
+      balances, and credit profile to suggest the best consolidation path for your situation.
+    </p>
+    <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
+      Add Debts Now
+    </a>
+  </div>
+</div>
+
+{% endblock %}

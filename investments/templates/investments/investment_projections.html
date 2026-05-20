@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Growth Projections — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Projections{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'investments:portfolio_overview' %}">Portfolio</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Projections</span>
+{% endblock %}
+
+{% block nav_projections %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Growth Projections</h1>
+      <p class="page-subtitle">Forward-looking projections based on current holdings and historical growth rates.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{% url 'investments:portfolio_overview' %}" class="btn btn-ghost btn-sm">← Portfolio</a>
+    </div>
+  </div>
+</div>
+
+<!-- disclaimer -->
+<div class="info-panel amber" style="margin-bottom:var(--sp-6);">
+  <svg class="info-panel-icon" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+    <path d="M10 2l8 14H2L10 2z" stroke="var(--amber-600)" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M10 8v4M10 14v.5" stroke="var(--amber-600)" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+  <div>
+    <div class="info-panel-title">For informational purposes only</div>
+    <div class="info-panel-body">
+      Projections are estimates based on entered growth rates and are not a guarantee of future returns.
+      All investments carry risk. Past performance does not predict future results.
+    </div>
+  </div>
+</div>
+
+{% if projections %}
+
+<!-- Summary cards -->
+<div class="card-grid card-grid-3" style="margin-bottom:var(--sp-8);">
+  <div class="stat-card green">
+    <span class="stat-label">Projections</span>
+    <div class="stat-value">{{ projections|length }}</div>
+    <div class="stat-meta"><span>Active scenarios</span></div>
+  </div>
+  <div class="stat-card teal">
+    <span class="stat-label">Avg. Growth Rate</span>
+    <div class="stat-value">
+      {% if projections %}
+        {% with projections.0 as first %}{{ first.growth_rate|floatformat:1 }}%{% endwith %}
+      {% else %}—{% endif %}
+    </div>
+    <div class="stat-meta"><span>Annualized estimate</span></div>
+  </div>
+  <div class="stat-card blue">
+    <span class="stat-label">Furthest Projection</span>
+    <div class="stat-value" style="font-size:var(--text-xl);">
+      {% if projections %}{{ projections.0.projection_date }}{% else %}—{% endif %}
+    </div>
+    <div class="stat-meta"><span>Latest forecast date</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Projection Table</div>
+    <span class="badge badge-muted">{{ projections|length }} scenario{{ projections|length|pluralize }}</span>
+  </div>
+  <div class="table-wrap" style="border:none;border-radius:0;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Investment</th>
+          <th>Projection Date</th>
+          <th class="num">Projected Value</th>
+          <th class="num">Growth Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for proj in projections %}
+        <tr>
+          <td>
+            <div class="font-medium">{{ proj.investment }}</div>
+          </td>
+          <td class="text-sm text-muted">{{ proj.projection_date }}</td>
+          <td class="num">
+            <span class="font-mono font-semi" style="color:var(--green-600);">
+              ${{ proj.projected_value|floatformat:2 }}
+            </span>
+          </td>
+          <td class="num">
+            <span class="badge {% if proj.growth_rate > 7 %}badge-green{% elif proj.growth_rate > 3 %}badge-teal{% else %}badge-amber{% endif %}">
+              {{ proj.growth_rate|floatformat:2 }}%
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <path d="M3 22L9 14l5 4 5-8 6-6" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="22" cy="4" r="3" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <div class="empty-title">No projections yet</div>
+    <p class="empty-desc">
+      Add investment data and projections will be generated based on your holdings and growth assumptions.
+    </p>
+    <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">Add Investments</a>
+  </div>
+</div>
+
+{% endif %}
+
+{% endblock %}

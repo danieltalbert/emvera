@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Recommendations — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Recommendations{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'investments:portfolio_overview' %}">Portfolio</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Recommendations</span>
+{% endblock %}
+
+{% block nav_recommendations %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Investment Recommendations</h1>
+      <p class="page-subtitle">Actionable suggestions based on your portfolio composition and goals.</p>
+    </div>
+    <div class="page-actions">
+      {% if recommendations %}
+      <span class="badge badge-teal" style="font-size:var(--text-sm);padding:var(--sp-2) var(--sp-3);">
+        {% with recommendations|length as total %}{{ total }} recommendation{{ total|pluralize }}{% endwith %}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if recommendations %}
+
+<!-- Count unreviewed -->
+{% with new_count=0 %}
+<div class="card-grid card-grid-3" style="margin-bottom:var(--sp-8);">
+  <div class="stat-card teal">
+    <span class="stat-label">Total</span>
+    <div class="stat-value">{{ recommendations|length }}</div>
+    <div class="stat-meta"><span>All recommendations</span></div>
+  </div>
+  <div class="stat-card green">
+    <span class="stat-label">New / Unread</span>
+    <div class="stat-value">
+      {% with ns=0 %}
+        {% for rec in recommendations %}{% if not rec.reviewed %}{% with ns=ns|add:1 %}{% endwith %}{% endif %}{% endfor %}
+        {{ recommendations|length }}
+      {% endwith %}
+    </div>
+    <div class="stat-meta"><span>Pending your review</span></div>
+  </div>
+  <div class="stat-card blue">
+    <span class="stat-label">Reviewed</span>
+    <div class="stat-value">—</div>
+    <div class="stat-meta"><span>Acknowledged</span></div>
+  </div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:var(--sp-4);">
+  {% for rec in recommendations %}
+  <div class="recommendation-card {% if rec.reviewed %}reviewed{% endif %}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);">
+      <div style="display:flex;gap:var(--sp-4);align-items:flex-start;flex:1;min-width:0;">
+        <div class="stat-icon {% if rec.reviewed %}blue{% else %}teal{% endif %}" style="flex-shrink:0;margin-top:2px;">
+          {% if rec.reviewed %}
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M7 10l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          {% else %}
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 2l2.4 5H18l-4.3 3.1L15 16 10 12.7 5 16l1.3-5.9L2 7h5.6L10 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+          {% endif %}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <p class="text-base" style="line-height:var(--leading-relaxed);color:var(--color-text-primary);">{{ rec.message }}</p>
+          <div style="margin-top:var(--sp-3);display:flex;align-items:center;gap:var(--sp-3);">
+            <span class="text-xs text-muted">{{ rec.investment }}</span>
+            {% if not rec.reviewed %}
+            <span class="badge badge-teal">New</span>
+            {% else %}
+            <span class="badge badge-muted">Reviewed</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endwith %}
+
+{% else %}
+
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <path d="M14 3l3 6h7l-5.5 4 2 7L14 16.5 7.5 20l2-7L4 9h7l3-6z" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="empty-title">No recommendations yet</div>
+    <p class="empty-desc">
+      Add your investment holdings and Ridge &amp; River will generate personalized portfolio
+      suggestions — like rebalancing opportunities and contribution strategies.
+    </p>
+    <div style="display:flex;gap:var(--sp-3);margin-top:var(--sp-2);flex-wrap:wrap;justify-content:center;">
+      <a href="{% url 'investments:portfolio_overview' %}" class="btn btn-primary">View Portfolio</a>
+      <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-secondary">Add Investments</a>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+
+{% endblock %}

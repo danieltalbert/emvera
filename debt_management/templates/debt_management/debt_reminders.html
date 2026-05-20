@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Reminders — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Reminders{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'debt_management:debt_dashboard' %}">Debt</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Reminders</span>
+{% endblock %}
+
+{% block nav_reminders %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Payment Reminders</h1>
+      <p class="page-subtitle">Never miss a due date. Set reminders for your upcoming debt payments.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-primary btn-sm" id="addReminderBtn">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Add Reminder
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Upcoming summary -->
+<div class="card-grid card-grid-3" style="margin-bottom:var(--sp-8);">
+  <div class="stat-card red">
+    <span class="stat-label">Overdue</span>
+    <div class="stat-value">0</div>
+    <div class="stat-meta"><span>Payments past due</span></div>
+  </div>
+  <div class="stat-card amber">
+    <span class="stat-label">Due This Week</span>
+    <div class="stat-value">0</div>
+    <div class="stat-meta"><span>Payments in next 7 days</span></div>
+  </div>
+  <div class="stat-card teal">
+    <span class="stat-label">Due This Month</span>
+    <div class="stat-value">0</div>
+    <div class="stat-meta"><span>Total due in 30 days</span></div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 300px;gap:var(--sp-6);align-items:start;">
+
+  <!-- Reminder List -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Upcoming Payments</div>
+    </div>
+
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <path d="M14 2a8 8 0 100 16 8 8 0 000-16z" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+          <path d="M10 20c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="empty-title">No reminders set</div>
+      <p class="empty-desc">
+        Add reminders for your payment due dates to stay ahead of your debt. You'll see
+        overdue, upcoming, and future payments here.
+      </p>
+      <button class="btn btn-primary" style="margin-top:var(--sp-2);" id="addReminderBtn2">Set Up Reminders</button>
+    </div>
+
+    <!-- Reminder items will render here when data exists:
+    <div class="debt-item">
+      <div class="debt-header">
+        <div>
+          <div class="debt-name">Chase Sapphire Credit Card</div>
+          <div class="debt-institution">Due March 28, 2025</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="debt-amount">$250.00</div>
+          <div class="debt-rate">Minimum payment</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span class="badge badge-amber">Due in 10 days</span>
+        <div style="display:flex;gap:var(--sp-2);">
+          <button class="btn btn-ghost btn-sm">Edit</button>
+          <button class="btn btn-secondary btn-sm">Mark Paid</button>
+        </div>
+      </div>
+    </div>
+    -->
+  </div>
+
+  <!-- Sidebar: Tips -->
+  <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Payment Tips</div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:var(--sp-4);">
+        <div style="display:flex;gap:var(--sp-3);">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--teal-400);flex-shrink:0;margin-top:6px;"></div>
+          <p class="text-sm text-secondary">Set up autopay at your bank to avoid missed payments entirely.</p>
+        </div>
+        <div style="display:flex;gap:var(--sp-3);">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--teal-400);flex-shrink:0;margin-top:6px;"></div>
+          <p class="text-sm text-secondary">Paying even a few days early can reduce your credit utilization ratio.</p>
+        </div>
+        <div style="display:flex;gap:var(--sp-3);">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--amber-400);flex-shrink:0;margin-top:6px;"></div>
+          <p class="text-sm text-secondary">Late payments stay on your credit report for 7 years. Protect that score.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Related</div></div>
+      <div style="padding:var(--sp-3) var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-1);">
+        <a href="{% url 'debt_management:credit_score_tracking' %}" class="nav-item" style="color:var(--color-text-secondary);">View Credit Score</a>
+        <a href="{% url 'debt_management:debt_dashboard' %}" class="nav-item" style="color:var(--color-text-secondary);">Debt Dashboard</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

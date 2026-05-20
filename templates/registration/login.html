@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — Ridge &amp; River Financial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+
+<div class="auth-page">
+
+  <!-- Left panel -->
+  <aside class="auth-sidebar" aria-hidden="true">
+    <div class="auth-sidebar-content">
+      <div class="auth-brand">
+        <div class="auth-brand-mark">R&amp;R</div>
+        <div class="auth-brand-name">
+          Ridge &amp; River Financial
+          <span>Your Pacific Northwest wealth companion</span>
+        </div>
+      </div>
+
+      <h1 class="auth-tagline">Calm clarity<br>for your financial life.</h1>
+      <p class="auth-desc">
+        Track investments, manage debt, and build toward your goals — all in one place,
+        without the noise.
+      </p>
+
+      <div class="auth-features">
+        <div class="auth-feature">
+          <div class="auth-feature-dot"></div>
+          <span>Debt payoff strategies: avalanche, snowball, custom</span>
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-dot"></div>
+          <span>Portfolio tracking with growth projections</span>
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-dot"></div>
+          <span>Credit score monitoring &amp; payment reminders</span>
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-dot"></div>
+          <span>Bank connection or manual CSV import</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-footer">
+      <span>© 2025 Ridge &amp; River Financial</span>
+    </div>
+  </aside>
+
+  <!-- Right form panel -->
+  <main class="auth-main">
+    <div class="auth-form-wrap">
+      <div class="auth-form-header">
+        <h2 class="auth-form-title">Welcome back</h2>
+        <p class="auth-form-subtitle">
+          Sign in to your account to continue.
+          <br>New here? <a href="{% url 'accounts:register' %}">Create an account</a>
+        </p>
+      </div>
+
+      {% if messages %}
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2);margin-bottom:var(--sp-5);">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if form.non_field_errors %}
+      <div class="alert alert-error" style="margin-bottom:var(--sp-5);">
+        {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="form-stack">
+
+          <div class="form-group">
+            <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+            <input
+              type="text"
+              class="form-input {% if form.username.errors %}error{% endif %}"
+              id="{{ form.username.id_for_label }}"
+              name="{{ form.username.html_name }}"
+              value="{{ form.username.value|default:'' }}"
+              autocomplete="username"
+              placeholder="your_username"
+              autofocus
+            >
+            {% for err in form.username.errors %}
+            <span class="form-error">{{ err }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="{{ form.password.id_for_label }}">
+              Password
+              <a href="/accounts/password-reset/" style="margin-left:auto;font-size:var(--text-xs);font-weight:var(--font-normal);color:var(--color-accent);">Forgot password?</a>
+            </label>
+            <input
+              type="password"
+              class="form-input {% if form.password.errors %}error{% endif %}"
+              id="{{ form.password.id_for_label }}"
+              name="{{ form.password.html_name }}"
+              autocomplete="current-password"
+              placeholder="••••••••"
+            >
+            {% for err in form.password.errors %}
+            <span class="form-error">{{ err }}</span>
+            {% endfor %}
+          </div>
+
+          {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+          {% endif %}
+
+          <button type="submit" class="btn btn-primary btn-full" style="height:44px;font-size:var(--text-base);">
+            Sign In
+          </button>
+        </div>
+      </form>
+
+      <div class="auth-links">
+        Don't have an account? <a href="{% url 'accounts:register' %}">Sign up for free</a>
+      </div>
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

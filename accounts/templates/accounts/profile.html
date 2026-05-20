@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Profile{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Profile &amp; Settings</span>
+{% endblock %}
+
+{% block content %}
+
+<div style="max-width:760px;">
+
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div>
+        <h1 class="page-title">Profile &amp; Settings</h1>
+        <p class="page-subtitle">Manage your account information and preferences.</p>
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2);margin-bottom:var(--sp-6);">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Profile overview card -->
+  <div class="card" style="margin-bottom:var(--sp-6);">
+    <div class="card-body" style="display:flex;align-items:center;gap:var(--sp-5);">
+      <div style="width:64px;height:64px;border-radius:var(--r-full);background:linear-gradient(135deg,var(--teal-600),var(--forest-600));display:flex;align-items:center;justify-content:center;font-size:var(--text-2xl);font-weight:var(--font-bold);color:white;flex-shrink:0;">
+        {{ user.first_name|first|default:user.username|first|upper }}
+      </div>
+      <div>
+        <div style="font-size:var(--text-xl);font-weight:var(--font-semibold);">
+          {{ user.get_full_name|default:user.username }}
+        </div>
+        <div class="text-sm text-muted">@{{ user.username }}</div>
+        <div class="text-sm text-muted" style="margin-top:var(--sp-1);">{{ user.email|default:"No email set" }}</div>
+      </div>
+      <div style="margin-left:auto;flex-shrink:0;">
+        <span class="badge badge-green">Active</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Account Info -->
+  <div class="card" style="margin-bottom:var(--sp-6);">
+    <div class="card-header">
+      <div class="card-title">Account Information</div>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);">
+
+        <div>
+          <div class="form-label" style="margin-bottom:var(--sp-1);">Username</div>
+          <div class="text-base font-medium">{{ user.username }}</div>
+        </div>
+
+        <div>
+          <div class="form-label" style="margin-bottom:var(--sp-1);">Email</div>
+          <div class="text-base">{{ user.email|default:"—" }}</div>
+        </div>
+
+        <div>
+          <div class="form-label" style="margin-bottom:var(--sp-1);">First Name</div>
+          <div class="text-base">{{ user.first_name|default:"—" }}</div>
+        </div>
+
+        <div>
+          <div class="form-label" style="margin-bottom:var(--sp-1);">Last Name</div>
+          <div class="text-base">{{ user.last_name|default:"—" }}</div>
+        </div>
+
+        <div>
+          <div class="form-label" style="margin-bottom:var(--sp-1);">Member Since</div>
+          <div class="text-base">{{ user.date_joined|date:"F j, Y" }}</div>
+        </div>
+
+        <div>
+          <div class="form-label" style="margin-bottom:var(--sp-1);">Last Login</div>
+          <div class="text-base">{{ user.last_login|date:"F j, Y"|default:"—" }}</div>
+        </div>
+
+      </div>
+    </div>
+    <div class="card-footer">
+      <a href="/accounts/password-change/" class="btn btn-secondary btn-sm">Change Password</a>
+    </div>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="card" style="border-color:var(--red-100);">
+    <div class="card-header" style="border-color:var(--red-100);">
+      <div>
+        <div class="card-title" style="color:var(--red-600);">Danger Zone</div>
+        <div class="card-subtitle">These actions are permanent and cannot be undone.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);">
+        <div>
+          <div class="font-medium text-sm">Sign out of all devices</div>
+          <div class="text-xs text-muted">Invalidates all active sessions for this account</div>
+        </div>
+        <a href="/accounts/logout/" class="btn btn-danger btn-sm">Sign Out</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

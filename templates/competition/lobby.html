@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Competitions — Ridge & River Financial{% endblock %}
+{% block nav_competition %}active{% endblock %}
+{% block breadcrumb_current %}Competitions{% endblock %}
+
+{% block extra_css %}
+<style>
+  .comp-hero {
+    background: linear-gradient(135deg, #1B3A2D 0%, #2D5A3D 50%, #1a3a5c 100%);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-8) var(--sp-6);
+    margin-bottom: var(--sp-6);
+    position: relative;
+    overflow: hidden;
+  }
+  .comp-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(255,200,50,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .comp-hero h1 { color: #fff; font-size: 1.75rem; font-weight: 700; margin: 0 0 var(--sp-2); }
+  .comp-hero p  { color: rgba(255,255,255,0.75); margin: 0 0 var(--sp-4); }
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-6);
+  }
+  .comp-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .comp-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+  .comp-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-2); }
+  .comp-card h3 { font-size: 1rem; font-weight: 600; margin: 0; color: var(--text-primary); }
+  .comp-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 999px; font-size: 0.7rem; font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-lobby   { background: rgba(100,180,255,0.15); color: #60b8ff; }
+  .badge-active  { background: rgba(50,220,100,0.15);  color: #32dc64; }
+  .badge-finished{ background: rgba(160,160,160,0.15); color: #aaa; }
+  .badge-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #32dc64; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .comp-meta { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-size: 0.8rem; color: var(--text-secondary); }
+  .comp-meta span { display: flex; align-items: center; gap: 4px; }
+  .comp-actions { margin-top: auto; display: flex; gap: var(--sp-2); }
+  .section-label {
+    font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-secondary);
+    margin-bottom: var(--sp-3);
+  }
+  .empty-state {
+    text-align: center; padding: var(--sp-8) var(--sp-4);
+    color: var(--text-secondary); font-size: 0.9rem;
+  }
+  .empty-state svg { opacity: 0.3; margin-bottom: var(--sp-3); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="comp-hero">
+  <h1>🏆 Investment Competitions</h1>
+  <p>Compete against friends in virtual portfolio challenges. Win mini-games to earn bonus investments and reach the goal first.</p>
+  <a href="{% url 'competition:create' %}" class="btn btn-accent">+ New Competition</a>
+</div>
+
+{% if my_competitions %}
+<p class="section-label">Your Active Competitions</p>
+<div class="comp-grid">
+  {% for comp in my_competitions %}
+  <div class="comp-card">
+    <div class="comp-card-header">
+      <h3>{{ comp.name }}</h3>
+      {% if comp.status == 'active' %}
+        <span class="comp-badge badge-active"><span class="badge-live-dot"></span> Live</span>
+      {% else %}
+        <span class="comp-badge badge-lobby">Lobby</span>
+      {% endif %}
+    </div>
+    <div class="comp-meta">
+      <span>
+        <svg width="12" height="12" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.4 5H18l-4.3 3.1L15 16 10 12.7 5 16l1.3-5.9L2 7h5.6L10 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Goal: ${{ comp.investment_goal|floatformat:0 }}
+      </span>
+      <span>
+        <svg width="12" height="12" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 18a6 6 0 0112 0" stroke="currentColor" stroke-width="1.5"/></svg>
+        {{ comp.participants.count }}/{{ comp.max_players }} players
+      </span>
+      <span>Bonus: ${{ comp.mini_game_bonus }}</span>
+    </div>
+    <div class="comp-actions">
+      <a href="{% url 'competition:dashboard' comp.pk %}" class="btn btn-primary btn-sm" style="flex:1; text-align:center;">Enter</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if open_competitions %}
+<p class="section-label">Open Lobbies — Join Now</p>
+<div class="comp-grid">
+  {% for comp in open_competitions %}
+  <div class="comp-card">
+    <div class="comp-card-header">
+      <h3>{{ comp.name }}</h3>
+      <span class="comp-badge badge-lobby">Lobby</span>
+    </div>
+    {% if comp.description %}
+    <p style="font-size:0.85rem; color:var(--text-secondary); margin:0;">{{ comp.description }}</p>
+    {% endif %}
+    <div class="comp-meta">
+      <span>Start: ${{ comp.starting_balance|floatformat:0 }}</span>
+      <span>Goal: ${{ comp.investment_goal|floatformat:0 }}</span>
+      <span>{{ comp.participants.count }}/{{ comp.max_players }} players</span>
+    </div>
+    <div class="comp-actions">
+      <a href="{% url 'competition:dashboard' comp.pk %}" class="btn btn-sm" style="flex:1;text-align:center;">View</a>
+      <form method="post" action="{% url 'competition:join' comp.pk %}" style="flex:1;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-accent btn-sm" style="width:100%;">Join</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if active_competitions %}
+<p class="section-label">In Progress</p>
+<div class="comp-grid">
+  {% for comp in active_competitions %}
+  <div class="comp-card">
+    <div class="comp-card-header">
+      <h3>{{ comp.name }}</h3>
+      <span class="comp-badge badge-active"><span class="badge-live-dot"></span> Live</span>
+    </div>
+    <div class="comp-meta">
+      <span>{{ comp.participants.count }} players</span>
+      <span>Goal: ${{ comp.investment_goal|floatformat:0 }}</span>
+    </div>
+    <div class="comp-actions">
+      <a href="{% url 'competition:dashboard' comp.pk %}" class="btn btn-sm btn-primary" style="flex:1;text-align:center;">Spectate</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not open_competitions and not active_competitions and not my_competitions %}
+<div class="empty-state">
+  <svg width="48" height="48" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 2l2.4 5H18l-4.3 3.1L15 16 10 12.7 5 16l1.3-5.9L2 7h5.6L10 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+  </svg>
+  <p>No competitions yet. Create one and invite your friends!</p>
+  <a href="{% url 'competition:create' %}" class="btn btn-accent" style="margin-top:var(--sp-3);">Create First Competition</a>
+</div>
+{% endif %}
+
+{% if finished %}
+<p class="section-label" style="margin-top:var(--sp-6);">Recently Finished</p>
+<div class="comp-grid">
+  {% for comp in finished %}
+  <div class="comp-card" style="opacity:0.7;">
+    <div class="comp-card-header">
+      <h3>{{ comp.name }}</h3>
+      <span class="comp-badge badge-finished">Finished</span>
+    </div>
+    <div class="comp-meta">
+      <span>{{ comp.participants.count }} players</span>
+      {% if comp.winner %}<span>🏆 {{ comp.winner.user.username }}</span>{% endif %}
+    </div>
+    <div class="comp-actions">
+      <a href="{% url 'competition:winner' comp.pk %}" class="btn btn-sm" style="flex:1;text-align:center;">Results</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

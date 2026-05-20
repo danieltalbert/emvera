@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Portfolio Performance — PNW Finance{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Portfolio Performance</h1>
+</div>
+<div class="card-grid card-grid-2">
+  <div class="stat-card blue">
+    <span class="stat-label">Total Invested</span>
+    <span class="stat-value">${{ total_invested|floatformat:2 }}</span>
+  </div>
+  <div class="stat-card green">
+    <span class="stat-label">Total Projected Value</span>
+    <span class="stat-value">${{ total_projected|floatformat:2 }}</span>
+  </div>
+  <div class="stat-card purple">
+    <span class="stat-label">Projected ROI</span>
+    <span class="stat-value">{% if roi is not None %}{{ roi|floatformat:2 }}%{% else %}N/A{% endif %}</span>
+  </div>
+</div>
+<h2>Investment Returns</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Investment</th>
+      <th>Annualized Returns (%)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in investment_returns %}
+    <tr>
+      <td>{{ item.investment.name }}</td>
+      <td>
+        {% if item.returns %}
+          {% for r in item.returns %}{{ r|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        {% else %}N/A{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

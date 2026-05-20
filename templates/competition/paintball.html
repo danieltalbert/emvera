@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+{% block title %}Paintball — {{ competition.name }}{% endblock %}
+{% block nav_competition %}active{% endblock %}
+{% block breadcrumb %}
+  <a href="{% url 'competition:lobby' %}">Competitions</a>
+  <span class="breadcrumb-sep" aria-hidden="true">/</span>
+  <a href="{% url 'competition:dashboard' competition.pk %}">{{ competition.name }}</a>
+  <span class="breadcrumb-sep" aria-hidden="true">/</span>
+  <span class="current">Paintball</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  body { overflow: hidden; }
+  .main-content { padding: 0 !important; }
+
+  #game-container {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 56px);
+    background: #0e1f12;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+
+  #gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Countdown overlay */
+  #countdown-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 20;
+  }
+  #countdown-overlay h2 {
+    color: #fff; font-size: 1.4rem; margin: 0 0 12px;
+    letter-spacing: 0.05em;
+  }
+  #countdown-num {
+    font-size: 6rem; font-weight: 900;
+    color: #f1c40f;
+    line-height: 1;
+    animation: countPop 1s ease-in-out;
+  }
+  @keyframes countPop {
+    0%   { transform: scale(0.4); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  #countdown-overlay p { color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 16px; }
+
+  /* Game-over overlay */
+  #game-over-overlay {
+    display: none;
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.88);
+    flex-direction: column; align-items: center; justify-content: center;
+    z-index: 30;
+    gap: 16px;
+  }
+  #game-over-overlay h2 { color: #fff; font-size: 1.6rem; margin: 0; }
+  #score-display {
+    font-size: 5rem; font-weight: 900; color: #f1c40f; line-height: 1;
+    text-shadow: 0 0 30px rgba(241,196,15,0.5);
+  }
+  #game-over-overlay p { color: rgba(255,255,255,0.65); font-size: 0.9rem; margin: 0; }
+  .go-actions { display: flex; gap: 12px; margin-top: 8px; }
+  #submit-btn {
+    background: #2D7A42; color: #fff; border: none; border-radius: 8px;
+    padding: 12px 28px; font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: background 0.2s;
+  }
+  #submit-btn:hover { background: #32dc64; color: #0e1f12; }
+  #submit-btn:disabled { background: #555; cursor: not-allowed; }
+
+  /* Bonus badge */
+  .bonus-badge {
+    background: rgba(241,196,15,0.15); border: 1px solid rgba(241,196,15,0.4);
+    border-radius: 8px; padding: 10px 20px; text-align: center;
+  }
+  .bonus-badge .lbl { font-size: 0.75rem; color: rgba(255,255,255,0.5); }
+  .bonus-badge .amount { font-size: 1.4rem; font-weight: 700; color: #f1c40f; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="game-container">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Countdown -->
+  <div id="countdown-overlay">
+    <h2>🎯 PAINTBALL MINI-GAME</h2>
+    <div id="countdown-num">3</div>
+    <div class="bonus-badge" style="margin-top:20px;">
+      <div class="lbl">Winner earns</div>
+      <div class="amount">+${{ competition.mini_game_bonus|floatformat:0 }}</div>
+    </div>
+    <p>Click targets to earn points. Smaller targets = more points.</p>
+  </div>
+
+  <!-- Game Over -->
+  <div id="game-over-overlay">
+    <h2>🎨 Round Over!</h2>
+    <div id="score-display">0</div>
+    <p>Your final score</p>
+    <div class="bonus-badge">
+      <div class="lbl">Highest score wins</div>
+      <div class="amount">+${{ competition.mini_game_bonus|floatformat:0 }}</div>
+    </div>
+    <div class="go-actions">
+      <button id="submit-btn" onclick="submitScore()">Submit Score →</button>
+    </div>
+    <p id="submit-status" style="display:none; color:#32dc64; margin-top:8px;"></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SUBMIT_URL = "{% url 'competition:submit_score' competition.pk mini_game.pk %}";
+const DASHBOARD_URL = "{% url 'competition:dashboard' competition.pk %}";
+const CSRF_TOKEN = "{{ csrf_token }}";
+const GAME_DURATION = 45;
+
+let finalScore = 0;
+
+// ─── Game ─────────────────────────────────────────────────────────────────────
+
+class Target {
+  constructor(canvas) {
+    const minR = 18, maxR = 55;
+    this.r = minR + Math.random() * (maxR - minR);
+    this.x = this.r + 10 + Math.random() * (canvas.width  - this.r * 2 - 20);
+    this.y = this.r + 10 + Math.random() * (canvas.height - this.r * 2 - 20);
+    this.color = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#e91e63'][Math.floor(Math.random()*6)];
+    this.points = Math.round(15 + (maxR - this.r) / (maxR - minR) * 35);
+    this.age = 0;
+    this.maxAge = 140 + Math.random() * 60;
+  }
+
+  draw(ctx) {
+    const pulse = 1 + Math.sin(this.age * 0.12) * 0.06;
+    const alpha = Math.min(1, 1 - (this.age / this.maxAge - 0.7) / 0.3);
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, alpha);
+
+    // Shadow glow
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = this.color;
+
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r * pulse, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // White ring
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r * pulse * 0.68, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+
+    // Inner bullseye
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r * pulse * 0.33, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+
+    // Point label
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = `bold ${Math.max(9, this.r * 0.28)}px Inter, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('+' + this.points, this.x, this.y);
+
+    ctx.restore();
+  }
+
+  hits(x, y) {
+    return Math.hypot(x - this.x, y - this.y) <= this.r;
+  }
+}
+
+class Splat {
+  constructor(x, y, color, r) {
+    this.x = x; this.y = y; this.color = color; this.r = r;
+    this.age = 0; this.maxAge = 36;
+    // Pre-generate blob shape once
+    this.pts = Array.from({length: 14}, (_, i) => {
+      const a = (i / 14) * Math.PI * 2;
+      const jitter = 0.6 + Math.random() * 0.8;
+      return [Math.cos(a) * jitter, Math.sin(a) * jitter];
+    });
+  }
+  draw(ctx) {
+    const p = this.age / this.maxAge;
+    const rad = this.r * (1 + p * 1.8);
+    ctx.save();
+    ctx.globalAlpha = (1 - p) * 0.9;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    this.pts.forEach(([cx, cy], i) => {
+      const px = this.x + cx * rad, py = this.y + cy * rad;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    });
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+class FloatingText {
+  constructor(x, y, text, color) {
+    this.x = x; this.y = y; this.text = text; this.color = color;
+    this.age = 0; this.maxAge = 44;
+  }
+  draw(ctx) {
+    const p = this.age / this.maxAge;
+    ctx.save();
+    ctx.globalAlpha = 1 - p;
+    ctx.fillStyle = this.color;
+    ctx.font = 'bold 22px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.text, this.x, this.y - p * 55);
+    ctx.restore();
+  }
+}
+
+class PaintballGame {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.score = 0;
+    this.timeLeft = GAME_DURATION;
+    this.targets = [];
+    this.splats = [];
+    this.floats = [];
+    this.over = false;
+    this.raf = null;
+
+    this._resize = this._resize.bind(this);
+    this._click  = this._click.bind(this);
+    window.addEventListener('resize', this._resize);
+    canvas.addEventListener('click', this._click);
+    this._resize();
+  }
+
+  _resize() {
+    this.canvas.width  = this.canvas.offsetWidth;
+    this.canvas.height = this.canvas.offsetHeight;
+  }
+
+  start() {
+    this._ticker = setInterval(() => {
+      this.timeLeft--;
+      if (this.timeLeft <= 0) this._end();
+    }, 1000);
+    this._spawner = setInterval(() => this._spawn(), 750);
+    this._loop();
+  }
+
+  _spawn() {
+    if (this.over || this.targets.length >= 7) return;
+    this.targets.push(new Target(this.canvas));
+  }
+
+  _click(e) {
+    if (this.over) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const scaleX = this.canvas.width  / rect.width;
+    const scaleY = this.canvas.height / rect.height;
+    const x = (e.clientX - rect.left)  * scaleX;
+    const y = (e.clientY - rect.top)   * scaleY;
+
+    for (let i = this.targets.length - 1; i >= 0; i--) {
+      if (this.targets[i].hits(x, y)) {
+        const t = this.targets[i];
+        this.score += t.points;
+        this.splats.push(new Splat(t.x, t.y, t.color, t.r));
+        this.floats.push(new FloatingText(t.x, t.y, '+' + t.points, '#f1c40f'));
+        this.targets.splice(i, 1);
+        return;
+      }
+    }
+    // Miss
+    this.score = Math.max(0, this.score - 3);
+    this.floats.push(new FloatingText(x, y, '-3', '#f87171'));
+  }
+
+  _loop() {
+    if (this.over) return;
+    this._update();
+    this._draw();
+    this.raf = requestAnimationFrame(() => this._loop());
+  }
+
+  _update() {
+    this.targets = this.targets.filter(t => ++t.age < t.maxAge);
+    this.splats  = this.splats.filter(s  => ++s.age  < s.maxAge);
+    this.floats  = this.floats.filter(f  => ++f.age  < f.maxAge);
+  }
+
+  _draw() {
+    const ctx = this.ctx;
+    const W = this.canvas.width, H = this.canvas.height;
+
+    // Background
+    ctx.fillStyle = '#0e1f12';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 70) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 70) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    // Vignette
+    const vig = ctx.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.9);
+    vig.addColorStop(0, 'transparent');
+    vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+
+    this.splats.forEach(s => s.draw(ctx));
+    this.targets.forEach(t => t.draw(ctx));
+    this.floats.forEach(f => f.draw(ctx));
+
+    // HUD — score
+    this._hud(ctx, W, H);
+  }
+
+  _hud(ctx, W, H) {
+    // Score box
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    _roundRect(ctx, 12, 12, 140, 52, 8);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '11px Inter, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('SCORE', 22, 20);
+    ctx.fillStyle = '#f1c40f';
+    ctx.font = 'bold 26px Inter, sans-serif';
+    ctx.fillText(this.score, 22, 34);
+    ctx.restore();
+
+    // Timer box
+    const timerColor = this.timeLeft <= 10 ? '#f87171' : '#32dc64';
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    _roundRect(ctx, W/2 - 55, 12, 110, 52, 8);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '11px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('TIME', W/2, 20);
+    ctx.fillStyle = timerColor;
+    if (this.timeLeft <= 10) { ctx.shadowBlur = 12; ctx.shadowColor = '#f87171'; }
+    ctx.font = 'bold 26px Inter, sans-serif';
+    ctx.fillText(this.timeLeft + 's', W/2, 34);
+    ctx.restore();
+
+    // Targets remaining hint
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = '11px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('🎯 ' + this.targets.length + ' targets', W - 14, 20);
+    ctx.restore();
+  }
+
+  _end() {
+    this.over = true;
+    clearInterval(this._ticker);
+    clearInterval(this._spawner);
+    cancelAnimationFrame(this.raf);
+    window.removeEventListener('resize', this._resize);
+
+    finalScore = this.score;
+    document.getElementById('score-display').textContent = this.score;
+    document.getElementById('game-over-overlay').style.display = 'flex';
+  }
+}
+
+function _roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ─── Score submission ─────────────────────────────────────────────────────────
+
+function submitScore() {
+  const btn = document.getElementById('submit-btn');
+  const status = document.getElementById('submit-status');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  fetch(SUBMIT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+    body: JSON.stringify({ score: finalScore }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      status.textContent = '✅ Score submitted! Heading back…';
+      status.style.display = 'block';
+      setTimeout(() => window.location.href = DASHBOARD_URL, 1800);
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Submit Score →';
+      status.textContent = data.error || 'Something went wrong.';
+      status.style.color = '#f87171';
+      status.style.display = 'block';
+    }
+  })
+  .catch(() => {
+    btn.disabled = false;
+    btn.textContent = 'Submit Score →';
+    status.textContent = 'Network error — please try again.';
+    status.style.color = '#f87171';
+    status.style.display = 'block';
+  });
+}
+
+// ─── Boot with countdown ─────────────────────────────────────────────────────
+
+(function boot() {
+  const canvas = document.getElementById('gameCanvas');
+  const overlay = document.getElementById('countdown-overlay');
+  const numEl = document.getElementById('countdown-num');
+  let count = 3;
+  const game = new PaintballGame(canvas);
+
+  const tick = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      clearInterval(tick);
+      overlay.style.display = 'none';
+      game.start();
+    } else {
+      numEl.style.animation = 'none';
+      void numEl.offsetWidth; // reflow to restart animation
+      numEl.style.animation = 'countPop 1s ease-in-out';
+      numEl.textContent = count;
+    }
+  }, 1000);
+})();
+</script>
+{% endblock %}

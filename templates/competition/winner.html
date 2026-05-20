@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}Results — {{ competition.name }}{% endblock %}
+{% block nav_competition %}active{% endblock %}
+{% block breadcrumb %}
+  <a href="{% url 'competition:lobby' %}">Competitions</a>
+  <span class="breadcrumb-sep" aria-hidden="true">/</span>
+  <span class="current">{{ competition.name }} — Results</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Confetti canvas sits behind everything */
+  #confetti-canvas {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  }
+
+  .winner-layout { position: relative; z-index: 1; }
+
+  /* Hero podium */
+  .winner-hero {
+    text-align: center;
+    padding: var(--sp-10, 4rem) var(--sp-4) var(--sp-8, 3rem);
+  }
+  .trophy-icon {
+    font-size: 5rem; line-height: 1;
+    animation: trophyBounce 1s cubic-bezier(0.36,0.07,0.19,0.97) both;
+  }
+  @keyframes trophyBounce {
+    0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+    60%  { transform: scale(1.2) rotate(5deg); opacity: 1; }
+    80%  { transform: scale(0.95) rotate(-2deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+  .winner-name {
+    font-size: 2.2rem; font-weight: 900;
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: var(--sp-3) 0 var(--sp-2);
+    animation: fadeUp 0.6s 0.4s ease both;
+  }
+  .winner-sub {
+    color: var(--text-secondary); font-size: 0.95rem;
+    animation: fadeUp 0.6s 0.6s ease both;
+  }
+  .you-won-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+    color: #0e1f12; font-weight: 800; font-size: 0.85rem;
+    padding: 6px 20px; border-radius: 999px;
+    margin-top: var(--sp-3);
+    animation: fadeUp 0.6s 0.8s ease both;
+    letter-spacing: 0.05em;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Podium visual */
+  .podium {
+    display: flex; align-items: flex-end; justify-content: center;
+    gap: var(--sp-2); margin: var(--sp-6) auto;
+    max-width: 420px;
+    animation: fadeUp 0.7s 1s ease both;
+  }
+  .podium-block {
+    flex: 1; border-radius: 6px 6px 0 0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: var(--sp-3) var(--sp-2) var(--sp-2);
+    position: relative;
+  }
+  .podium-block.p1 { height: 110px; background: linear-gradient(180deg, rgba(241,196,15,0.3), rgba(241,196,15,0.1)); border: 1px solid rgba(241,196,15,0.4); }
+  .podium-block.p2 { height: 82px;  background: linear-gradient(180deg, rgba(189,195,199,0.2), rgba(189,195,199,0.06)); border: 1px solid rgba(189,195,199,0.25); }
+  .podium-block.p3 { height: 62px;  background: linear-gradient(180deg, rgba(205,127,50,0.2), rgba(205,127,50,0.06)); border: 1px solid rgba(205,127,50,0.2); }
+  .podium-medal { font-size: 1.4rem; }
+  .podium-username { font-size: 0.75rem; font-weight: 600; color: #fff; margin-top: 4px; text-align: center; word-break: break-all; }
+  .podium-val { font-size: 0.7rem; color: rgba(255,255,255,0.55); }
+  .podium-rank { position: absolute; bottom: 6px; font-size: 0.65rem; font-weight: 700; opacity: 0.5; }
+
+  /* Full leaderboard */
+  .results-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    max-width: 640px; margin: 0 auto var(--sp-6);
+    animation: fadeUp 0.7s 1.2s ease both;
+  }
+  .results-header {
+    padding: var(--sp-4) var(--sp-5);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem; font-weight: 600;
+    display: grid; grid-template-columns: 36px 1fr auto auto;
+    gap: var(--sp-3); color: var(--text-secondary);
+  }
+  .results-row {
+    display: grid; grid-template-columns: 36px 1fr auto auto;
+    gap: var(--sp-3); align-items: center;
+    padding: var(--sp-3) var(--sp-5);
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .results-row:last-child { border-bottom: none; }
+  .results-row.winner-row { background: rgba(241,196,15,0.07); }
+  .results-row.you { background: rgba(45,122,66,0.08); }
+  .rank-num {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.88rem; font-weight: 700;
+  }
+  .r1 { background: rgba(241,196,15,0.2); color: #f1c40f; }
+  .r2 { background: rgba(189,195,199,0.15); color: #bdc3c7; }
+  .r3 { background: rgba(205,127,50,0.15); color: #cd7f32; }
+  .rn { background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+  .p-name { font-weight: 500; font-size: 0.9rem; }
+  .p-wins { font-size: 0.78rem; color: var(--text-secondary); }
+  .p-bonus { font-size: 0.82rem; color: #f1c40f; text-align: right; }
+  .p-total { font-size: 1rem; font-weight: 700; color: #32dc64; text-align: right; }
+
+  /* CTA row */
+  .cta-row {
+    display: flex; gap: var(--sp-3); justify-content: center; flex-wrap: wrap;
+    margin-bottom: var(--sp-8);
+    animation: fadeUp 0.6s 1.5s ease both;
+  }
+
+  /* Stats summary */
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--sp-4); max-width: 640px; margin: 0 auto var(--sp-6);
+    animation: fadeUp 0.6s 1.3s ease both;
+  }
+  .summary-stat {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: var(--sp-4); text-align: center;
+  }
+  .summary-stat .emoji { font-size: 1.6rem; }
+  .summary-stat .val { font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin: 4px 0 2px; }
+  .summary-stat .lbl { font-size: 0.75rem; color: var(--text-secondary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<canvas id="confetti-canvas"></canvas>
+
+<div class="winner-layout">
+
+  <!-- Hero -->
+  <div class="winner-hero">
+    <div class="trophy-icon">🏆</div>
+    {% if winner %}
+      <div class="winner-name">{{ winner.user.username }}</div>
+      <div class="winner-sub">won "{{ competition.name }}" with ${{ winner.total_value|floatformat:2 }}</div>
+      {% if is_winner %}
+        <div class="you-won-badge">🎉 That's you! Congratulations!</div>
+      {% endif %}
+    {% else %}
+      <div class="winner-name">Competition Over</div>
+      <div class="winner-sub">{{ competition.name }}</div>
+    {% endif %}
+
+    <!-- Podium (top 3) -->
+    {% if leaderboard.count >= 2 %}
+    <div class="podium">
+      {% with leaderboard|slice:"1:2" as second %}{% for p in second %}
+      <div class="podium-block p2">
+        <div class="podium-medal">🥈</div>
+        <div class="podium-username">{{ p.user.username }}</div>
+        <div class="podium-val">${{ p.total_value|floatformat:0 }}</div>
+        <div class="podium-rank">2nd</div>
+      </div>
+      {% endfor %}{% endwith %}
+
+      {% with leaderboard|slice:":1" as first %}{% for p in first %}
+      <div class="podium-block p1">
+        <div class="podium-medal">🥇</div>
+        <div class="podium-username">{{ p.user.username }}</div>
+        <div class="podium-val">${{ p.total_value|floatformat:0 }}</div>
+        <div class="podium-rank">1st</div>
+      </div>
+      {% endfor %}{% endwith %}
+
+      {% with leaderboard|slice:"2:3" as third %}{% for p in third %}
+      <div class="podium-block p3">
+        <div class="podium-medal">🥉</div>
+        <div class="podium-username">{{ p.user.username }}</div>
+        <div class="podium-val">${{ p.total_value|floatformat:0 }}</div>
+        <div class="podium-rank">3rd</div>
+      </div>
+      {% endfor %}{% endwith %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Summary stats -->
+  <div class="summary-grid">
+    <div class="summary-stat">
+      <div class="emoji">👥</div>
+      <div class="val">{{ leaderboard.count }}</div>
+      <div class="lbl">Players</div>
+    </div>
+    <div class="summary-stat">
+      <div class="emoji">🎯</div>
+      <div class="val">{{ competition.mini_games.count }}</div>
+      <div class="lbl">Mini-Games Played</div>
+    </div>
+    <div class="summary-stat">
+      <div class="emoji">💰</div>
+      <div class="val">${{ competition.mini_game_bonus|floatformat:0 }}</div>
+      <div class="lbl">Bonus Per Win</div>
+    </div>
+    {% if winner %}
+    <div class="summary-stat">
+      <div class="emoji">🚀</div>
+      <div class="val">${{ winner.bonus_earned|floatformat:0 }}</div>
+      <div class="lbl">Winner's Bonus Earned</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Full leaderboard -->
+  <div class="results-card">
+    <div class="results-header">
+      <span>#</span>
+      <span>Player</span>
+      <span>Bonus</span>
+      <span>Total</span>
+    </div>
+    {% for p in leaderboard %}
+    {% with forloop.counter as rank %}
+    <div class="results-row {% if rank == 1 %}winner-row{% endif %} {% if p.user == request.user %}you{% endif %}">
+      <div class="rank-num {% if rank == 1 %}r1{% elif rank == 2 %}r2{% elif rank == 3 %}r3{% else %}rn{% endif %}">
+        {% if rank == 1 %}🥇{% elif rank == 2 %}🥈{% elif rank == 3 %}🥉{% else %}{{ rank }}{% endif %}
+      </div>
+      <div>
+        <div class="p-name">
+          {{ p.user.username }}
+          {% if p.user == request.user %}<span style="font-size:0.72rem; color:var(--text-secondary);"> (you)</span>{% endif %}
+        </div>
+        <div class="p-wins">{{ p.mini_game_wins }} mini-game win{{ p.mini_game_wins|pluralize }}</div>
+      </div>
+      <div class="p-bonus">{% if p.bonus_earned > 0 %}+${{ p.bonus_earned|floatformat:2 }}{% else %}—{% endif %}</div>
+      <div class="p-total">${{ p.total_value|floatformat:2 }}</div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+  </div>
+
+  <!-- CTAs -->
+  <div class="cta-row">
+    <a href="{% url 'competition:create' %}" class="btn btn-accent">+ New Competition</a>
+    <a href="{% url 'competition:lobby' %}" class="btn">Back to Lobby</a>
+    <a href="{% url 'investments:portfolio_overview' %}" class="btn">My Portfolio</a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Confetti ──────────────────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  const IS_WINNER = {{ is_winner|yesno:"true,false" }};
+  const COLORS = ['#f1c40f','#e74c3c','#3498db','#2ecc71','#9b59b6','#f39c12','#1abc9c','#e91e63'];
+
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  window.addEventListener('resize', () => {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  const count = IS_WINNER ? 180 : 80;
+  const pieces = Array.from({length: count}, () => ({
+    x: Math.random() * canvas.width,
+    y: -20 - Math.random() * canvas.height * 0.5,
+    w: 7 + Math.random() * 8,
+    h: 12 + Math.random() * 8,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    rot: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.12,
+    vx: (Math.random() - 0.5) * 2.5,
+    vy: 2 + Math.random() * 3.5,
+    opacity: 0.85 + Math.random() * 0.15,
+  }));
+
+  let alive = true;
+  let frame = 0;
+
+  function draw() {
+    if (!alive) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let anyVisible = false;
+    pieces.forEach(p => {
+      p.x   += p.vx;
+      p.y   += p.vy;
+      p.rot += p.rotSpeed;
+      if (p.y < canvas.height + 20) anyVisible = true;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+    frame++;
+    if (frame > 300 && !anyVisible) { alive = false; ctx.clearRect(0,0,canvas.width,canvas.height); return; }
+    requestAnimationFrame(draw);
+  }
+
+  // Short delay so page renders first
+  setTimeout(draw, 400);
+})();
+</script>
+{% endblock %}

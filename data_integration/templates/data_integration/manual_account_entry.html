@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Account — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Add Account{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Add Account</span>
+{% endblock %}
+
+{% block nav_accounts %}active{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;">
+
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div>
+        <h1 class="page-title">Add an Account</h1>
+        <p class="page-subtitle">Manually connect a checking, savings, investment, credit, or debt account.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Account Details</div>
+        <div class="card-subtitle">All fields with <span style="color:var(--red-500);">*</span> are required</div>
+      </div>
+    </div>
+    <div class="card-body">
+
+      {% if form.non_field_errors %}
+      <div class="alert alert-error" style="margin-bottom:var(--sp-5);">
+        {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="form-stack">
+
+          <div class="form-group">
+            <label class="form-label" for="{{ form.name.id_for_label }}">
+              Account Name <span class="label-required">*</span>
+            </label>
+            <input
+              type="text"
+              class="form-input {% if form.name.errors %}error{% endif %}"
+              id="{{ form.name.id_for_label }}"
+              name="{{ form.name.html_name }}"
+              value="{{ form.name.value|default:'' }}"
+              placeholder="e.g. Chase Checking, Robinhood Brokerage"
+              autofocus
+            >
+            {% for err in form.name.errors %}
+            <span class="form-error">{{ err }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="{{ form.type.id_for_label }}">
+                Account Type <span class="label-required">*</span>
+              </label>
+              <select
+                class="form-select {% if form.type.errors %}error{% endif %}"
+                id="{{ form.type.id_for_label }}"
+                name="{{ form.type.html_name }}"
+              >
+                {% for value, label in form.type.field.choices %}
+                <option value="{{ value }}" {% if form.type.value == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% for err in form.type.errors %}
+              <span class="form-error">{{ err }}</span>
+              {% endfor %}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="{{ form.institution.id_for_label }}">
+                Institution
+                <span class="label-hint">(optional)</span>
+              </label>
+              <input
+                type="text"
+                class="form-input {% if form.institution.errors %}error{% endif %}"
+                id="{{ form.institution.id_for_label }}"
+                name="{{ form.institution.html_name }}"
+                value="{{ form.institution.value|default:'' }}"
+                placeholder="e.g. Chase, Vanguard, Wells Fargo"
+              >
+              {% for err in form.institution.errors %}
+              <span class="form-error">{{ err }}</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Info tip -->
+          <div class="info-panel teal">
+            <svg class="info-panel-icon" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="10" cy="10" r="8" stroke="var(--teal-600)" stroke-width="1.5"/>
+              <path d="M10 9v5M10 7v.5" stroke="var(--teal-600)" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <div class="info-panel-title">Tip: Connect your bank automatically</div>
+              <div class="info-panel-body">
+                You can also <a href="{% url 'data_integration:connect_plaid' %}">link your bank via Plaid</a>
+                to automatically import accounts and transactions.
+              </div>
+            </div>
+          </div>
+
+          <div class="card-footer" style="background:none;border:none;padding:0;justify-content:flex-start;gap:var(--sp-3);">
+            <button type="submit" class="btn btn-primary">Save Account</button>
+            <a href="{% url 'investments:portfolio_overview' %}" class="btn btn-ghost">Cancel</a>
+          </div>
+
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

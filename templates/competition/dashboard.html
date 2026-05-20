@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}{{ competition.name }} — Ridge & River Financial{% endblock %}
+{% block nav_competition %}active{% endblock %}
+{% block breadcrumb %}
+  <a href="{% url 'competition:lobby' %}">Competitions</a>
+  <span class="breadcrumb-sep" aria-hidden="true">/</span>
+  <span class="current">{{ competition.name }}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dash-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: var(--sp-5);
+    align-items: start;
+  }
+  @media (max-width: 860px) { .dash-layout { grid-template-columns: 1fr; } }
+
+  /* Status banner */
+  .status-banner {
+    border-radius: var(--radius-lg);
+    padding: var(--sp-5) var(--sp-6);
+    margin-bottom: var(--sp-5);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-3);
+  }
+  .status-banner.lobby  { background: linear-gradient(135deg, #1a2a4a 0%, #1B3A2D 100%); border: 1px solid rgba(100,180,255,0.2); }
+  .status-banner.active { background: linear-gradient(135deg, #1B3A2D 0%, #0d3320 100%); border: 1px solid rgba(50,220,100,0.25); }
+  .status-banner h2 { color: #fff; font-size: 1.25rem; margin: 0 0 4px; }
+  .status-banner p  { color: rgba(255,255,255,0.65); font-size: 0.85rem; margin: 0; }
+  .status-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+  /* Leaderboard */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: var(--sp-4) var(--sp-5);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-header h3 { font-size: 0.9rem; font-weight: 600; margin: 0; }
+  .leaderboard-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: var(--sp-3);
+    align-items: center;
+    padding: var(--sp-3) var(--sp-5);
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .leaderboard-row:last-child { border-bottom: none; }
+  .leaderboard-row.me { background: rgba(var(--accent-rgb, 45,122,66), 0.08); }
+  .rank-badge {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700;
+  }
+  .rank-1 { background: rgba(241,196,15,0.2); color: #f1c40f; }
+  .rank-2 { background: rgba(189,195,199,0.2); color: #bdc3c7; }
+  .rank-3 { background: rgba(205,127,50,0.2); color: #cd7f32; }
+  .rank-n { background: rgba(255,255,255,0.07); color: var(--text-secondary); }
+  .player-name { font-size: 0.88rem; font-weight: 500; }
+  .player-meta { font-size: 0.75rem; color: var(--text-secondary); }
+  .player-value { text-align: right; }
+  .player-value .val { font-size: 0.95rem; font-weight: 700; color: #32dc64; }
+  .player-value .bonus { font-size: 0.72rem; color: var(--text-secondary); }
+  .bar-wrap { grid-column: 1 / -1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: -var(--sp-2); }
+  .bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #2D7A42, #32dc64); transition: width 0.6s ease; }
+
+  /* Mini-game alert */
+  .minigame-alert {
+    background: linear-gradient(135deg, #3a1a00 0%, #5a2800 100%);
+    border: 1px solid rgba(255,150,30,0.4);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-5);
+    margin-bottom: var(--sp-5);
+    display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap;
+    animation: alertPulse 2s ease-in-out infinite;
+  }
+  @keyframes alertPulse { 0%,100%{border-color:rgba(255,150,30,0.4)} 50%{border-color:rgba(255,150,30,0.9)} }
+  .minigame-icon { font-size: 2.5rem; flex-shrink: 0; }
+  .minigame-alert h3 { color: #ff9620; font-size: 1rem; margin: 0 0 4px; }
+  .minigame-alert p  { color: rgba(255,255,255,0.7); font-size: 0.85rem; margin: 0; }
+
+  /* Stats sidebar */
+  .stat-item { padding: var(--sp-3) var(--sp-5); border-bottom: 1px solid var(--border); }
+  .stat-item:last-child { border-bottom: none; }
+  .stat-item .lbl { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px; }
+  .stat-item .num { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+  .stat-item .num.green { color: #32dc64; }
+
+  .waiting-players { padding: var(--sp-5); text-align: center; color: var(--text-secondary); font-size: 0.88rem; }
+  .waiting-players .big { font-size: 2rem; margin-bottom: var(--sp-2); }
+
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #32dc64; display: inline-block; animation: pulse 1.4s ease-in-out infinite; margin-right: 6px; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if competition.status == 'lobby' %}
+<div class="status-banner lobby">
+  <div>
+    <h2>{{ competition.name }}</h2>
+    <p>Waiting for players to join — {{ competition.participants.count }}/{{ competition.max_players }} in lobby</p>
+  </div>
+  <div class="status-actions">
+    {% if is_creator %}
+      {% if competition.participants.count >= 2 %}
+        <form method="post" action="{% url 'competition:start' competition.pk %}">
+          {% csrf_token %}
+          <button class="btn btn-accent">▶ Start Competition</button>
+        </form>
+      {% else %}
+        <span style="font-size:0.82rem; color:rgba(255,255,255,0.5);">Need 2+ players to start</span>
+      {% endif %}
+    {% endif %}
+    {% if not participant %}
+      <form method="post" action="{% url 'competition:join' competition.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-primary">Join Competition</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+{% elif competition.status == 'active' %}
+<div class="status-banner active">
+  <div>
+    <h2><span class="live-dot"></span>{{ competition.name }}</h2>
+    <p>Competition in progress — goal: ${{ competition.investment_goal|floatformat:0 }}</p>
+  </div>
+  <div class="status-actions">
+    {% if is_creator %}
+      {% if not active_mini_game %}
+        <form method="post" action="{% url 'competition:trigger_mini_game' competition.pk %}">
+          {% csrf_token %}
+          <button class="btn btn-accent">🎯 Launch Mini-Game</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{% url 'competition:end' competition.pk %}" onsubmit="return confirm('End this competition now?')">
+        {% csrf_token %}
+        <button class="btn" style="color:#f87171; border-color:rgba(248,113,113,0.3);">End Competition</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if active_mini_game and participant %}
+  {% if already_played %}
+  <div class="minigame-alert" style="border-color:rgba(50,220,100,0.4); background:linear-gradient(135deg, #0d3320, #1B3A2D);">
+    <div class="minigame-icon">✅</div>
+    <div>
+      <h3 style="color:#32dc64;">Score Submitted</h3>
+      <p>Waiting for other players to finish. Results coming soon…</p>
+    </div>
+  </div>
+  {% else %}
+  <div class="minigame-alert">
+    <div class="minigame-icon">🎯</div>
+    <div style="flex:1;">
+      <h3>Paintball Mini-Game is LIVE!</h3>
+      <p>Win to earn a ${{ competition.mini_game_bonus }} bonus investment. Ready up!</p>
+    </div>
+    <a href="{% url 'competition:paintball' competition.pk active_mini_game.pk %}" class="btn btn-accent" style="font-size:1rem; padding: var(--sp-3) var(--sp-5);">
+      🔫 Play Now
+    </a>
+  </div>
+  {% endif %}
+{% endif %}
+
+<div class="dash-layout">
+
+  <!-- Leaderboard -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h3>Leaderboard</h3>
+        {% if competition.status == 'active' %}
+          <span style="font-size:0.75rem; color:var(--text-secondary);" id="last-updated">Live</span>
+        {% endif %}
+      </div>
+      {% for p in leaderboard %}
+      {% with forloop.counter as rank %}
+      <div class="leaderboard-row {% if p.user == request.user %}me{% endif %}">
+        <div class="rank-badge {% if rank == 1 %}rank-1{% elif rank == 2 %}rank-2{% elif rank == 3 %}rank-3{% else %}rank-n{% endif %}">
+          {% if rank == 1 %}🥇{% elif rank == 2 %}🥈{% elif rank == 3 %}🥉{% else %}{{ rank }}{% endif %}
+        </div>
+        <div>
+          <div class="player-name">
+            {{ p.user.username }}{% if p.user == request.user %} <span style="font-size:0.7rem;color:var(--text-secondary);">(you)</span>{% endif %}
+          </div>
+          <div class="player-meta">{{ p.mini_game_wins }} mini-game win{{ p.mini_game_wins|pluralize }}</div>
+        </div>
+        <div class="player-value">
+          <div class="val">${{ p.total_value|floatformat:2 }}</div>
+          {% if p.bonus_earned > 0 %}
+          <div class="bonus">+${{ p.bonus_earned|floatformat:2 }} bonus</div>
+          {% endif %}
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-fill" style="width:{% widthratio p.total_value competition.investment_goal 100 %}%;"></div>
+        </div>
+      </div>
+      {% endwith %}
+      {% empty %}
+      <div class="waiting-players">
+        <div class="big">👤</div>
+        No players yet.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Sidebar stats -->
+  <div style="display:flex; flex-direction:column; gap:var(--sp-4);">
+    <div class="card">
+      <div class="card-header"><h3>Competition Info</h3></div>
+      <div class="stat-item">
+        <div class="lbl">Starting Balance</div>
+        <div class="num">${{ competition.starting_balance|floatformat:0 }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="lbl">Portfolio Goal</div>
+        <div class="num green">${{ competition.investment_goal|floatformat:0 }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="lbl">Mini-Game Bonus</div>
+        <div class="num">${{ competition.mini_game_bonus|floatformat:0 }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="lbl">Players</div>
+        <div class="num">{{ competition.participants.count }} / {{ competition.max_players }}</div>
+      </div>
+      {% if competition.started_at %}
+      <div class="stat-item">
+        <div class="lbl">Started</div>
+        <div class="num" style="font-size:0.85rem;">{{ competition.started_at|date:"M d, g:i A" }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if participant %}
+    <div class="card">
+      <div class="card-header"><h3>Your Stats</h3></div>
+      <div class="stat-item">
+        <div class="lbl">Portfolio Value</div>
+        <div class="num green">${{ participant.total_value|floatformat:2 }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="lbl">Base</div>
+        <div class="num" style="font-size:0.9rem;">${{ participant.portfolio_value|floatformat:2 }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="lbl">Bonus Earned</div>
+        <div class="num" style="font-size:0.9rem; color:#f1c40f;">${{ participant.bonus_earned|floatformat:2 }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="lbl">Mini-Game Wins</div>
+        <div class="num">{{ participant.mini_game_wins }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if competition.status == 'lobby' and not participant %}
+    <div class="card" style="padding:var(--sp-5); text-align:center;">
+      <p style="color:var(--text-secondary); font-size:0.85rem; margin:0 0 var(--sp-3);">You haven't joined this competition yet.</p>
+      <form method="post" action="{% url 'competition:join' competition.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-accent" style="width:100%;">Join Competition</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if competition.status == 'active' %}
+<script>
+(function() {
+  const stateUrl = "{% url 'competition:state' competition.pk %}";
+  const winnerBase = "/competition/{{ competition.pk }}/winner/";
+
+  function updateLeaderboard(data) {
+    const ts = document.getElementById('last-updated');
+    if (ts) ts.textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    if (data.status === 'finished') {
+      window.location.href = winnerBase;
+      return;
+    }
+
+    if (data.active_mini_game && !data.active_mini_game.already_played) {
+      if (!document.querySelector('.minigame-alert')) {
+        window.location.reload();
+      }
+    }
+  }
+
+  function poll() {
+    fetch(stateUrl)
+      .then(r => r.json())
+      .then(updateLeaderboard)
+      .catch(() => {});
+  }
+
+  setInterval(poll, 4000);
+})();
+</script>
+{% endif %}
+{% endblock %}
