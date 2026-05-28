@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Debt — Ridge &amp; River Financial{% endblock %}
+
+{% block breadcrumb_current %}Add Debt{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'debt_management:debt_dashboard' %}">Debt</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Add Debt</span>
+{% endblock %}
+
+{% block nav_debt_dash %}active{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;">
+
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div>
+        <h1 class="page-title">Add a Debt</h1>
+        <p class="page-subtitle">Track a credit card, loan, or other balance you're paying down.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Debt Details</div>
+        <div class="card-subtitle">All fields with <span style="color:var(--red-500);">*</span> are required</div>
+      </div>
+    </div>
+    <div class="card-body">
+
+      {% if form.non_field_errors %}
+      <div class="alert alert-error" style="margin-bottom:var(--sp-5);">
+        {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+      </div>
+      {% endif %}
+
+      {% if not form.account.field.queryset.exists %}
+        <div class="info-panel amber" style="margin-bottom:var(--sp-5);">
+          <svg class="info-panel-icon" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="8" stroke="var(--amber-600)" stroke-width="1.5"/>
+            <path d="M10 6v4M10 13v.5" stroke="var(--amber-600)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div class="info-panel-title">No credit or debt accounts yet</div>
+            <div class="info-panel-body">
+              Add a <strong>Credit Card</strong> or <strong>Debt</strong> account first, then come back here to log balances.
+              <a href="{% url 'data_integration:manual_account_entry' %}">Add an account →</a>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="form-stack">
+
+          <div class="form-group">
+            <label class="form-label" for="{{ form.account.id_for_label }}">Account <span class="label-required">*</span></label>
+            {{ form.account }}
+            {% for err in form.account.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="{{ form.name.id_for_label }}">Name <span class="label-required">*</span></label>
+            <input type="text" class="form-input" id="{{ form.name.id_for_label }}"
+                   name="{{ form.name.html_name }}" value="{{ form.name.value|default:'' }}"
+                   placeholder="e.g. Chase Sapphire, Student Loan">
+            {% for err in form.name.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="{{ form.principal.id_for_label }}">Original Principal <span class="label-required">*</span></label>
+              <input type="number" step="0.01" min="0" class="form-input font-mono"
+                     id="{{ form.principal.id_for_label }}" name="{{ form.principal.html_name }}"
+                     value="{{ form.principal.value|default:'' }}" placeholder="$0.00">
+              {% for err in form.principal.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="{{ form.balance.id_for_label }}">Current Balance <span class="label-required">*</span></label>
+              <input type="number" step="0.01" min="0" class="form-input font-mono"
+                     id="{{ form.balance.id_for_label }}" name="{{ form.balance.html_name }}"
+                     value="{{ form.balance.value|default:'' }}" placeholder="$0.00">
+              {% for err in form.balance.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="{{ form.interest_rate.id_for_label }}">APR % <span class="label-required">*</span></label>
+              <input type="number" step="0.01" min="0" max="100" class="form-input font-mono"
+                     id="{{ form.interest_rate.id_for_label }}" name="{{ form.interest_rate.html_name }}"
+                     value="{{ form.interest_rate.value|default:'' }}" placeholder="0.00">
+              {% for err in form.interest_rate.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="{{ form.minimum_payment.id_for_label }}">
+                Minimum Payment <span class="label-hint">(optional)</span>
+              </label>
+              <input type="number" step="0.01" min="0" class="form-input font-mono"
+                     id="{{ form.minimum_payment.id_for_label }}" name="{{ form.minimum_payment.html_name }}"
+                     value="{{ form.minimum_payment.value|default:'' }}" placeholder="$0.00">
+              <span class="form-hint">Leave blank to use a 2%-of-balance estimate</span>
+              {% for err in form.minimum_payment.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="{{ form.due_date.id_for_label }}">Next Due Date <span class="label-hint">(optional)</span></label>
+              {{ form.due_date }}
+              {% for err in form.due_date.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="{{ form.as_of.id_for_label }}">As of <span class="label-required">*</span></label>
+              {{ form.as_of }}
+              {% for err in form.as_of.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
+            </div>
+          </div>
+
+          <div class="card-footer" style="background:none;border:none;padding:0;justify-content:flex-start;gap:var(--sp-3);">
+            <button type="submit" class="btn btn-primary">Save Debt</button>
+            <a href="{% url 'debt_management:debt_dashboard' %}" class="btn btn-ghost">Cancel</a>
+          </div>
+
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

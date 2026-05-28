@@ -62,38 +62,41 @@
       </div>
     </div>
 
-    <div class="empty-state">
-      <div class="empty-icon">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-          <path d="M4 22L10 12l6 4 8-10" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <div class="empty-title">No debts to analyze</div>
-      <p class="empty-desc">
-        Add your debts to see your personalized avalanche payoff sequence here.
-      </p>
-      <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
-        Add Debts
-      </a>
-    </div>
-
-    <!-- When debts exist, rows will render here:
-    <div>
-      <div class="payoff-step">
-        <div class="payoff-step-num">1</div>
-        <div style="flex:1;">
-          <div class="debt-name">Chase Sapphire (24.99% APR)</div>
-          <div class="debt-institution">Balance: $4,200</div>
-          <div class="progress-bar-wrap" style="margin-top:var(--sp-3);">
-            <div class="progress-track">
-              <div class="progress-fill red" style="width:65%;"></div>
+    {% if has_debts and plan %}
+      <div style="padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3);">
+        {% for step in plan.steps %}
+          <div class="payoff-step">
+            <div class="payoff-step-num">{{ forloop.counter }}</div>
+            <div style="flex:1;">
+              <div class="debt-name">{{ step.name }} ({{ step.interest_rate }}% APR)</div>
+              <div class="debt-institution">
+                Starting balance: ${{ step.starting_balance|floatformat:2 }}
+                · Interest paid: ${{ step.total_interest|floatformat:2 }}
+              </div>
+              <div class="text-xs text-muted" style="margin-top:var(--sp-2);">
+                Payoff in {{ step.months_to_payoff }} months{% if step.payoff_date %} (by {{ step.payoff_date|date:"M Y" }}){% endif %}
+              </div>
             </div>
+            <div class="debt-amount">${{ step.total_paid|floatformat:2 }}</div>
           </div>
-        </div>
-        <div class="debt-amount">$4,200</div>
+        {% endfor %}
       </div>
-    </div>
-    -->
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <path d="M4 22L10 12l6 4 8-10" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="empty-title">No debts to analyze</div>
+        <p class="empty-desc">
+          Add your debts to see your personalized avalanche payoff sequence here.
+        </p>
+        <a href="{% url 'data_integration:manual_debt_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
+          Add Debts
+        </a>
+      </div>
+    {% endif %}
   </div>
 
   <!-- Summary sidebar -->
@@ -103,18 +106,23 @@
       <div class="card-body" style="display:flex;flex-direction:column;gap:var(--sp-4);">
         <div>
           <div class="stat-label">Total Interest Saved</div>
-          <div class="stat-value" style="font-size:var(--text-2xl);color:var(--green-600);margin-top:var(--sp-1);">$0.00</div>
+          <div class="stat-value" style="font-size:var(--text-2xl);color:var(--green-600);margin-top:var(--sp-1);">
+            ${% if interest_saved %}{{ interest_saved|floatformat:2 }}{% else %}0.00{% endif %}
+          </div>
+          <div class="text-xs text-muted" style="margin-top:var(--sp-1);">
+            {% if interest_saved %}with ${{ extra_payment|floatformat:2 }} extra/month{% else %}Add extra payments to see savings{% endif %}
+          </div>
         </div>
         <div class="divider"></div>
         <div>
           <div class="stat-label">Debt-Free Date</div>
-          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">—</div>
-          <div class="text-xs text-muted" style="margin-top:var(--sp-1);">Add extra payments to accelerate</div>
+          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">{% if plan.debt_free_date %}{{ plan.debt_free_date|date:"M Y" }}{% else %}—{% endif %}</div>
+          <div class="text-xs text-muted" style="margin-top:var(--sp-1);">{% if plan %}{{ plan.months_to_debt_free }} months at current plan{% else %}Add extra payments to accelerate{% endif %}</div>
         </div>
         <div class="divider"></div>
         <div>
-          <div class="stat-label">vs. Minimum Only</div>
-          <div class="text-sm text-muted" style="margin-top:var(--sp-1);">Add debts to compare strategies</div>
+          <div class="stat-label">Total Interest</div>
+          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">{% if plan %}${{ plan.total_interest|floatformat:2 }}{% else %}—{% endif %}</div>
         </div>
       </div>
     </div>
@@ -125,11 +133,15 @@
         <p class="text-sm text-muted" style="margin-bottom:var(--sp-3);">
           Even $50 extra per month makes a significant difference.
         </p>
-        <input type="number" min="0" step="10" class="form-input font-mono" placeholder="$0.00" id="extraPayment">
-        <span class="form-hint" style="margin-top:var(--sp-2);">Recalculate coming soon</span>
+        <form method="get" style="display:flex;gap:var(--sp-2);align-items:center;">
+          <input type="number" name="extra" min="0" step="10" class="form-input font-mono"
+                 placeholder="$0.00" value="{{ extra_payment|default_if_none:'0' }}">
+          <button type="submit" class="btn btn-primary btn-sm">Recalculate</button>
+        </form>
       </div>
     </div>
   </div>
 
 </div>
 {% endblock %}
+

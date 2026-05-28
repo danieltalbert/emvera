@@ -82,7 +82,7 @@ def onboarding(request):
     user = request.user
     email_verified = True
     twofa_complete = user.two_factor_enabled
-    account_connected = False
+    account_connected = user.accounts.exists()
 
     if email_verified and twofa_complete and account_connected:
         if not user.profile_complete:

@@ -70,6 +70,36 @@ class Investment(models.Model):
     def __str__(self):
         return f"{self.name} ({self.symbol})"
 
+class PlaidItem(models.Model):
+    """A user-linked Plaid Item. Each Item maps to one institution login and
+    can expose multiple Accounts. The access_token is sensitive and should
+    not leave the server."""
+    class Meta:
+        app_label = 'data_integration'
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='plaid_items')
+    item_id = models.CharField(max_length=128, unique=True)
+    access_token = models.CharField(
+        max_length=512,
+        help_text='Encrypted; use get_access_token() / set_access_token() instead of touching this directly.',
+    )
+    institution_name = models.CharField(max_length=120, blank=True)
+    cursor = models.CharField(max_length=255, blank=True, help_text='Plaid /transactions/sync cursor')
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"PlaidItem {self.institution_name or self.item_id} for {self.user}"
+
+    def get_access_token(self) -> str:
+        from .crypto import decrypt
+        return decrypt(self.access_token)
+
+    def set_access_token(self, raw_token: str) -> None:
+        from .crypto import encrypt
+        self.access_token = encrypt(raw_token)
+
+
 class Debt(models.Model):
     class Meta:
         app_label = 'data_integration'
@@ -78,6 +108,13 @@ class Debt(models.Model):
     principal = models.DecimalField(max_digits=14, decimal_places=2)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2)
     balance = models.DecimalField(max_digits=14, decimal_places=2)
+    minimum_payment = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Required monthly payment. Leave blank to use a 2%-of-balance estimate.',
+    )
     due_date = models.DateField(null=True, blank=True)
     as_of = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)

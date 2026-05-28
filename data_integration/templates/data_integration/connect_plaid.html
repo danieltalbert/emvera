@@ -41,17 +41,36 @@
   <div class="card" style="margin-bottom:var(--sp-6);">
     <div class="card-header">
       <div class="card-title">Launch Plaid Link</div>
-      <span class="badge badge-teal">Secure</span>
+      {% if plaid_configured %}
+        <span class="badge badge-teal">Secure</span>
+      {% else %}
+        <span class="badge badge-amber">Not configured</span>
+      {% endif %}
     </div>
     <div class="card-body">
+      {% if not plaid_configured %}
+        <div class="info-panel amber" style="margin-bottom:var(--sp-4);">
+          <svg class="info-panel-icon" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="8" stroke="var(--amber-600)" stroke-width="1.5"/>
+            <path d="M10 6v4M10 13v.5" stroke="var(--amber-600)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div class="info-panel-title">Plaid is not yet configured</div>
+            <div class="info-panel-body">
+              Set <code>PLAID_CLIENT_ID</code>, <code>PLAID_SECRET</code>, and <code>PLAID_ENV</code> in your environment,
+              then install the SDK with <code>pip install plaid-python</code>.
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
       <p class="text-sm text-secondary" style="margin-bottom:var(--sp-6);line-height:var(--leading-relaxed);">
         Click the button below to open the Plaid connection window. You'll be guided through
         selecting your institution and authenticating securely.
       </p>
 
       <div style="display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap;">
-        <!-- Plaid Link button will be wired to the Plaid SDK by the backend -->
-        <button id="plaidLinkBtn" class="btn btn-primary btn-lg">
+        <button id="plaidLinkBtn" class="btn btn-primary btn-lg" {% if not plaid_configured %}disabled{% endif %}>
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <path d="M7 10l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M10 3a7 7 0 100 14A7 7 0 0010 3z" stroke="currentColor" stroke-width="1.5"/>
@@ -65,6 +84,19 @@
           Add Account Manually
         </a>
       </div>
+
+      {% if linked_items %}
+        <div class="divider" style="margin:var(--sp-5) 0;"></div>
+        <div class="text-sm font-semi" style="margin-bottom:var(--sp-2);">Linked institutions</div>
+        <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:var(--sp-2);">
+          {% for it in linked_items %}
+            <li class="text-sm text-secondary">
+              {{ it.institution_name|default:it.item_id }}
+              {% if it.last_synced_at %}<span class="text-xs text-muted">— last synced {{ it.last_synced_at|date:"M j, Y H:i" }}</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
     </div>
   </div>
 
@@ -75,7 +107,7 @@
     </div>
     <div class="card-body">
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--sp-3);">
-        {% for institution in "Chase,Bank of America,Wells Fargo,Citibank,US Bank,Vanguard,Fidelity,Charles Schwab,Ally Bank,Capital One"|split:"," %}
+        {% for institution in supported_institutions %}
         <div style="display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);background:var(--color-surface-alt);border-radius:var(--r-md);border:1px solid var(--color-border-light);">
           <div style="width:8px;height:8px;border-radius:50%;background:var(--teal-400);flex-shrink:0;"></div>
           <span class="text-sm text-secondary">{{ institution }}</span>
@@ -92,15 +124,59 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if plaid_configured %}
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 <script>
-// Plaid Link integration point — token exchange handled server-side
-const plaidBtn = document.getElementById('plaidLinkBtn');
-if (plaidBtn) {
-  plaidBtn.addEventListener('click', function() {
-    // TODO: Initialize Plaid Link with public_token from backend
-    // window.Plaid.create({ token: '...', onSuccess: fn, onExit: fn }).open();
-    alert('Plaid integration coming soon. Add an account manually for now.');
+(function () {
+  const btn = document.getElementById('plaidLinkBtn');
+  if (!btn) return;
+
+  function csrfToken() {
+    const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  async function postForm(url, body) {
+    const params = new URLSearchParams(body || {});
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken(),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.error || ('HTTP ' + resp.status));
+    }
+    return resp.json();
+  }
+
+  btn.addEventListener('click', async function () {
+    btn.disabled = true;
+    try {
+      const { link_token } = await postForm("{% url 'data_integration:plaid_link_token' %}");
+      const handler = Plaid.create({
+        token: link_token,
+        onSuccess: async function (public_token) {
+          try {
+            await postForm("{% url 'data_integration:plaid_exchange' %}", { public_token });
+            window.location.reload();
+          } catch (err) {
+            alert('Could not finish linking: ' + err.message);
+            btn.disabled = false;
+          }
+        },
+        onExit: function () { btn.disabled = false; },
+      });
+      handler.open();
+    } catch (err) {
+      alert('Could not open Plaid Link: ' + err.message);
+      btn.disabled = false;
+    }
   });
-}
+})();
 </script>
+{% endif %}
 {% endblock %}

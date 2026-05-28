@@ -22,7 +22,7 @@
       <p class="page-subtitle">Track your score over time and understand what's impacting it.</p>
     </div>
     <div class="page-actions">
-      <button class="btn btn-secondary btn-sm">
+      <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('log-score-card').scrollIntoView({behavior:'smooth'});">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
@@ -45,8 +45,8 @@
           <!-- Score ring (empty state) -->
           <circle cx="80" cy="80" r="68" fill="none" stroke="var(--color-border)" stroke-width="10" stroke-linecap="round" stroke-dasharray="240" stroke-dashoffset="240" transform="rotate(-210 80 80)" style="transition:stroke-dashoffset 1s ease;"/>
           <!-- Inner content -->
-          <text x="80" y="75" text-anchor="middle" font-size="38" font-weight="700" font-family="JetBrains Mono, monospace" fill="var(--color-text-primary)">—</text>
-          <text x="80" y="96" text-anchor="middle" font-size="11" font-weight="600" fill="var(--color-text-muted)" letter-spacing="1">YOUR SCORE</text>
+          <text x="80" y="75" text-anchor="middle" font-size="38" font-weight="700" font-family="JetBrains Mono, monospace" fill="var(--color-text-primary)">{% if credit_score %}{{ credit_score }}{% else %}—{% endif %}</text>
+          <text x="80" y="96" text-anchor="middle" font-size="11" font-weight="600" fill="var(--color-text-muted)" letter-spacing="1">{% if latest_score %}{{ latest_score.band|upper }}{% else %}YOUR SCORE{% endif %}</text>
         </svg>
       </div>
 
@@ -68,8 +68,8 @@
       <div class="divider" style="margin:var(--sp-4) 0;"></div>
 
       <div class="text-xs text-muted" style="line-height:var(--leading-relaxed);">
-        Last updated: <strong>—</strong><br>
-        <a href="#" class="text-accent" style="margin-top:var(--sp-1);display:inline-block;">Log a new score</a>
+        Last updated: <strong>{% if latest_score %}{{ latest_score.recorded_on|date:"M j, Y" }}{% else %}—{% endif %}</strong><br>
+        <a href="#log-score-card" class="text-accent" style="margin-top:var(--sp-1);display:inline-block;">Log a new score</a>
       </div>
     </div>
   </div>
@@ -83,19 +83,74 @@
         <div class="card-title">Score History</div>
         <span class="badge badge-muted">Manual entry</span>
       </div>
-      <div class="chart-area" style="display:flex;align-items:center;justify-content:center;">
-        <div class="empty-state" style="padding:var(--sp-8) var(--sp-4);">
-          <div class="empty-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M3 17a10 10 0 0118 0" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M12 4v1M8 5.5l.6.7M16 5.5l-.6.7M5 10h1M18 10h-1" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
+      <div class="chart-area" style="padding:var(--sp-4);">
+        {% if score_history %}
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="text-align:left;border-bottom:1px solid var(--color-border-light);">
+                <th class="text-xs text-muted" style="padding:var(--sp-2);font-weight:600;">Date</th>
+                <th class="text-xs text-muted" style="padding:var(--sp-2);font-weight:600;">Score</th>
+                <th class="text-xs text-muted" style="padding:var(--sp-2);font-weight:600;">Bureau</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in score_history %}
+                <tr style="border-bottom:1px solid var(--color-border-light);">
+                  <td class="text-sm" style="padding:var(--sp-2);">{{ entry.recorded_on|date:"M j, Y" }}</td>
+                  <td class="text-sm font-mono font-semi" style="padding:var(--sp-2);">{{ entry.score }}</td>
+                  <td class="text-xs text-muted" style="padding:var(--sp-2);">{{ entry.bureau|title }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty-state" style="padding:var(--sp-8) var(--sp-4);">
+            <div class="empty-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 17a10 10 0 0118 0" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M12 4v1M8 5.5l.6.7M16 5.5l-.6.7M5 10h1M18 10h-1" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="empty-title" style="font-size:var(--text-base);">No history yet</div>
+            <p class="empty-desc" style="font-size:var(--text-xs);">
+              Log your score monthly to see your progress over time.
+            </p>
           </div>
-          <div class="empty-title" style="font-size:var(--text-base);">No history yet</div>
-          <p class="empty-desc" style="font-size:var(--text-xs);">
-            Log your score monthly to see your progress over time.
-          </p>
-        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Log a new score -->
+    <div class="card" id="log-score-card">
+      <div class="card-header"><div class="card-title">Log a New Score</div></div>
+      <div class="card-body">
+        {% if messages %}
+          {% for m in messages %}
+            <div class="info-panel forest" style="margin-bottom:var(--sp-4);">{{ m }}</div>
+          {% endfor %}
+        {% endif %}
+        <form method="post" class="form-stack">
+          {% csrf_token %}
+          <div class="form-group">
+            <label class="form-label" for="id_score">Score (300–850)</label>
+            {{ form.score }}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_bureau">Bureau</label>
+            {{ form.bureau }}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_recorded_on">Recorded On</label>
+            {{ form.recorded_on }}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_notes">Notes (optional)</label>
+            {{ form.notes }}
+          </div>
+          <div>
+            <button type="submit" class="btn btn-primary">Log Score</button>
+          </div>
+        </form>
       </div>
     </div>
 

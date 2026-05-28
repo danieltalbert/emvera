@@ -22,3 +22,9 @@ Pillow
 
 # QR code generation (for 2FA TOTP setup)
 qrcode
+
+# Fernet encryption for Plaid access tokens at rest
+cryptography
+
+# Plaid bank integration (optional; only needed if PLAID_CLIENT_ID is set)
+# plaid-python

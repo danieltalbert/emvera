@@ -63,21 +63,41 @@
       </div>
     </div>
 
-    <div class="empty-state">
-      <div class="empty-icon">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-          <circle cx="14" cy="14" r="5" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5"/>
-          <circle cx="14" cy="14" r="10" fill="none" stroke="var(--color-text-muted)" stroke-width="1.2" opacity=".5"/>
-        </svg>
+    {% if has_debts and plan %}
+      <div style="padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3);">
+        {% for step in plan.steps %}
+          <div class="payoff-step">
+            <div class="payoff-step-num">{{ forloop.counter }}</div>
+            <div style="flex:1;">
+              <div class="debt-name">{{ step.name }}</div>
+              <div class="debt-institution">
+                Starting balance: ${{ step.starting_balance|floatformat:2 }} · {{ step.interest_rate }}% APR
+              </div>
+              <div class="text-xs text-muted" style="margin-top:var(--sp-2);">
+                Payoff in {{ step.months_to_payoff }} months{% if step.payoff_date %} (by {{ step.payoff_date|date:"M Y" }}){% endif %}
+              </div>
+            </div>
+            <div class="debt-amount">${{ step.total_paid|floatformat:2 }}</div>
+          </div>
+        {% endfor %}
       </div>
-      <div class="empty-title">No debts to analyze</div>
-      <p class="empty-desc">
-        Add your debts to see your personalized snowball payoff sequence here.
-      </p>
-      <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
-        Add Debts
-      </a>
-    </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <circle cx="14" cy="14" r="5" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+            <circle cx="14" cy="14" r="10" fill="none" stroke="var(--color-text-muted)" stroke-width="1.2" opacity=".5"/>
+          </svg>
+        </div>
+        <div class="empty-title">No debts to analyze</div>
+        <p class="empty-desc">
+          Add your debts to see your personalized snowball payoff sequence here.
+        </p>
+        <a href="{% url 'data_integration:manual_debt_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
+          Add Debts
+        </a>
+      </div>
+    {% endif %}
   </div>
 
   <!-- Summary sidebar -->
@@ -87,17 +107,27 @@
       <div class="card-body" style="display:flex;flex-direction:column;gap:var(--sp-4);">
         <div>
           <div class="stat-label">Debts Eliminated</div>
-          <div class="stat-value" style="font-size:var(--text-2xl);margin-top:var(--sp-1);">0</div>
+          <div class="stat-value" style="font-size:var(--text-2xl);margin-top:var(--sp-1);">{% if plan %}{{ plan.steps|length }}{% else %}0{% endif %}</div>
         </div>
         <div class="divider"></div>
         <div>
           <div class="stat-label">Debt-Free Date</div>
-          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">—</div>
+          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">{% if plan.debt_free_date %}{{ plan.debt_free_date|date:"M Y" }}{% else %}—{% endif %}</div>
         </div>
         <div class="divider"></div>
         <div>
           <div class="stat-label">vs. Avalanche</div>
-          <div class="text-xs text-muted" style="margin-top:var(--sp-1);">Snowball may cost more in interest, but wins on motivation</div>
+          {% if extra_interest_vs_avalanche is not None %}
+            <div class="text-sm" style="margin-top:var(--sp-1);">
+              {% if extra_interest_vs_avalanche > 0 %}
+                <span style="color:var(--amber-600);">+${{ extra_interest_vs_avalanche|floatformat:2 }} more interest</span>
+              {% else %}
+                <span style="color:var(--green-600);">Same or less interest than avalanche</span>
+              {% endif %}
+            </div>
+          {% else %}
+            <div class="text-xs text-muted" style="margin-top:var(--sp-1);">Snowball may cost more in interest, but wins on motivation</div>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -105,11 +135,15 @@
     <div class="card">
       <div class="card-header"><div class="card-title">Extra Monthly Payment</div></div>
       <div class="card-body">
-        <input type="number" min="0" step="10" class="form-input font-mono" placeholder="$0.00">
-        <span class="form-hint" style="margin-top:var(--sp-2);">Recalculate coming soon</span>
+        <form method="get" style="display:flex;gap:var(--sp-2);align-items:center;">
+          <input type="number" name="extra" min="0" step="10" class="form-input font-mono"
+                 placeholder="$0.00" value="{{ extra_payment|default_if_none:'0' }}">
+          <button type="submit" class="btn btn-primary btn-sm">Recalculate</button>
+        </form>
       </div>
     </div>
   </div>
 
 </div>
 {% endblock %}
+

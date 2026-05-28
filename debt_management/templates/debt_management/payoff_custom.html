@@ -43,43 +43,74 @@
       <div class="card-title">Configure Your Plan</div>
     </div>
     <div class="card-body">
+      {% if has_debts %}
+        <form method="post" class="form-stack">
+          {% csrf_token %}
 
-      <div class="info-panel amber" style="margin-bottom:var(--sp-6);">
-        <svg class="info-panel-icon" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <circle cx="10" cy="10" r="8" stroke="var(--amber-600)" stroke-width="1.5"/>
-          <path d="M10 6v4M10 13v.5" stroke="var(--amber-600)" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        <div>
-          <div class="info-panel-title">Custom planning coming soon</div>
-          <div class="info-panel-body">
-            Manual ordering and extra payment allocation will be available once your debts are imported.
-            In the meantime, try the <a href="{% url 'debt_management:payoff_avalanche' %}">Avalanche</a> or
-            <a href="{% url 'debt_management:payoff_snowball' %}">Snowball</a> strategies.
+          <div class="form-group">
+            <label class="form-label" for="id_extra_payment">Monthly Extra Payment</label>
+            {{ form.extra_payment }}
+            <span class="form-hint">Amount above minimums you can put toward debt each month</span>
           </div>
-        </div>
-      </div>
 
-      <div class="form-stack">
-
-        <div class="form-group">
-          <label class="form-label" for="extra-payment">Monthly Extra Payment</label>
-          <input type="number" min="0" step="10" class="form-input font-mono" id="extra-payment" placeholder="$0.00">
-          <span class="form-hint">Amount above minimums you can put toward debt each month</span>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Payoff Order</label>
-          <div style="border:1.5px dashed var(--color-border);border-radius:var(--r-lg);padding:var(--sp-6);text-align:center;">
-            <p class="text-sm text-muted">
-              Add debts to your account to drag-and-drop your payoff order here.
+          <div class="form-group">
+            <label class="form-label">Payoff Order</label>
+            <p class="text-xs text-muted" style="margin-bottom:var(--sp-2);">
+              Lowest number is paid off first. Leave blank to use avalanche order.
             </p>
-            <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-secondary btn-sm" style="margin-top:var(--sp-3);">
-              Add Debts
-            </a>
+            <div style="display:flex;flex-direction:column;gap:var(--sp-2);" id="payoff-order-list">
+              {% for debt in debts %}
+                <div class="payoff-step" data-debt-id="{{ debt.pk }}">
+                  <div class="payoff-step-num">{{ forloop.counter }}</div>
+                  <div style="flex:1;">
+                    <div class="debt-name">{{ debt.name }}</div>
+                    <div class="debt-institution">${{ debt.balance|floatformat:2 }} · {{ debt.interest_rate }}% APR</div>
+                  </div>
+                  <input type="number" name="priority_{{ debt.pk }}" min="1" value="{{ forloop.counter }}"
+                         class="form-input font-mono" style="width:80px;" aria-label="Priority for {{ debt.name }}">
+                </div>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="order" id="order-field" value="">
+          </div>
+
+          <div>
+            <button type="submit" class="btn btn-primary">Calculate plan</button>
+          </div>
+        </form>
+
+        <script>
+          (function () {
+            var form = document.querySelector('form');
+            if (!form) return;
+            form.addEventListener('submit', function () {
+              var rows = document.querySelectorAll('#payoff-order-list .payoff-step');
+              var entries = [];
+              rows.forEach(function (row) {
+                var id = row.getAttribute('data-debt-id');
+                var input = row.querySelector('input[type=number]');
+                entries.push({ id: id, p: parseInt(input.value, 10) || 0 });
+              });
+              entries.sort(function (a, b) { return a.p - b.p; });
+              document.getElementById('order-field').value = entries.map(function (e) { return e.id; }).join(',');
+            });
+          })();
+        </script>
+      {% else %}
+        <div class="info-panel amber" style="margin-bottom:var(--sp-6);">
+          <svg class="info-panel-icon" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="8" stroke="var(--amber-600)" stroke-width="1.5"/>
+            <path d="M10 6v4M10 13v.5" stroke="var(--amber-600)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div class="info-panel-title">No debts yet</div>
+            <div class="info-panel-body">
+              Add your debts first to set a custom payoff order.
+              <a href="{% url 'data_integration:manual_debt_entry' %}">Add a debt</a>.
+            </div>
           </div>
         </div>
-
-      </div>
+      {% endif %}
     </div>
   </div>
 
@@ -90,17 +121,17 @@
       <div class="card-body" style="display:flex;flex-direction:column;gap:var(--sp-4);">
         <div>
           <div class="stat-label">Total Debts</div>
-          <div class="stat-value" style="font-size:var(--text-2xl);margin-top:var(--sp-1);">0</div>
+          <div class="stat-value" style="font-size:var(--text-2xl);margin-top:var(--sp-1);">{{ debts|length }}</div>
         </div>
         <div class="divider"></div>
         <div>
           <div class="stat-label">Projected Completion</div>
-          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">—</div>
+          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">{% if plan.debt_free_date %}{{ plan.debt_free_date|date:"M Y" }}{% else %}—{% endif %}</div>
         </div>
         <div class="divider"></div>
         <div>
           <div class="stat-label">Total Interest</div>
-          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">$0.00</div>
+          <div class="stat-value" style="font-size:var(--text-xl);margin-top:var(--sp-1);">{% if plan %}${{ plan.total_interest|floatformat:2 }}{% else %}$0.00{% endif %}</div>
         </div>
       </div>
     </div>
@@ -128,3 +159,4 @@
 
 </div>
 {% endblock %}
+

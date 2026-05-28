@@ -43,11 +43,11 @@
 <!-- Options Cards -->
 <div class="card-grid card-grid-3" style="margin-bottom:var(--sp-8);">
 
-  <div class="card">
+  <div class="card{% if recommended_option == 'balance_transfer' %} card-recommended{% endif %}" style="{% if recommended_option == 'balance_transfer' %}border:2px solid var(--green-500);{% endif %}">
     <div class="card-header">
       <div>
-        <div class="card-title">Balance Transfer Card</div>
-        <span class="badge badge-green">Low intro APR</span>
+        <div class="card-title">Balance Transfer Card{% if recommended_option == 'balance_transfer' %} ★{% endif %}</div>
+        <span class="badge badge-green">{% if recommended_option == 'balance_transfer' %}Recommended for you{% else %}Low intro APR{% endif %}</span>
       </div>
     </div>
     <div class="card-body">
@@ -75,11 +75,11 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card{% if recommended_option == 'personal_loan' %} card-recommended{% endif %}" style="{% if recommended_option == 'personal_loan' %}border:2px solid var(--green-500);{% endif %}">
     <div class="card-header">
       <div>
-        <div class="card-title">Personal Loan</div>
-        <span class="badge badge-teal">Fixed rate</span>
+        <div class="card-title">Personal Loan{% if recommended_option == 'personal_loan' %} ★{% endif %}</div>
+        <span class="badge badge-teal">{% if recommended_option == 'personal_loan' %}Recommended for you{% else %}Fixed rate{% endif %}</span>
       </div>
     </div>
     <div class="card-body">
@@ -107,11 +107,11 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card{% if recommended_option == 'home_equity' %} card-recommended{% endif %}" style="{% if recommended_option == 'home_equity' %}border:2px solid var(--green-500);{% endif %}">
     <div class="card-header">
       <div>
-        <div class="card-title">Home Equity Loan</div>
-        <span class="badge badge-amber">Secured</span>
+        <div class="card-title">Home Equity Loan{% if recommended_option == 'home_equity' %} ★{% endif %}</div>
+        <span class="badge badge-amber">{% if recommended_option == 'home_equity' %}Recommended for you{% else %}Secured{% endif %}</span>
       </div>
     </div>
     <div class="card-body">
@@ -141,28 +141,51 @@
 
 </div>
 
-<!-- Personalized analysis placeholder -->
+<!-- Personalized analysis -->
 <div class="card">
   <div class="card-header">
     <div class="card-title">Personalized Analysis</div>
   </div>
-  <div class="empty-state">
-    <div class="empty-icon">
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-        <path d="M5 15L15 5" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
-        <path d="M15 5L23 15" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
-        <circle cx="14" cy="19" r="4" stroke="var(--color-text-muted)" stroke-width="1.5"/>
-      </svg>
+  {% if has_debts and recommendation %}
+    <div class="card-body" style="display:flex;flex-direction:column;gap:var(--sp-4);">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);">
+        <div>
+          <div class="stat-label">Total balance to consolidate</div>
+          <div class="stat-value" style="font-size:var(--text-2xl);margin-top:var(--sp-1);">${{ total_balance|floatformat:2 }}</div>
+        </div>
+        <div>
+          <div class="stat-label">Current weighted APR</div>
+          <div class="stat-value" style="font-size:var(--text-2xl);margin-top:var(--sp-1);">{{ avg_apr }}%</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div>
+        <div class="stat-label">Our recommendation</div>
+        <p class="text-base" style="margin-top:var(--sp-2);line-height:var(--leading-relaxed);">
+          {{ recommendation.reason }}
+        </p>
+      </div>
     </div>
-    <div class="empty-title">Add your debts to get a recommendation</div>
-    <p class="empty-desc">
-      Once you've added your debts, Ridge &amp; River will analyze your interest rates,
-      balances, and credit profile to suggest the best consolidation path for your situation.
-    </p>
-    <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
-      Add Debts Now
-    </a>
-  </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <path d="M5 15L15 5" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+          <path d="M15 5L23 15" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+          <circle cx="14" cy="19" r="4" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="empty-title">Add your debts to get a recommendation</div>
+      <p class="empty-desc">
+        Once you've added your debts, Ridge &amp; River will analyze your interest rates,
+        balances, and credit profile to suggest the best consolidation path for your situation.
+      </p>
+      <a href="{% url 'data_integration:manual_debt_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
+        Add Debts Now
+      </a>
+    </div>
+  {% endif %}
 </div>
 
 {% endblock %}
+

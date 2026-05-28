@@ -20,7 +20,7 @@
       <p class="page-subtitle">An overview of your outstanding debts, payoff timeline, and progress.</p>
     </div>
     <div class="page-actions">
-      <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-secondary btn-sm">
+      <a href="{% url 'data_integration:manual_debt_entry' %}" class="btn btn-secondary btn-sm">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
@@ -44,7 +44,7 @@
         </svg>
       </div>
     </div>
-    <div class="stat-value">$0.00</div>
+    <div class="stat-value">${{ total_debt|floatformat:2 }}</div>
     <div class="stat-meta"><span>Across all accounts</span></div>
   </div>
 
@@ -57,7 +57,7 @@
         </svg>
       </div>
     </div>
-    <div class="stat-value">—%</div>
+    <div class="stat-value">{% if avg_interest_rate is not None %}{{ avg_interest_rate }}%{% else %}—%{% endif %}</div>
     <div class="stat-meta"><span>Weighted average APR</span></div>
   </div>
 
@@ -71,7 +71,7 @@
         </svg>
       </div>
     </div>
-    <div class="stat-value">$0.00</div>
+    <div class="stat-value">${{ monthly_minimum|floatformat:2 }}</div>
     <div class="stat-meta"><span>Required monthly payments</span></div>
   </div>
 
@@ -85,7 +85,7 @@
         </svg>
       </div>
     </div>
-    <div class="stat-value" style="font-size:var(--text-xl);">—</div>
+    <div class="stat-value" style="font-size:var(--text-xl);">{% if debt_free_date %}{{ debt_free_date|date:"M Y" }}{% else %}—{% endif %}</div>
     <div class="stat-meta"><span>At current payment rate</span></div>
   </div>
 
@@ -103,21 +103,43 @@
       </div>
     </div>
 
-    <div class="empty-state">
-      <div class="empty-icon">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-          <circle cx="14" cy="14" r="11" stroke="var(--color-text-muted)" stroke-width="1.5"/>
-          <path d="M14 8v6l3 3" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
+    {% if has_debts %}
+      <div style="padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3);">
+        {% for d in debts %}
+          <div class="debt-item">
+            <div class="debt-header">
+              <div>
+                <div class="debt-name">{{ d.name }}</div>
+                <div class="debt-institution">{{ d.account.institution|default:d.account.name }}</div>
+              </div>
+              <div style="text-align:right;">
+                <div class="debt-amount">${{ d.balance|floatformat:2 }}</div>
+                <div class="debt-rate">{{ d.interest_rate }}% APR</div>
+              </div>
+            </div>
+            {% if d.due_date %}
+              <div class="text-xs text-muted" style="margin-top:var(--sp-2);">Next due: {{ d.due_date|date:"M j, Y" }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
       </div>
-      <div class="empty-title">No debts tracked yet</div>
-      <p class="empty-desc">
-        Add your credit cards, loans, and other debts to start building your payoff plan.
-      </p>
-      <a href="{% url 'data_integration:manual_account_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
-        Add Your First Debt
-      </a>
-    </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <circle cx="14" cy="14" r="11" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+            <path d="M14 8v6l3 3" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="empty-title">No debts tracked yet</div>
+        <p class="empty-desc">
+          Add your credit cards, loans, and other debts to start building your payoff plan.
+        </p>
+        <a href="{% url 'data_integration:manual_debt_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
+          Add Your First Debt
+        </a>
+      </div>
+    {% endif %}
   </div>
 
   <!-- Sidebar -->
@@ -169,3 +191,4 @@
 </div>
 
 {% endblock %}
+

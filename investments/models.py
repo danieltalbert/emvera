@@ -25,4 +25,16 @@ class InvestmentProjection(models.Model):
 	def __str__(self):
 		return f"Projection for {self.investment} on {self.projection_date}"
 
+	def annualized_return(self):
+		"""CAGR between the underlying investment's as_of date and this projection's date."""
+		current = float(self.investment.value or 0)
+		projected = float(self.projected_value or 0)
+		if current <= 0 or projected <= 0:
+			return None
+		days = (self.projection_date - self.investment.as_of).days
+		if days <= 0:
+			return None
+		years = days / 365.25
+		return ((projected / current) ** (1 / years) - 1) * 100
+
 # Visualization utilities will be implemented as Python modules, not models.

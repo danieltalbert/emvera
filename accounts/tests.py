@@ -36,7 +36,9 @@ class LoginViewTest(TestCase):
 
 class ProfileViewTest(TestCase):
 	def setUp(self):
-		self.user = get_user_model().objects.create_user(username='testuser', password='testpass')
+		self.user = get_user_model().objects.create_user(
+			username='testuser', password='testpass', two_factor_enabled=True,
+		)
 
 	def test_profile_requires_login(self):
 		response = self.client.get(reverse('accounts:profile'))

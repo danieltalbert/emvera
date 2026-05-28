@@ -1,6 +1,6 @@
 # data_integration/admin.py
 from django.contrib import admin
-from .models import Account, Transaction, Investment, Debt
+from .models import Account, Transaction, Investment, Debt, PlaidItem
 
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
@@ -21,5 +21,12 @@ class InvestmentAdmin(admin.ModelAdmin):
 
 @admin.register(Debt)
 class DebtAdmin(admin.ModelAdmin):
-    list_display = ('account', 'name', 'balance', 'interest_rate', 'as_of')
+    list_display = ('account', 'name', 'balance', 'interest_rate', 'minimum_payment', 'as_of')
     search_fields = ('name', 'account__name')
+
+
+@admin.register(PlaidItem)
+class PlaidItemAdmin(admin.ModelAdmin):
+    list_display = ('user', 'institution_name', 'item_id', 'last_synced_at')
+    search_fields = ('user__username', 'institution_name', 'item_id')
+    readonly_fields = ('access_token', 'cursor', 'last_synced_at', 'created_at')

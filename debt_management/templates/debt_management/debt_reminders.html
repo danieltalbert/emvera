@@ -22,12 +22,12 @@
       <p class="page-subtitle">Never miss a due date. Set reminders for your upcoming debt payments.</p>
     </div>
     <div class="page-actions">
-      <button class="btn btn-primary btn-sm" id="addReminderBtn">
+      <a class="btn btn-primary btn-sm" href="#add-reminder-card">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
         Add Reminder
-      </button>
+      </a>
     </div>
   </div>
 </div>
@@ -36,17 +36,17 @@
 <div class="card-grid card-grid-3" style="margin-bottom:var(--sp-8);">
   <div class="stat-card red">
     <span class="stat-label">Overdue</span>
-    <div class="stat-value">0</div>
+    <div class="stat-value">{{ overdue_count }}</div>
     <div class="stat-meta"><span>Payments past due</span></div>
   </div>
   <div class="stat-card amber">
     <span class="stat-label">Due This Week</span>
-    <div class="stat-value">0</div>
+    <div class="stat-value">{{ due_this_week_count }}</div>
     <div class="stat-meta"><span>Payments in next 7 days</span></div>
   </div>
   <div class="stat-card teal">
     <span class="stat-label">Due This Month</span>
-    <div class="stat-value">0</div>
+    <div class="stat-value">{{ due_this_month_count }}</div>
     <div class="stat-meta"><span>Total due in 30 days</span></div>
   </div>
 </div>
@@ -59,46 +59,107 @@
       <div class="card-title">Upcoming Payments</div>
     </div>
 
-    <div class="empty-state">
-      <div class="empty-icon">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-          <path d="M14 2a8 8 0 100 16 8 8 0 000-16z" stroke="var(--color-text-muted)" stroke-width="1.5"/>
-          <path d="M10 20c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
+    {% if reminders %}
+      <div style="padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3);">
+        {% for r in reminders %}
+          <div class="debt-item">
+            <div class="debt-header">
+              <div>
+                <div class="debt-name">{{ r.name }}</div>
+                <div class="debt-institution">
+                  {% if r.institution %}{{ r.institution }} · {% endif %}Due {{ r.due_date|date:"M j, Y" }}
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <div class="debt-amount">${{ r.amount|floatformat:2 }}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              {% if r.is_overdue %}
+                <span class="badge badge-red">Overdue by {{ r.days_until_due|stringformat:"d"|cut:"-" }} day{{ r.days_until_due|add:"1"|pluralize }}</span>
+              {% elif r.days_until_due == 0 %}
+                <span class="badge badge-amber">Due today</span>
+              {% else %}
+                <span class="badge badge-amber">Due in {{ r.days_until_due }} day{{ r.days_until_due|pluralize }}</span>
+              {% endif %}
+              <form method="post" action="{% url 'debt_management:mark_reminder_paid' r.obj.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-sm">Mark Paid</button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
       </div>
-      <div class="empty-title">No reminders set</div>
-      <p class="empty-desc">
-        Add reminders for your payment due dates to stay ahead of your debt. You'll see
-        overdue, upcoming, and future payments here.
-      </p>
-      <button class="btn btn-primary" style="margin-top:var(--sp-2);" id="addReminderBtn2">Set Up Reminders</button>
-    </div>
-
-    <!-- Reminder items will render here when data exists:
-    <div class="debt-item">
-      <div class="debt-header">
-        <div>
-          <div class="debt-name">Chase Sapphire Credit Card</div>
-          <div class="debt-institution">Due March 28, 2025</div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <path d="M14 2a8 8 0 100 16 8 8 0 000-16z" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+            <path d="M10 20c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
         </div>
-        <div style="text-align:right;">
-          <div class="debt-amount">$250.00</div>
-          <div class="debt-rate">Minimum payment</div>
-        </div>
+        <div class="empty-title">No reminders set</div>
+        <p class="empty-desc">
+          Add reminders for your payment due dates to stay ahead of your debt. You'll see
+          overdue, upcoming, and future payments here.
+        </p>
+        <a href="#add-reminder-card" class="btn btn-primary" style="margin-top:var(--sp-2);">Set Up Reminders</a>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span class="badge badge-amber">Due in 10 days</span>
-        <div style="display:flex;gap:var(--sp-2);">
-          <button class="btn btn-ghost btn-sm">Edit</button>
-          <button class="btn btn-secondary btn-sm">Mark Paid</button>
-        </div>
-      </div>
-    </div>
-    -->
+    {% endif %}
   </div>
 
-  <!-- Sidebar: Tips -->
+  <!-- Sidebar: Add reminder + Tips -->
   <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
+
+    <div class="card" id="add-reminder-card">
+      <div class="card-header"><div class="card-title">Add Reminder</div></div>
+      <div class="card-body">
+        {% if messages %}
+          {% for m in messages %}
+            <div class="info-panel forest" style="margin-bottom:var(--sp-3);">{{ m }}</div>
+          {% endfor %}
+        {% endif %}
+        <form method="post" class="form-stack">
+          {% csrf_token %}
+          <div class="form-group">
+            <label class="form-label" for="id_debt">Debt (optional)</label>
+            {{ form.debt }}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_name">Name</label>
+            {{ form.name }}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_institution">Institution</label>
+            {{ form.institution }}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_amount">Amount</label>
+            {{ form.amount }}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_due_date">Due Date</label>
+            {{ form.due_date }}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_notify_days_before">Notify days before</label>
+            {{ form.notify_days_before }}
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:var(--sp-2);">
+              {{ form.notify_via_email }} <span class="text-sm">Email me when due</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2);">
+              {{ form.notify_via_sms }} <span class="text-sm">Text me when due</span>
+            </label>
+            <span class="form-hint">SMS requires a phone number on your profile and Twilio credentials configured.</span>
+          </div>
+          <div>
+            <button type="submit" class="btn btn-primary">Add Reminder</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <div class="card">
       <div class="card-header"><div class="card-title">Payment Tips</div></div>

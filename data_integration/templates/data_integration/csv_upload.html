@@ -31,6 +31,22 @@
   </div>
   {% endif %}
 
+  {% if import_result and import_result.row_errors %}
+  <div class="card" style="margin-bottom:var(--sp-6);border:1px solid var(--amber-500);">
+    <div class="card-header"><div class="card-title">Import issues</div></div>
+    <div class="card-body">
+      <p class="text-sm text-secondary" style="margin-bottom:var(--sp-3);">
+        {{ import_result.created }} created, {{ import_result.skipped }} skipped.
+      </p>
+      <ul style="margin:0;padding-left:var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-1);">
+        {% for err in import_result.row_errors %}
+          <li class="text-sm text-secondary">{{ err }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="card" style="margin-bottom:var(--sp-6);">
     <div class="card-header">
       <div class="card-title">Upload File</div>
@@ -45,6 +61,12 @@
             {% for err in form.non_field_errors %}{{ err }}{% endfor %}
           </div>
           {% endif %}
+
+          <div class="form-group">
+            <label class="form-label" for="{{ form.account.id_for_label }}">Account <span class="label-required">*</span></label>
+            {{ form.account }}
+            {% for err in form.account.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
+          </div>
 
           <div class="form-group">
             <label class="form-file-label" id="dropzone" for="id_file">
