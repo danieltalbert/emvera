@@ -1,4 +1,12 @@
+"""Views for the investments app: portfolio overview/performance, projections,
+recommendations, comparison, and CSV export.
+
+Performance note: several pages need each investment's projections. Rather than
+querying projections once per investment (an N+1 pattern), the helpers below
+load them in a single `select_related` query and group them in memory.
+"""
 import csv
+from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
@@ -7,7 +15,6 @@ from django.shortcuts import render
 
 from accounts.require_2fa import require_2fa
 from data_integration.models import Account, Investment
-from .forms import InvestmentProjectionForm
 from .models import InvestmentProjection, InvestmentRecommendation
 
 
@@ -16,22 +23,36 @@ def _user_investments(user):
     return Investment.objects.filter(account__in=accounts)
 
 
+def _projections_by_investment(user, investments):
+    """Return {investment_id: [InvestmentProjection, ...]} in one query.
+
+    `select_related('investment')` means `projection.annualized_return()` can
+    read `projection.investment` without an extra query per row.
+    """
+    grouped = defaultdict(list)
+    qs = (
+        InvestmentProjection.objects
+        .filter(user=user, investment__in=investments)
+        .select_related('investment')
+    )
+    for proj in qs:
+        grouped[proj.investment_id].append(proj)
+    return grouped
+
+
 @login_required
 @require_2fa
 def export_investments_csv(request):
-    investments = _user_investments(request.user)
-    projections = InvestmentProjection.objects.filter(
-        user=request.user, investment__in=investments
-    )
+    investments = list(_user_investments(request.user))
+    projections_by_inv = _projections_by_investment(request.user, investments)
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="investments.csv"'
     writer = csv.writer(response)
     writer.writerow(['Name', 'Type', 'Current Value', 'As Of', 'Projections'])
     for inv in investments:
-        inv_projs = projections.filter(investment=inv)
         proj_str = "; ".join([
             f"{p.projection_date}: ${p.projected_value:,.2f} ({p.growth_rate:.2f}%)"
-            for p in inv_projs
+            for p in projections_by_inv.get(inv.id, [])
         ])
         writer.writerow([inv.name, inv.type, inv.value, inv.as_of, proj_str])
     return response
@@ -49,10 +70,10 @@ def portfolio_performance(request):
     roi = None
     if total_invested and total_projected:
         roi = ((float(total_projected) / float(total_invested)) - 1) * 100
+    projections_by_inv = _projections_by_investment(request.user, investments)
     investment_returns = []
     for inv in investments:
-        inv_projs = projections.filter(investment=inv)
-        returns = [p.annualized_return() for p in inv_projs if hasattr(p, 'annualized_return')]
+        returns = [p.annualized_return() for p in projections_by_inv.get(inv.id, [])]
         investment_returns.append({'investment': inv, 'returns': returns})
     context = {
         'total_invested': total_invested,
@@ -111,15 +132,13 @@ def investment_comparison(request):
         .annotate(total_value=Sum('value'))
         .order_by('-total_value')
     )
-    projections = InvestmentProjection.objects.filter(
-        user=request.user, investment__in=investments
-    )
+    projections_by_inv = _projections_by_investment(request.user, investments)
     type_returns = {}
     for inv in investments:
-        inv_projs = projections.filter(investment=inv)
+        # Compute each annualized return once, then drop the Nones.
         returns = [
-            p.annualized_return() for p in inv_projs
-            if hasattr(p, 'annualized_return') and p.annualized_return() is not None
+            r for r in (p.annualized_return() for p in projections_by_inv.get(inv.id, []))
+            if r is not None
         ]
         if returns:
             avg_return = sum(returns) / len(returns)

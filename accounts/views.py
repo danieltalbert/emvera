@@ -1,9 +1,14 @@
+"""Views for the accounts app: login/logout, registration, profile, password
+change, the guided onboarding flow, and TOTP two-factor setup/verify/settings.
+
+Two-factor uses pyotp to generate a per-user secret (held in the session until
+confirmed) and qrcode to render the provisioning QR for authenticator apps.
+"""
 import base64
 import io
 
 import pyotp
 import qrcode
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, update_session_auth_hash
 from django.contrib.auth.decorators import login_required

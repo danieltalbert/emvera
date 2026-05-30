@@ -155,3 +155,20 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Emvera <noreply@emver
 TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
 TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
 TWILIO_FROM_NUMBER = os.environ.get('TWILIO_FROM_NUMBER', '')
+
+
+# --- Production security hardening ---
+# These default OFF so local development and the test suite work over plain
+# HTTP. In production (behind HTTPS) set DJANGO_SECURE=True; `python manage.py
+# check --deploy` then passes cleanly. The app runs behind nginx, so we trust
+# the X-Forwarded-Proto header to detect the original HTTPS request.
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+if os.environ.get('DJANGO_SECURE', 'False') == 'True':
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000'))  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True

@@ -1,3 +1,8 @@
+"""Views for the savings-competition feature: lobby, lifecycle (create / join /
+start / end), the live dashboard plus its JSON polling endpoint, and the
+paintball mini-game. Lifecycle-changing endpoints are POST-only and verify the
+requester owns (or belongs to) the competition.
+"""
 import json
 
 from django.contrib import messages
@@ -88,7 +93,7 @@ def competition_dashboard(request, pk):
     if active_mini_game and participant:
         already_played = active_mini_game.results.filter(participant=participant).exists()
 
-    leaderboard = competition.participants.order_by('-portfolio_value', '-bonus_earned')
+    leaderboard = competition.participants.select_related('user').order_by('-portfolio_value', '-bonus_earned')
 
     return render(request, 'competition/dashboard.html', {
         'competition': competition,
@@ -122,7 +127,7 @@ def competition_state(request, pk):
             'total_value': float(p.total_value),
             'mini_game_wins': p.mini_game_wins,
         }
-        for p in competition.participants.order_by('-portfolio_value', '-bonus_earned')
+        for p in competition.participants.select_related('user').order_by('-portfolio_value', '-bonus_earned')
     ]
 
     return JsonResponse({
@@ -188,10 +193,11 @@ def submit_score(request, pk, game_pk):
 
     MiniGameResult.objects.create(mini_game=mini_game, participant=participant, score=score)
 
-    all_played = all(
-        mini_game.results.filter(participant=p).exists()
-        for p in competition.participants.all()
-    )
+    # Has every participant submitted a score for this round? Compare the set
+    # of participants who have results against all participants (2 queries).
+    played_ids = set(mini_game.results.values_list('participant_id', flat=True))
+    all_ids = set(competition.participants.values_list('id', flat=True))
+    all_played = all_ids <= played_ids
     if all_played:
         mini_game.resolve()
         _check_winner(competition)
@@ -219,7 +225,7 @@ def end_competition(request, pk):
 @login_required
 def competition_winner(request, pk):
     competition = get_object_or_404(Competition, pk=pk, status=Competition.STATUS_FINISHED)
-    leaderboard = competition.participants.order_by('-portfolio_value', '-bonus_earned')
+    leaderboard = competition.participants.select_related('user').order_by('-portfolio_value', '-bonus_earned')
     winner = leaderboard.first()
     return render(request, 'competition/winner.html', {
         'competition': competition,

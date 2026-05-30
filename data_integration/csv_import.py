@@ -136,7 +136,9 @@ def import_transactions(file_obj, account) -> ImportResult:
         ))
 
     if rows_to_create:
-        Transaction.objects.bulk_create(rows_to_create)
+        # batch_size bounds the size of each INSERT so a large file doesn't
+        # build one oversized SQL statement (also keeps SQLite within limits).
+        Transaction.objects.bulk_create(rows_to_create, batch_size=500)
         result.created = len(rows_to_create)
 
     # Cap the error list so a malformed 10k-row file doesn't flood the page.
