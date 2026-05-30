@@ -1,0 +1,36 @@
+# Keep the build context (and image) small and reproducible.
+.git
+.github
+.gitignore
+.gitattributes
+.dockerignore
+
+# Local Python / virtualenv noise
+__pycache__/
+*.py[cod]
+*.so
+venv/
+env/
+.venv/
+
+# Local database, collected static, media — regenerated in the image / at runtime
+*.sqlite3
+staticfiles/
+media/
+
+# Secrets and local config
+.env
+*.env
+
+# Editor / OS cruft
+.vscode/
+.idea/
+.DS_Store
+**/.DS_Store
+*.log
+
+# Docs and compose are not needed inside the image
+docker-compose.yml
+README.md
+ARCHITECTURE.md
+DEPLOYMENT.md

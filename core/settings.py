@@ -148,7 +148,7 @@ if os.environ.get('EMAIL_HOST'):
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Ridge & River <noreply@ridgeriver.local>')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Emvera <noreply@emvera.local>')
 
 # SMS — Twilio if all three env vars are set. The management command checks
 # these at send-time; no Python import happens unless SMS is actually used.

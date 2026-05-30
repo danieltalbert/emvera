@@ -128,7 +128,7 @@ def two_factor_setup(request):
 
     totp_secret = _get_or_create_totp_secret(request)
     totp_uri = pyotp.totp.TOTP(totp_secret).provisioning_uri(
-        name=user.username, issuer_name='Ridge & River Financial'
+        name=user.username, issuer_name='Emvera'
     )
     buf = io.BytesIO()
     qrcode.make(totp_uri).save(buf, format='PNG')

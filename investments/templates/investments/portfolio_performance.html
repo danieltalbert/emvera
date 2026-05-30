@@ -1,42 +1,172 @@
 {% extends "base.html" %}
-{% block title %}Portfolio Performance — PNW Finance{% endblock %}
+
+{% block title %}Portfolio Performance — Emvera{% endblock %}
+{% block breadcrumb_current %}Performance{% endblock %}
+{% block breadcrumb %}
+  <a href="/">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'investments:portfolio_overview' %}">Portfolio</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="current">Performance</span>
+{% endblock %}
+
 {% block content %}
+
 <div class="page-header">
-  <h1>Portfolio Performance</h1>
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Portfolio Performance</h1>
+      <p class="page-subtitle">Projected returns and annualized performance across your holdings.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{% url 'investments:export_investments_csv' %}" class="btn btn-secondary btn-sm">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M4 14v2a1 1 0 001 1h10a1 1 0 001-1v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M10 3v9M7 9l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Export CSV
+      </a>
+      <a href="{% url 'investments:portfolio_overview' %}" class="btn btn-ghost btn-sm">← Portfolio</a>
+    </div>
+  </div>
 </div>
-<div class="card-grid card-grid-2">
+
+<!-- Summary stats -->
+<div class="card-grid card-grid-3" style="margin-bottom:var(--sp-8);">
+
   <div class="stat-card blue">
-    <span class="stat-label">Total Invested</span>
-    <span class="stat-value">${{ total_invested|floatformat:2 }}</span>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <span class="stat-label">Total Invested</span>
+      <div class="stat-icon blue">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <rect x="2" y="10" width="4" height="8" rx="1" fill="currentColor" opacity=".5"/>
+          <rect x="8" y="6" width="4" height="12" rx="1" fill="currentColor" opacity=".75"/>
+          <rect x="14" y="2" width="4" height="16" rx="1" fill="currentColor"/>
+        </svg>
+      </div>
+    </div>
+    <div class="stat-value">${{ total_invested|floatformat:2 }}</div>
+    <div class="stat-meta"><span>Current market value</span></div>
   </div>
+
   <div class="stat-card green">
-    <span class="stat-label">Total Projected Value</span>
-    <span class="stat-value">${{ total_projected|floatformat:2 }}</span>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <span class="stat-label">Projected Value</span>
+      <div class="stat-icon green">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M3 14l4-4 3 3 3-5 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M15 4h2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="stat-value">${{ total_projected|floatformat:2 }}</div>
+    <div class="stat-meta"><span>Based on growth projections</span></div>
   </div>
-  <div class="stat-card purple">
-    <span class="stat-label">Projected ROI</span>
-    <span class="stat-value">{% if roi is not None %}{{ roi|floatformat:2 }}%{% else %}N/A{% endif %}</span>
+
+  <div class="stat-card teal">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <span class="stat-label">Projected ROI</span>
+      <div class="stat-icon teal">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 7v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="stat-value" style="font-size:var(--text-2xl);">
+      {% if roi is not None %}
+        <span style="color:{% if roi >= 0 %}var(--green-600){% else %}var(--red-600){% endif %};">
+          {% if roi >= 0 %}+{% endif %}{{ roi|floatformat:1 }}%
+        </span>
+      {% else %}
+        <span style="color:var(--color-text-muted);">N/A</span>
+      {% endif %}
+    </div>
+    <div class="stat-meta"><span>Return on investment</span></div>
   </div>
+
 </div>
-<h2>Investment Returns</h2>
-<table class="table">
-  <thead>
-    <tr>
-      <th>Investment</th>
-      <th>Annualized Returns (%)</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for item in investment_returns %}
-    <tr>
-      <td>{{ item.investment.name }}</td>
-      <td>
-        {% if item.returns %}
-          {% for r in item.returns %}{{ r|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}
-        {% else %}N/A{% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+
+<!-- Returns table -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Investment Returns</div>
+      <div class="card-subtitle">Annualized return rate per holding based on projections</div>
+    </div>
+    {% if investment_returns %}
+    <span class="badge badge-muted">{{ investment_returns|length }} holding{{ investment_returns|length|pluralize }}</span>
+    {% endif %}
+  </div>
+
+  {% if investment_returns %}
+  <div class="table-wrap" style="border:none;border-radius:0;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Investment</th>
+          <th>Type</th>
+          <th class="num">Current Value</th>
+          <th class="num">Annualized Returns</th>
+          <th>Performance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in investment_returns %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:var(--sp-3);">
+              <div class="investment-icon" style="width:32px;height:32px;font-size:10px;border-radius:var(--r-md);">
+                {{ item.investment.symbol|default:item.investment.name|first|upper }}
+              </div>
+              <div>
+                <div class="font-medium">{{ item.investment.name }}</div>
+                {% if item.investment.symbol %}<div class="text-xs text-muted">{{ item.investment.symbol }}</div>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td><span class="badge badge-teal">{{ item.investment.type }}</span></td>
+          <td class="num font-mono">${{ item.investment.value|floatformat:2 }}</td>
+          <td class="num">
+            {% if item.returns %}
+              {% for r in item.returns %}
+                <span class="font-mono {% if r >= 0 %}text-success{% else %}text-danger{% endif %}">
+                  {% if r >= 0 %}+{% endif %}{{ r|floatformat:2 }}%
+                </span>{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.returns %}
+              {% with item.returns.0 as r %}
+              <div class="progress-track" style="max-width:100px;">
+                <div class="progress-fill {% if r >= 0 %}green{% else %}red{% endif %}"
+                     style="width:{% if r >= 0 %}{% widthratio r 30 100 %}{% else %}100{% endif %}%;max-width:100%;"></div>
+              </div>
+              {% endwith %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <path d="M4 20l5-6 4 4 4-7 5-5" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M19 6h3v3" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="empty-title">No performance data yet</div>
+    <p class="empty-desc">Add investments and projections to see your portfolio's performance here.</p>
+    <a href="{% url 'investments:investment_projections' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">Add Projections</a>
+  </div>
+  {% endif %}
+</div>
+
 {% endblock %}

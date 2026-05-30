@@ -1,11 +1,136 @@
 {% extends 'base.html' %}
+
+{% block title %}Verify Identity — Emvera{% endblock %}
+{% block breadcrumb_current %}Verification{% endblock %}
+
+{% block extra_css %}
+<style>
+  .verify-wrap {
+    max-width: 400px;
+    margin: var(--sp-10) auto 0;
+  }
+
+  .verify-card {
+    background: var(--color-surface);
+    border: 1.5px solid var(--color-border-light);
+    border-radius: var(--r-xl);
+    padding: var(--sp-8) var(--sp-7);
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  }
+
+  .verify-icon {
+    width: 60px; height: 60px;
+    border-radius: var(--r-xl);
+    background: linear-gradient(135deg, var(--teal-500), var(--forest-700));
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto var(--sp-5);
+    box-shadow: 0 6px 20px rgba(61,157,152,0.3);
+  }
+
+  .verify-card h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-bold);
+    margin-bottom: var(--sp-2);
+  }
+  .verify-card .sub {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--sp-6);
+    line-height: 1.5;
+  }
+
+  .code-input {
+    width: 100%;
+    font-size: var(--text-3xl);
+    font-weight: var(--font-bold);
+    letter-spacing: 0.45em;
+    text-align: center;
+    padding: var(--sp-4);
+    background: var(--color-surface-alt);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--r-lg);
+    color: var(--color-text-primary);
+    transition: border-color var(--t-base), box-shadow var(--t-base);
+    margin-bottom: var(--sp-5);
+  }
+  .code-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(61,157,152,0.15);
+  }
+  .code-input::placeholder { color: var(--color-text-muted); letter-spacing: 0.3em; }
+
+  .error-msg {
+    display: flex; align-items: center; gap: var(--sp-2);
+    background: var(--color-danger-light);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--r-md);
+    padding: var(--sp-3) var(--sp-4);
+    font-size: var(--text-sm);
+    color: var(--color-danger);
+    margin-bottom: var(--sp-4);
+    text-align: left;
+  }
+
+  .verify-footer {
+    margin-top: var(--sp-5);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+  .verify-footer a { color: var(--color-accent); text-decoration: none; }
+  .verify-footer a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
 {% block content %}
-<h2>Two-Factor Authentication Verification</h2>
-<p>Enter the 6-digit code from your authenticator app.</p>
-<form method="post">
-    {% csrf_token %}
-    <label for="code">Code:</label>
-    <input type="text" name="code" maxlength="6" required />
-    <button type="submit">Verify</button>
-</form>
+<div class="verify-wrap">
+  <div class="verify-card">
+
+    <div class="verify-icon">
+      <svg width="26" height="26" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x="5" y="9" width="10" height="8" rx="2" stroke="white" stroke-width="1.5"/>
+        <path d="M7 9V6a3 3 0 016 0v3" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="10" cy="13" r="1.2" fill="white"/>
+      </svg>
+    </div>
+
+    <h2>Two-Factor Verification</h2>
+    <p class="sub">Open your authenticator app and enter the 6-digit code for Emvera.</p>
+
+    {% if error %}
+    <div class="error-msg">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M10 6v4M10 13v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <input
+        class="code-input"
+        type="text"
+        name="code"
+        id="code"
+        maxlength="6"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        autocomplete="one-time-code"
+        placeholder="000000"
+        autofocus
+        required
+      />
+      <button type="submit" class="btn btn-accent" style="width:100%;font-size:var(--text-base);">Verify</button>
+    </form>
+
+    <div class="verify-footer">
+      Lost access to your authenticator?
+      <a href="{% url 'accounts:two_factor_setup' %}">Re-configure 2FA</a>
+    </div>
+
+  </div>
+</div>
 {% endblock %}

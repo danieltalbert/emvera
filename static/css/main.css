@@ -165,6 +165,17 @@
 
   /* Header height */
   --header-h: 60px;
+
+  /* Shorthand aliases — used by competition templates */
+  --card-bg:        var(--color-surface);
+  --border:         var(--color-border);
+  --radius:         var(--r-md);
+  --radius-lg:      var(--r-lg);
+  --text-primary:   var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --accent:         var(--color-accent);
+  --accent-rgb:     61, 157, 152;
+  --input-bg:       var(--color-surface-alt);
 }
 
 

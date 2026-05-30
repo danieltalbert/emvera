@@ -44,7 +44,7 @@ def _build_email_body(reminder, days_until_due):
         f"Your payment for {reminder.name} {when}.\n"
         f"Amount: ${reminder.amount:,.2f}\n"
         f"{('Institution: ' + reminder.institution) if reminder.institution else ''}\n\n"
-        "Log in to Ridge & River to review or mark it paid.\n"
+        "Log in to Emvera to review or mark it paid.\n"
     )
 
 

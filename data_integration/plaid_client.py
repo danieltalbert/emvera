@@ -63,7 +63,7 @@ def create_link_token(user) -> str:
     client = _client()
     request = LinkTokenCreateRequest(
         products=[Products(p) for p in _products()],
-        client_name='Ridge & River Financial',
+        client_name='Emvera',
         country_codes=[CountryCode('US')],
         language='en',
         user=LinkTokenCreateRequestUser(client_user_id=str(user.pk)),
