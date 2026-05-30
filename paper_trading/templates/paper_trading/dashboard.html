@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Paper Trading — Emvera{% endblock %}
+{% block breadcrumb_current %}Paper Trading{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Paper Trading</h1>
+  <p class="text-muted">Practice with a simulated account — no real money at risk.</p>
+</div>
+
+{% if not alpaca_configured %}
+<div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:var(--sp-4);">
+  <strong>Live pricing isn't connected yet.</strong>
+  <p class="text-muted" style="margin:var(--sp-2) 0 0;">
+    Paper trading is fully wired, but orders need live prices from Alpaca to fill.
+    Add <code>ALPACA_API_KEY</code> and <code>ALPACA_SECRET_KEY</code> (see
+    <code>.env.example</code>) to enable it. Until then, orders are recorded as
+    rejected with an explanation.
+  </p>
+</div>
+{% endif %}
+
+<div class="card-grid card-grid-3" style="margin-bottom:var(--sp-4);">
+  <div class="stat-card blue">
+    <span class="stat-label">Cash</span>
+    <span class="stat-value">${{ account.cash|floatformat:2 }}</span>
+  </div>
+  <div class="stat-card green">
+    <span class="stat-label">Account Equity</span>
+    <span class="stat-value">${{ equity|floatformat:2 }}</span>
+  </div>
+  <div class="stat-card purple">
+    <span class="stat-label">Starting Cash</span>
+    <span class="stat-value">${{ account.starting_cash|floatformat:2 }}</span>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:var(--sp-4);">
+  <h2>Place an order</h2>
+  <form method="post" action="{% url 'paper_trading:place_order' %}" class="form-inline" style="display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:flex-end;">
+    {% csrf_token %}
+    <label>Symbol
+      <input type="text" name="symbol" placeholder="AAPL" maxlength="20" required>
+    </label>
+    <label>Side
+      <select name="side">
+        <option value="buy">Buy</option>
+        <option value="sell">Sell</option>
+      </select>
+    </label>
+    <label>Quantity
+      <input type="number" name="quantity" min="0" step="any" placeholder="10" required>
+    </label>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
+</div>
+
+<h2>Holdings</h2>
+<table class="table">
+  <thead>
+    <tr><th>Symbol</th><th>Quantity</th><th>Avg Cost</th><th>Last Price</th><th>Market Value</th></tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td>{{ row.symbol }}</td>
+      <td>{{ row.quantity }}</td>
+      <td>${{ row.avg_cost|floatformat:2 }}</td>
+      <td>{% if row.price is not None %}${{ row.price|floatformat:2 }}{% else %}—{% endif %}</td>
+      <td>{% if row.market_value is not None %}${{ row.market_value|floatformat:2 }}{% else %}—{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" class="text-muted">No positions yet. Place your first order above.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2 style="margin-top:var(--sp-4);">Recent orders</h2>
+<table class="table">
+  <thead>
+    <tr><th>When</th><th>Side</th><th>Symbol</th><th>Qty</th><th>Fill</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    {% for o in recent_orders %}
+    <tr>
+      <td>{{ o.created_at|date:"M j, H:i" }}</td>
+      <td>{{ o.get_side_display }}</td>
+      <td>{{ o.symbol }}</td>
+      <td>{{ o.quantity }}</td>
+      <td>{% if o.fill_price %}${{ o.fill_price|floatformat:2 }}{% else %}—{% endif %}</td>
+      <td>
+        <span class="badge {% if o.status == 'filled' %}badge-teal{% else %}badge-muted{% endif %}">
+          {{ o.get_status_display }}
+        </span>
+        {% if o.note %}<span class="text-xs text-muted">{{ o.note }}</span>{% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="text-muted">No orders yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

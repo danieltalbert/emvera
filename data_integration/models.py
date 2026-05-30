@@ -122,3 +122,47 @@ class Debt(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.balance}"
+
+
+class BrokerageLink(models.Model):
+    """A user's connection to a brokerage they ALREADY have, via an aggregator.
+
+    This is the brokerage analogue of PlaidItem and is currently scoped to
+    SnapTrade (see snaptrade_client.py / brokerage_sync.py). It holds the
+    per-user secret SnapTrade requires on every call; that secret is encrypted
+    at rest with the same Fernet helper used for Plaid tokens.
+
+    Nothing populates this table until SnapTrade keys are configured — it exists
+    now so the "link a real brokerage" path is fully wired and ready for a future
+    go/no-go decision.
+    """
+    PROVIDER_SNAPTRADE = 'snaptrade'
+    PROVIDER_CHOICES = [(PROVIDER_SNAPTRADE, 'SnapTrade')]
+
+    class Meta:
+        app_label = 'data_integration'
+        unique_together = ('user', 'provider')
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='brokerage_links'
+    )
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default=PROVIDER_SNAPTRADE)
+    provider_user_id = models.CharField(max_length=128, blank=True)
+    user_secret = models.CharField(
+        max_length=512,
+        blank=True,
+        help_text='Encrypted; use get_user_secret() / set_user_secret() rather than reading directly.',
+    )
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_provider_display()} link for {self.user}"
+
+    def get_user_secret(self) -> str:
+        from .crypto import decrypt
+        return decrypt(self.user_secret)
+
+    def set_user_secret(self, raw_secret: str) -> None:
+        from .crypto import encrypt
+        self.user_secret = encrypt(raw_secret)

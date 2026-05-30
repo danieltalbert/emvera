@@ -204,6 +204,26 @@
           </svg>
           <span>Connect Bank</span>
         </a>
+
+        {# Future-optional integrations: link a real brokerage (SnapTrade) and #}
+        {# an in-app paper-trading simulator (Alpaca). Both render gracefully  #}
+        {# until their API keys are configured. #}
+        <a href="{% url 'data_integration:connect_brokerage' %}"
+           class="nav-item {% block nav_brokerage %}{% endblock %}">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M3 8l7-4 7 4-7 4-7-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M3 12l7 4 7-4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+          <span>Link Brokerage</span>
+        </a>
+
+        <a href="{% url 'paper_trading:dashboard' %}"
+           class="nav-item {% block nav_paper %}{% endblock %}">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M3 15l4-5 3 3 4-6 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Paper Trading</span>
+        </a>
       </div>
     </div>
 

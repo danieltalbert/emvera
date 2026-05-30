@@ -20,6 +20,11 @@ investments, and stay motivated through savings competitions.
   recommendations, and side-by-side investment comparison.
 - **Competition** — gamified savings competitions with a lobby, live dashboard,
   a mini-game, and a winner screen.
+- **Investing integrations (optional, gated)** — two future-ready paths that
+  light up when their API keys are added: linking a *real* brokerage you already
+  have via **SnapTrade**, and an in-app **paper-trading** simulator priced by
+  **Alpaca** live market data. Both run as no-op explainers until configured —
+  see [ARCHITECTURE.md](ARCHITECTURE.md#optional-integrations-built-gated-awaiting-a-decision--keys).
 
 ## Tech stack
 
@@ -40,6 +45,7 @@ emvera/
 ├── debt_management/    # Payoff planners, reminders, credit score
 ├── investments/        # Projections, recommendations, performance
 ├── competition/        # Savings competitions + mini-game
+├── paper_trading/      # In-app simulated brokerage (gated on Alpaca)
 ├── templates/          # Shared + registration + competition templates
 ├── static/             # CSS and static assets
 ├── manage.py

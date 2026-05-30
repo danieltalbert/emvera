@@ -28,3 +28,11 @@ cryptography
 
 # Plaid bank integration (optional; only needed if PLAID_CLIENT_ID is set)
 # plaid-python
+
+# Alpaca — live market data + paper trading (optional; only needed once
+# ALPACA_API_KEY is set). See data_integration/alpaca_client.py.
+# alpaca-py
+
+# SnapTrade — link an existing brokerage account (optional; only needed once
+# SNAPTRADE_CLIENT_ID is set). See data_integration/snaptrade_client.py.
+# snaptrade-python-sdk

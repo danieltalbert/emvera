@@ -1,6 +1,6 @@
 # data_integration/admin.py
 from django.contrib import admin
-from .models import Account, Transaction, Investment, Debt, PlaidItem
+from .models import Account, Transaction, Investment, Debt, PlaidItem, BrokerageLink
 
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
@@ -30,3 +30,12 @@ class PlaidItemAdmin(admin.ModelAdmin):
     list_display = ('user', 'institution_name', 'item_id', 'last_synced_at')
     search_fields = ('user__username', 'institution_name', 'item_id')
     readonly_fields = ('access_token', 'cursor', 'last_synced_at', 'created_at')
+
+
+@admin.register(BrokerageLink)
+class BrokerageLinkAdmin(admin.ModelAdmin):
+    list_display = ('user', 'provider', 'provider_user_id', 'last_synced_at', 'created_at')
+    search_fields = ('user__username', 'provider_user_id')
+    list_filter = ('provider',)
+    # user_secret is encrypted; never expose it in the admin form.
+    readonly_fields = ('user_secret', 'last_synced_at', 'created_at')

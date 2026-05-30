@@ -27,6 +27,10 @@ apps build on top of them.
   `visualization_utils`.
 - **competition/** — gamified savings competitions (models for competitions and
   participation) with lobby, dashboard, mini-game, and winner views.
+- **paper_trading/** — an in-app *simulated* brokerage (`PaperAccount`,
+  `PaperPosition`, `PaperOrder`). Users trade with virtual cash priced by live
+  market data. Decoupled from `competition` but ready to power it later. See
+  "Optional integrations" below.
 
 ## Data flow
 
@@ -48,6 +52,30 @@ apps build on top of them.
 - Email falls back to the console backend unless `EMAIL_HOST` is set. SMS is
   inactive unless the `TWILIO_*` variables are present. Plaid is inactive unless
   `PLAID_CLIENT_ID` is set.
+
+## Optional integrations (built, gated, awaiting a decision + keys)
+
+Emvera keeps two "live investing" directions open. Both are fully wired but
+**gated** — with no API keys they render an explainer and no-op gracefully, so
+the app and test suite run with nothing configured. Each client lazily imports
+its SDK and exposes `is_configured()`, mirroring the existing Plaid client.
+
+1. **Link a real brokerage (SnapTrade)** — the "Plaid for brokerages." Reads a
+   user's holdings from a brokerage they already have (Robinhood, Schwab,
+   Fidelity, …). `snaptrade_client.py` does the API calls; `brokerage_sync.py`
+   upserts the results into `Account`/`Investment`; `BrokerageLink` stores the
+   per-user secret (encrypted). Keys: `SNAPTRADE_CLIENT_ID`,
+   `SNAPTRADE_CONSUMER_KEY`.
+2. **Live pricing + paper trading (Alpaca)** — `alpaca_client.py` provides
+   market-data quotes (used by `pricing.py` to value holdings live) and paper
+   orders (used by the `paper_trading` app's `execution.py`). Keys:
+   `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` (`ALPACA_PAPER` defaults to True).
+
+Why both, and why separate: SnapTrade can read *external* brokerages but isn't a
+market-data/trading venue; Alpaca is a broker + market-data provider but cannot
+read a user's external brokerage. They are complementary, so whichever product
+direction is chosen later, the plumbing already exists. See each module's
+docstring for the full rationale.
 
 ## Testing
 

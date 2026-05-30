@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'data_integration',
     'debt_management',
     'competition',
+    'paper_trading',
 ]
 
 MIDDLEWARE = [

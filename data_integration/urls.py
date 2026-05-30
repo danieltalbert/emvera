@@ -12,4 +12,9 @@ urlpatterns = [
     path('manual-transaction/', views.manual_transaction_entry, name='manual_transaction_entry'),
     path('manual-debt/', views.manual_debt_entry, name='manual_debt_entry'),
     path('csv-upload/', views.csv_upload, name='csv_upload'),
+
+    # Real brokerage linking (SnapTrade) + live pricing (Alpaca). Gated; see views.
+    path('connect-brokerage/', views.connect_brokerage, name='connect_brokerage'),
+    path('brokerage/sync/', views.sync_brokerage, name='sync_brokerage'),
+    path('prices/refresh/', views.refresh_prices, name='refresh_prices'),
 ]

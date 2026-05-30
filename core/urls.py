@@ -27,4 +27,5 @@ urlpatterns = [
     path('data/', include('data_integration.urls')),
     path('debt-management/', include('debt_management.urls')),
     path('competition/', include('competition.urls')),
+    path('paper-trading/', include('paper_trading.urls')),
 ]

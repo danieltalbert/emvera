@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Link Brokerage — Emvera{% endblock %}
+{% block breadcrumb_current %}Link Brokerage{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Link a brokerage account</h1>
+  <p class="text-muted">
+    Connect a brokerage you already have (Robinhood, Schwab, Fidelity, Webull, …)
+    to track real holdings — the investing equivalent of connecting your bank.
+  </p>
+</div>
+
+{% if not snaptrade_configured %}
+<div class="card" style="border-left:4px solid var(--color-accent);">
+  <strong>Brokerage linking isn't connected yet.</strong>
+  <p class="text-muted" style="margin:var(--sp-2) 0 0;">
+    This feature is fully built but needs a SnapTrade account. Add
+    <code>SNAPTRADE_CLIENT_ID</code> and <code>SNAPTRADE_CONSUMER_KEY</code>
+    (see <code>.env.example</code>) to turn it on. SnapTrade is the aggregator
+    that reads holdings from existing brokerages; Alpaca (used elsewhere) is a
+    broker/market-data provider and can't do this on its own.
+  </p>
+</div>
+{% else %}
+<div class="card" style="margin-bottom:var(--sp-4);">
+  <h2>Connect</h2>
+  <p class="text-muted">Authorize a brokerage through SnapTrade's secure portal.</p>
+  {% if portal_url %}
+    <a href="{{ portal_url }}" class="btn btn-primary">Open connection portal →</a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Linked accounts</h2>
+  {% if links %}
+    <ul>
+      {% for link in links %}
+        <li>{{ link.get_provider_display }} — last synced
+          {% if link.last_synced_at %}{{ link.last_synced_at|date:"M j, Y H:i" }}{% else %}never{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{% url 'data_integration:sync_brokerage' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-secondary">Sync holdings now</button>
+    </form>
+  {% else %}
+    <p class="text-muted">No brokerages linked yet.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
