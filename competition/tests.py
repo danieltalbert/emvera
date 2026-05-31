@@ -111,3 +111,32 @@ class TradeViewTests(TestCase):
         self.assertEqual(r.status_code, 302)
         acct = PaperAccount.objects.get(competition=self.comp, user=self.user)
         self.assertEqual(acct.orders.first().status, 'rejected')
+
+
+class CreateFormTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='creator', password='pw12345!xZ', two_factor_enabled=True,
+        )
+        self.client.force_login(self.user)
+
+    def test_create_page_exposes_paper_trading_toggle_and_both_rule_sets(self):
+        r = self.client.get(reverse('competition:create'))
+        self.assertEqual(r.status_code, 200)
+        body = r.content.decode()
+        # The mode toggle and both mode-aware rule lists are present so the JS
+        # preview can swap between them.
+        self.assertIn('id_uses_paper_trading', body)
+        self.assertIn('rules-classic', body)
+        self.assertIn('rules-paper', body)
+
+    def test_can_create_paper_trading_competition(self):
+        r = self.client.post(reverse('competition:create'), {
+            'name': 'Trading Cup', 'description': '',
+            'starting_balance': '1000', 'investment_goal': '5000',
+            'mini_game_bonus': '50', 'max_players': '8',
+            'uses_paper_trading': 'on',
+        })
+        self.assertEqual(r.status_code, 302)
+        comp = Competition.objects.get(name='Trading Cup')
+        self.assertTrue(comp.uses_paper_trading)

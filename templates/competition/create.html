@@ -101,11 +101,17 @@
       <span class="label">Max Players</span>
       <span class="val" id="prev-players">8</span>
     </div>
-    <ul class="rules-list">
+    <ul class="rules-list" id="rules-classic">
       <li>All players start with the same balance</li>
       <li>Win mini-games to earn bonus investments</li>
       <li>First to reach the goal wins</li>
       <li>Creator controls when mini-games fire</li>
+    </ul>
+    <ul class="rules-list" id="rules-paper" style="display:none;">
+      <li>All players start with the same balance</li>
+      <li>Buy &amp; sell to grow your paper portfolio</li>
+      <li>Ranked live by portfolio value</li>
+      <li>First to reach the goal wins</li>
     </ul>
   </div>
 </div>
@@ -124,5 +130,25 @@
   bind('id_investment_goal',  'prev-goal',  fmt);
   bind('id_mini_game_bonus',  'prev-bonus', fmt);
   bind('id_max_players', 'prev-players', v => v);
+
+  // Swap the rules list (and hide the mini-game bonus preview) to match the
+  // selected competition mode. Server-side rendering still works without JS;
+  // this just keeps the live preview honest.
+  (function () {
+    const toggle = document.getElementById('id_uses_paper_trading');
+    const classic = document.getElementById('rules-classic');
+    const paper = document.getElementById('rules-paper');
+    const bonusRow = document.getElementById('prev-bonus');
+    if (!toggle || !classic || !paper) return;
+    function sync() {
+      const isPaper = toggle.checked;
+      classic.style.display = isPaper ? 'none' : '';
+      paper.style.display = isPaper ? '' : 'none';
+      const bonusStat = bonusRow ? bonusRow.closest('.preview-stat') : null;
+      if (bonusStat) bonusStat.style.display = isPaper ? 'none' : '';
+    }
+    toggle.addEventListener('change', sync);
+    sync();
+  })();
 </script>
 {% endblock %}
