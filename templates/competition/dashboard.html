@@ -136,8 +136,13 @@
     <p>Competition in progress — goal: ${{ competition.investment_goal|floatformat:0 }}</p>
   </div>
   <div class="status-actions">
+    {% if competition.uses_paper_trading and participant %}
+      <a href="{% url 'competition:trade' competition.pk %}" class="btn btn-accent">📈 Trade</a>
+    {% endif %}
     {% if is_creator %}
-      {% if not active_mini_game %}
+      {# Mini-games apply to classic competitions only; trading competitions #}
+      {# rank by live paper-portfolio value instead. #}
+      {% if not competition.uses_paper_trading and not active_mini_game %}
         <form method="post" action="{% url 'competition:trigger_mini_game' competition.pk %}">
           {% csrf_token %}
           <button class="btn btn-accent">🎯 Launch Mini-Game</button>

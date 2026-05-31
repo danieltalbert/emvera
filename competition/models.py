@@ -25,6 +25,14 @@ class Competition(models.Model):
     investment_goal = models.DecimalField(max_digits=12, decimal_places=2, default=5000.00)
     mini_game_bonus = models.DecimalField(max_digits=8, decimal_places=2, default=50.00)
     max_players = models.PositiveIntegerField(default=8)
+    # When True, this is a TRADING competition: each player gets a competition-
+    # scoped paper-trading account and the leaderboard ranks by live paper equity
+    # (see competition/services.py) instead of mini-game bonuses. Default False
+    # keeps the classic mini-game behavior unchanged.
+    uses_paper_trading = models.BooleanField(
+        default=False,
+        help_text='Rank players by live paper-trading portfolio value instead of mini-game bonuses.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
@@ -43,6 +51,12 @@ class Competition(models.Model):
         self.status = self.STATUS_ACTIVE
         self.started_at = timezone.now()
         self.save()
+        # Trading competitions need a paper account per player, seeded with the
+        # starting balance. Imported lazily to avoid a circular import
+        # (paper_trading depends on competition for its optional FK).
+        if self.uses_paper_trading:
+            from .services import ensure_paper_accounts
+            ensure_paper_accounts(self)
 
     def finish(self):
         self.status = self.STATUS_FINISHED

@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import CompetitionForm
 from .models import Competition, CompetitionParticipant, MiniGame, MiniGameResult
+from . import services
 
 
 @login_required
@@ -83,6 +84,8 @@ def start_competition(request, pk):
 @login_required
 def competition_dashboard(request, pk):
     competition = get_object_or_404(Competition, pk=pk)
+    # Trading competitions: refresh live standings (paper equity) before render.
+    services.refresh_standings(competition)
     try:
         participant = competition.participants.get(user=request.user)
     except CompetitionParticipant.DoesNotExist:
@@ -109,6 +112,8 @@ def competition_dashboard(request, pk):
 def competition_state(request, pk):
     """Polling endpoint — returns JSON snapshot of competition state."""
     competition = get_object_or_404(Competition, pk=pk)
+    # Keep the polled leaderboard live for trading competitions.
+    services.refresh_standings(competition)
     active_mini_game = competition.mini_games.filter(status=MiniGame.STATUS_ACTIVE).first()
 
     try:
@@ -233,3 +238,84 @@ def competition_winner(request, pk):
         'winner': winner,
         'is_winner': winner and winner.user == request.user,
     })
+
+
+# ---------------------------------------------------------------------------
+# Paper-trading competitions: the trading panel each participant uses to buy /
+# sell. Orders run through paper_trading.execution against the participant's
+# competition-scoped PaperAccount; standings are refreshed on each fill so the
+# leaderboard reflects the trade immediately. See competition/services.py.
+# ---------------------------------------------------------------------------
+
+@login_required
+def trade(request, pk):
+    """Trading panel for a participant in a paper-trading competition."""
+    from data_integration import alpaca_client
+
+    competition = get_object_or_404(Competition, pk=pk, uses_paper_trading=True)
+    participant = get_object_or_404(
+        CompetitionParticipant, competition=competition, user=request.user
+    )
+    account = services.get_account(competition, request.user)
+
+    positions = list(account.positions.all())
+    prices = {}
+    if alpaca_client.is_configured() and positions:
+        try:
+            prices = alpaca_client.get_latest_prices([p.symbol for p in positions])
+        except alpaca_client.AlpacaNotConfigured:
+            prices = {}
+
+    rows = []
+    for p in positions:
+        price = prices.get(p.symbol.upper())
+        rows.append({
+            'symbol': p.symbol,
+            'quantity': p.quantity,
+            'avg_cost': p.avg_cost,
+            'price': price,
+            'market_value': (p.quantity * price) if price is not None else None,
+        })
+
+    return render(request, 'competition/trade.html', {
+        'competition': competition,
+        'participant': participant,
+        'account': account,
+        'rows': rows,
+        'equity': account.equity(prices),
+        'alpaca_configured': alpaca_client.is_configured(),
+        'recent_orders': account.orders.all()[:10],
+    })
+
+
+@login_required
+@require_POST
+def place_trade(request, pk):
+    """Submit a buy/sell for the participant's competition paper account."""
+    from paper_trading.execution import submit_order, OrderError
+
+    competition = get_object_or_404(
+        Competition, pk=pk, uses_paper_trading=True, status=Competition.STATUS_ACTIVE,
+    )
+    get_object_or_404(CompetitionParticipant, competition=competition, user=request.user)
+    account = services.get_account(competition, request.user)
+
+    try:
+        order = submit_order(
+            account,
+            symbol=request.POST.get('symbol', ''),
+            side=request.POST.get('side', 'buy'),
+            quantity=request.POST.get('quantity', '0'),
+        )
+    except OrderError as exc:
+        messages.error(request, str(exc))
+    else:
+        if order.status == order.STATUS_FILLED:
+            messages.success(
+                request,
+                f'{order.side.title()} {order.quantity} {order.symbol} @ ${order.fill_price}.',
+            )
+            services.refresh_standings(competition)  # reflect the fill immediately
+        else:
+            messages.warning(request, order.note or 'Order could not be filled.')
+    return redirect('competition:trade', pk=pk)

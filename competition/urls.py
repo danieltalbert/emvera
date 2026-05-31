@@ -15,4 +15,8 @@ urlpatterns = [
     path('<int:pk>/mini-game/<int:game_pk>/paintball/', views.paintball_game, name='paintball'),
     path('<int:pk>/mini-game/<int:game_pk>/submit-score/', views.submit_score, name='submit_score'),
     path('<int:pk>/winner/', views.competition_winner, name='winner'),
+
+    # Paper-trading competitions: participant trading panel + order submission.
+    path('<int:pk>/trade/', views.trade, name='trade'),
+    path('<int:pk>/trade/order/', views.place_trade, name='place_trade'),
 ]
