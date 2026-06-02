@@ -42,6 +42,12 @@ class PageView(models.Model):
 
     is_authenticated = models.BooleanField(default=False)
 
+    # Time-on-page (dwell), filled in asynchronously by a client beacon. The
+    # token is minted per request and embedded in the page; the browser beacons
+    # it back with elapsed visible time when the user leaves. 0 = no beacon yet.
+    view_token = models.CharField(max_length=32, blank=True, db_index=True)
+    dwell_ms = models.PositiveIntegerField(default=0)
+
     # Denormalized time parts — extracted once at write time so grouping by
     # hour-of-day / day-of-week is a cheap GROUP BY rather than per-row work.
     timestamp = models.DateTimeField(db_index=True)

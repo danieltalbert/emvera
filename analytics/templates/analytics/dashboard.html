@@ -104,13 +104,14 @@
     {% if top_pages %}
     <div class="table-wrap" style="border:none;border-radius:0;">
       <table class="data-table">
-        <thead><tr><th>Page</th><th>Section</th><th class="num">Views</th></tr></thead>
+        <thead><tr><th>Page</th><th>Section</th><th class="num">Views</th><th class="num">Avg time</th></tr></thead>
         <tbody>
           {% for p in top_pages %}
           <tr>
             <td class="font-mono text-sm">{{ p.path }}</td>
             <td><span class="badge badge-teal">{{ p.section }}</span></td>
             <td class="num font-mono">{{ p.count }}</td>
+            <td class="num font-mono text-muted">{% if p.avg_dwell_s %}{{ p.avg_dwell_s }}s{% else %}—{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

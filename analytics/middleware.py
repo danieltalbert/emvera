@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+import uuid
 
 from django.conf import settings
 from django.utils import timezone
@@ -56,6 +57,11 @@ class PageViewMiddleware:
 
     def __call__(self, request):
         start = time.monotonic()
+        # Mint a per-request token BEFORE the view renders so the template can
+        # embed it (request.analytics_view_token). The client beacons it back
+        # with dwell time after the user leaves the page. No leading underscore
+        # so Django templates can read the attribute.
+        request.analytics_view_token = uuid.uuid4().hex
         response = self.get_response(request)
         try:
             self._log(request, response, time.monotonic() - start)
@@ -91,6 +97,7 @@ class PageViewMiddleware:
             status_code=response.status_code,
             response_ms=int(elapsed_s * 1000),
             is_authenticated=is_auth,
+            view_token=getattr(request, 'analytics_view_token', ''),
             timestamp=now,
             hour=now.hour,
             weekday=now.weekday(),

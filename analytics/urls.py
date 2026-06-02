@@ -5,4 +5,5 @@ app_name = 'analytics'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('beacon/', views.beacon, name='beacon'),
 ]

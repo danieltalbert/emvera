@@ -6,11 +6,45 @@ renders the dashboard. The `@staff_member_required` gate means only users with
 is_staff=True (you / admins) can see user-activity statistics; regular users
 never reach it. A `?days=` query param (7/30/90) sets the look-back window.
 """
+import json
+
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from . import insights
 from . import product_analytics as pa
+from .models import PageView
+
+
+# Cap dwell at 30 minutes — a longer "visible" time almost always means a
+# backgrounded/abandoned tab rather than genuine reading.
+MAX_DWELL_MS = 30 * 60 * 1000
+
+
+@csrf_exempt
+@require_POST
+def beacon(request):
+    """Receive a time-on-page beacon and attach dwell time to its PageView.
+
+    Called via navigator.sendBeacon() when the user leaves a page, so it must be
+    CSRF-exempt (beacons can't carry the CSRF cookie/header reliably) and ultra-
+    cheap. We authenticate implicitly by the unguessable per-view token rather
+    than by session, and clamp the reported time. Returns 204 regardless so the
+    browser never retries telemetry.
+    """
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+        token = str(payload.get('token', ''))[:32]
+        dwell = int(payload.get('dwell_ms', 0))
+    except (ValueError, TypeError, UnicodeDecodeError):
+        return HttpResponseBadRequest('bad payload')
+    if token and 0 < dwell <= MAX_DWELL_MS:
+        # update() keeps it to a single cheap UPDATE; matches at most one row.
+        PageView.objects.filter(view_token=token).update(dwell_ms=dwell)
+    return HttpResponse(status=204)
 
 
 ALLOWED_WINDOWS = (7, 30, 90)

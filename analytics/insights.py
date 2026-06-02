@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import timedelta
 
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 from django.utils import timezone
 
 from .models import PageView
@@ -93,13 +93,19 @@ def daily_traffic(days: int = 30) -> dict:
 
 
 def top_pages(days: int = 30, limit: int = 8) -> list[dict]:
-    """Most-viewed paths, with their friendly section label."""
+    """Most-viewed paths, with their section and average time-on-page.
+
+    avg_dwell_s is computed only over views that received a client beacon
+    (dwell_ms > 0), so it reflects real reading time, not page-view count.
+    """
     since = timezone.now() - timedelta(days=days)
     rows = (PageView.objects.filter(timestamp__gte=since)
             .values('path', 'section')
-            .annotate(c=Count('id'))
+            .annotate(c=Count('id'),
+                      avg_dwell=Avg('dwell_ms', filter=Q(dwell_ms__gt=0)))
             .order_by('-c')[:limit])
-    return [{'path': r['path'], 'section': r['section'], 'count': r['c']} for r in rows]
+    return [{'path': r['path'], 'section': r['section'], 'count': r['c'],
+             'avg_dwell_s': round((r['avg_dwell'] or 0) / 1000, 1)} for r in rows]
 
 
 def section_breakdown(days: int = 30) -> list[dict]:

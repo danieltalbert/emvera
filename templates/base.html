@@ -25,6 +25,9 @@
 
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
   {% block extra_css %}{% endblock %}
+
+  {# Per-view token for the time-on-page beacon (see the script before </body>). #}
+  {% if request.analytics_view_token %}<meta name="emv-view" content="{{ request.analytics_view_token }}">{% endif %}
 </head>
 <body>
 
@@ -490,6 +493,47 @@
   } else {
     countEls.forEach(animateCount);
   }
+})();
+</script>
+
+<!-- ===================================================================
+     Time-on-page beacon. Measures *visible* dwell time (pauses while the tab
+     is hidden) and sends it once when the user leaves, via sendBeacon so it
+     survives unload without delaying navigation. Pure enhancement: no effect
+     on the page, and it silently no-ops if the view token is absent.
+     =================================================================== -->
+<script>
+(function () {
+  var meta = document.querySelector('meta[name="emv-view"]');
+  if (!meta || !meta.content) return;
+  var token = meta.content;
+  var visibleMs = 0;
+  var lastStart = (document.visibilityState === 'visible') ? Date.now() : null;
+  var sent = false;
+
+  function accumulate() {
+    if (lastStart !== null) { visibleMs += Date.now() - lastStart; lastStart = null; }
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') { lastStart = Date.now(); }
+    else { accumulate(); }
+  });
+
+  function send() {
+    if (sent) return;
+    accumulate();
+    if (visibleMs <= 0) return;
+    sent = true;
+    var body = JSON.stringify({ token: token, dwell_ms: Math.round(visibleMs) });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('{% url "analytics:beacon" %}', new Blob([body], { type: 'application/json' }));
+    }
+  }
+  // pagehide is the most reliable "leaving" signal across browsers.
+  window.addEventListener('pagehide', send);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') send();
+  });
 })();
 </script>
 
