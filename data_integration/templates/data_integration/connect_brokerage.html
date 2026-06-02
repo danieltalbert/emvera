@@ -1,53 +1,98 @@
 {% extends 'base.html' %}
 {% block title %}Link Brokerage — Emvera{% endblock %}
 {% block breadcrumb_current %}Link Brokerage{% endblock %}
+{% block nav_brokerage %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+  .broker-chips { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-4); }
+  .broker-chip {
+    font-size: var(--text-xs); font-weight: var(--font-semibold);
+    padding: var(--sp-1) var(--sp-3); border-radius: var(--r-full);
+    background: rgba(255,255,255,0.14); color: #fff; backdrop-filter: blur(4px);
+  }
+  .link-row {
+    display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);
+    padding: var(--sp-3) 0; border-bottom: 1px solid var(--color-border-light);
+  }
+  .link-row:last-child { border-bottom: none; }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>Link a brokerage account</h1>
-  <p class="text-muted">
-    Connect a brokerage you already have (Robinhood, Schwab, Fidelity, Webull, …)
-    to track real holdings — the investing equivalent of connecting your bank.
-  </p>
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Link a brokerage</h1>
+      <p class="page-subtitle">Connect a brokerage you already have to track real holdings automatically.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="trade-hero reveal" style="margin-bottom:var(--sp-6);background:linear-gradient(135deg,var(--slate-800),var(--forest-700));color:#fff;border-radius:var(--r-2xl);padding:var(--sp-8);position:relative;overflow:hidden;box-shadow:var(--shadow-lg);">
+  <div style="position:relative;z-index:1;max-width:560px;">
+    <div style="font-size:var(--text-xs);text-transform:uppercase;letter-spacing:0.1em;opacity:0.7;font-weight:var(--font-semibold);">Powered by SnapTrade</div>
+    <h2 style="font-size:var(--text-2xl);font-weight:var(--font-bold);margin:var(--sp-2) 0;">Your investments, all in one place</h2>
+    <p style="opacity:0.85;margin:0;">
+      Securely connect an existing brokerage — the investing equivalent of linking your bank.
+      Emvera reads your holdings so your portfolio, projections, and competitions reflect real positions.
+    </p>
+    <div class="broker-chips">
+      <span class="broker-chip">Robinhood</span>
+      <span class="broker-chip">Charles Schwab</span>
+      <span class="broker-chip">Fidelity</span>
+      <span class="broker-chip">Webull</span>
+      <span class="broker-chip">E*TRADE</span>
+      <span class="broker-chip">+ more</span>
+    </div>
+  </div>
 </div>
 
 {% if not snaptrade_configured %}
-<div class="card" style="border-left:4px solid var(--color-accent);">
-  <strong>Brokerage linking isn't connected yet.</strong>
-  <p class="text-muted" style="margin:var(--sp-2) 0 0;">
-    This feature is fully built but needs a SnapTrade account. Add
-    <code>SNAPTRADE_CLIENT_ID</code> and <code>SNAPTRADE_CONSUMER_KEY</code>
-    (see <code>.env.example</code>) to turn it on. SnapTrade is the aggregator
-    that reads holdings from existing brokerages; Alpaca (used elsewhere) is a
-    broker/market-data provider and can't do this on its own.
-  </p>
+<div class="card reveal reveal-delay-1" style="border-left:4px solid var(--color-accent);">
+  <div class="card-body">
+    <strong>Brokerage linking isn't connected yet.</strong>
+    <p class="text-muted" style="margin:var(--sp-2) 0 0;">
+      This feature is fully built but needs a SnapTrade account. Add
+      <code>SNAPTRADE_CLIENT_ID</code> and <code>SNAPTRADE_CONSUMER_KEY</code>
+      (see <code>.env.example</code>) to turn it on. SnapTrade is the aggregator
+      that reads holdings from existing brokerages; Alpaca (used elsewhere) is a
+      broker/market-data provider and can't do this on its own.
+    </p>
+  </div>
 </div>
 {% else %}
-<div class="card" style="margin-bottom:var(--sp-4);">
-  <h2>Connect</h2>
-  <p class="text-muted">Authorize a brokerage through SnapTrade's secure portal.</p>
-  {% if portal_url %}
-    <a href="{{ portal_url }}" class="btn btn-primary">Open connection portal →</a>
-  {% endif %}
+<div class="card reveal reveal-delay-1" style="margin-bottom:var(--sp-6);">
+  <div class="card-header"><div class="card-title">Connect</div></div>
+  <div class="card-body">
+    <p class="text-muted" style="margin-top:0;">Authorize a brokerage through SnapTrade's secure portal.</p>
+    {% if portal_url %}
+      <a href="{{ portal_url }}" class="btn btn-primary btn-lg">Open connection portal →</a>
+    {% endif %}
+  </div>
 </div>
 
-<div class="card">
-  <h2>Linked accounts</h2>
-  {% if links %}
-    <ul>
+<div class="card reveal reveal-delay-2">
+  <div class="card-header"><div class="card-title">Linked accounts</div></div>
+  <div class="card-body">
+    {% if links %}
       {% for link in links %}
-        <li>{{ link.get_provider_display }} — last synced
-          {% if link.last_synced_at %}{{ link.last_synced_at|date:"M j, Y H:i" }}{% else %}never{% endif %}
-        </li>
+        <div class="link-row">
+          <span class="font-medium">{{ link.get_provider_display }}</span>
+          <span class="text-sm text-muted">
+            last synced {% if link.last_synced_at %}{{ link.last_synced_at|date:"M j, Y H:i" }}{% else %}never{% endif %}
+          </span>
+        </div>
       {% endfor %}
-    </ul>
-    <form method="post" action="{% url 'data_integration:sync_brokerage' %}">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-secondary">Sync holdings now</button>
-    </form>
-  {% else %}
-    <p class="text-muted">No brokerages linked yet.</p>
-  {% endif %}
+      <form method="post" action="{% url 'data_integration:sync_brokerage' %}" style="margin-top:var(--sp-4);">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary">Sync holdings now</button>
+      </form>
+    {% else %}
+      <p class="text-muted" style="margin:0;">No brokerages linked yet.</p>
+    {% endif %}
+  </div>
 </div>
 {% endif %}
 {% endblock %}
