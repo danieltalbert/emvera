@@ -236,6 +236,21 @@
           <span>Paper Trading</span>
         </a>
       </div>
+
+      {# Staff-only: user-activity analytics + ML insights dashboard. #}
+      {% if user.is_staff %}
+      <div class="nav-section">
+        <span class="nav-label">Admin</span>
+        <a href="{% url 'analytics:dashboard' %}"
+           class="nav-item {% block nav_analytics %}{% endblock %}">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M3 3v14h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M6 12l3-4 3 2 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>User Analytics</span>
+        </a>
+      </div>
+      {% endif %}
     </div>
 
     <!-- Sidebar footer: user info -->

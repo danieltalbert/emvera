@@ -31,6 +31,16 @@ apps build on top of them.
   `PaperPosition`, `PaperOrder`). Users trade with virtual cash priced by live
   market data. Decoupled from `competition` but ready to power it later. See
   "Optional integrations" below.
+- **analytics/** — staff-only user-activity dashboard with hand-rolled ML.
+  `PageViewMiddleware` logs each viewer page hit to `PageView` (privacy-conscious:
+  anonymous visitors are a salted session hash, never an IP). `ml.py` implements
+  the fundamentals in pure Python — least-squares linear regression (trend +
+  forecast), z-score anomaly detection, and k-means clustering (user
+  segmentation) — with no numpy/sklearn dependency so it runs offline. `insights.py`
+  turns `PageView` rows into dashboard structures; the dashboard (gated by
+  `is_staff`) shows KPIs, a traffic/trend/forecast chart with anomaly markers, top
+  pages, a section donut, a weekday×hour heatmap, and ML-derived segments. Seed
+  demo data with `python manage.py seed_analytics`.
 
 ## Data flow
 

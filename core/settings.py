@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'debt_management',
     'competition',
     'paper_trading',
+    'analytics',
 ]
 
 MIDDLEWARE = [
@@ -58,6 +59,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Records viewer page views for the staff analytics dashboard. Placed last
+    # so it sees the final response (status/content-type) and auth state.
+    'analytics.middleware.PageViewMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
