@@ -7,4 +7,6 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('beacon/', views.beacon, name='beacon'),
     path('alerts/<int:pk>/ack/', views.acknowledge_alert, name='acknowledge_alert'),
+    path('export.csv', views.export_csv, name='export_csv'),
+    path('export.pdf', views.export_pdf, name='export_pdf'),
 ]

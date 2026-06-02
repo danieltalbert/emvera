@@ -36,3 +36,7 @@ cryptography
 # SnapTrade — link an existing brokerage account (optional; only needed once
 # SNAPTRADE_CLIENT_ID is set). See data_integration/snaptrade_client.py.
 # snaptrade-python-sdk
+
+# reportlab — optional: enables PDF export of the analytics report. CSV export
+# works without it. See analytics/reporting.py.
+# reportlab

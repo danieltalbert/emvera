@@ -18,6 +18,8 @@ from . import insights
 from . import product_analytics as pa
 from . import experiments as exp_runtime
 from . import features
+from . import reporting
+from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.utils import timezone
 
@@ -87,8 +89,39 @@ def dashboard(request):
         # Persisted anomaly alerts (unacknowledged first).
         'alerts': AnomalyAlert.objects.order_by('acknowledged', '-date')[:10],
         'open_alert_count': AnomalyAlert.objects.filter(acknowledged=False).count(),
+        'pdf_available': reporting.pdf_available(),
     }
     return render(request, 'analytics/dashboard.html', context)
+
+
+@staff_member_required
+def export_csv(request):
+    """Download the analytics report as CSV (native; always available)."""
+    days = _window(request)
+    resp = HttpResponse(reporting.report_csv(days), content_type='text/csv')
+    resp['Content-Disposition'] = f'attachment; filename="emvera-analytics-{days}d.csv"'
+    return resp
+
+
+@staff_member_required
+def export_pdf(request):
+    """Download the report as PDF when reportlab is installed; else explain how."""
+    days = _window(request)
+    if not reporting.pdf_available():
+        messages.info(request, 'PDF export needs reportlab — run `pip install reportlab`. '
+                               'CSV export works without it.')
+        return redirect(f'{request.path.rsplit("/", 2)[0]}/?days={days}')
+    resp = HttpResponse(reporting.build_pdf(days), content_type='application/pdf')
+    resp['Content-Disposition'] = f'attachment; filename="emvera-analytics-{days}d.pdf"'
+    return resp
+
+
+def _window(request) -> int:
+    try:
+        d = int(request.GET.get('days', 30))
+    except (TypeError, ValueError):
+        d = 30
+    return d if d in ALLOWED_WINDOWS else 30
 
 
 @staff_member_required

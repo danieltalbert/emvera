@@ -42,6 +42,9 @@
           <a href="?days={{ w }}" class="{% if w == days %}active{% endif %}">{{ w }}d</a>
         {% endfor %}
       </div>
+      <a href="{% url 'analytics:export_csv' %}?days={{ days }}" class="btn btn-secondary btn-sm">⬇ CSV</a>
+      <a href="{% url 'analytics:export_pdf' %}?days={{ days }}" class="btn btn-secondary btn-sm"
+         title="{% if not pdf_available %}Install reportlab to enable PDF export{% endif %}">⬇ PDF</a>
     </div>
   </div>
 </div>
