@@ -1,3 +1,6 @@
+"""Heuristic investment-recommendation generator (rebalance, contribute more,
+emergency fund, tax-advantaged accounts). Pure read logic over the user's
+holdings; returns unsaved InvestmentRecommendation objects for the caller."""
 from data_integration.models import Investment, Account, Debt
 from .models import InvestmentRecommendation
 from django.db.models import Sum

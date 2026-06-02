@@ -1,3 +1,12 @@
+"""
+Views for the debt-management app: the debt dashboard, the three payoff
+planners (avalanche / snowball / custom), consolidation suggestions, payment
+reminders, and credit-score tracking.
+
+The financial math (payoff simulation, weighted APR, consolidation heuristics)
+lives in debt_management/utils.py; these views assemble querysets, call those
+helpers, and render. All read the shared Debt model from data_integration.
+"""
 from datetime import date, timedelta
 from decimal import Decimal
 

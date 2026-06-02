@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -8,6 +9,28 @@ from django.urls import reverse
 from data_integration.models import Account, Investment
 
 from .models import InvestmentProjection
+from .visualization_utils import get_portfolio_growth_data
+
+
+class PortfolioGrowthDataTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username='growth', password='x')
+
+    def test_growth_data_shape(self):
+        data = get_portfolio_growth_data(self.user, years=3)
+        self.assertEqual(len(data['labels']), 4)   # year 0..3 inclusive
+        self.assertEqual(len(data['values']), 4)
+
+    def test_growth_data_handles_leap_day(self):
+        # Regression: today.replace(year=...) raises on Feb 29 in a non-leap
+        # target year. Pin "today" to a leap day and ensure it doesn't crash.
+        import investments.visualization_utils as viz
+        with mock.patch.object(viz, 'date') as mock_date:
+            mock_date.today.return_value = date(2024, 2, 29)
+            mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+            data = get_portfolio_growth_data(self.user, years=2)
+        # 2025 has no Feb 29 -> should fall back to Feb 28, not raise.
+        self.assertIn('2025-02-28', data['labels'])
 
 
 class AnnualizedReturnTests(TestCase):

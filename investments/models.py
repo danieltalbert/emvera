@@ -1,4 +1,13 @@
+"""
+Investments app models.
 
+These layer analysis on top of the shared `Investment` model owned by
+data_integration:
+- InvestmentRecommendation: a generated suggestion (rebalance, contribute more,
+  etc.) optionally tied to a specific holding.
+- InvestmentProjection: a future value estimate for a holding on a target date,
+  with a helper to derive the annualized return (CAGR).
+"""
 from django.db import models
 from data_integration.models import Investment, Account
 from django.conf import settings
