@@ -460,32 +460,53 @@ class LogisticRegression:
     loss_history: list[float] = field(default_factory=list)
 
     def fit(self, X: list[list[float]], y: list[int], lr: float = 0.1,
-            epochs: int = 500, l2: float = 0.0) -> 'LogisticRegression':
+            epochs: int = 500, l2: float = 0.0,
+            class_weight: str | None = None) -> 'LogisticRegression':
+        """Train by gradient descent on (optionally class-weighted) BCE.
+
+        `class_weight='balanced'` weights each class inversely to its frequency
+        (weight = n / (2·n_class)), the standard fix for imbalanced data: it
+        stops the model from trivially predicting the majority class and ignoring
+        the rare-but-important minority (e.g. churners). Without it, a 10%-churn
+        dataset happily converges to "nobody churns" at 90% accuracy.
+        """
         if not X:
             return self
         n, d = len(X), len(X[0])
         self.n_features = d
         self.weights = [0.0] * d
         self.bias = 0.0
+
+        # Per-class weights (default 1.0 each unless 'balanced').
+        w_pos = w_neg = 1.0
+        if class_weight == 'balanced':
+            n_pos = sum(y) or 1
+            n_neg = (n - sum(y)) or 1
+            w_pos = n / (2.0 * n_pos)
+            w_neg = n / (2.0 * n_neg)
+
         for _ in range(epochs):
             grad_w = [0.0] * d
             grad_b = 0.0
             total_loss = 0.0
+            weight_sum = 0.0
             for xi, yi in zip(X, y):
+                cw = w_pos if yi == 1 else w_neg
                 z = self.bias + sum(self.weights[j] * xi[j] for j in range(d))
                 pred = sigmoid(z)
-                err = pred - yi
+                err = cw * (pred - yi)            # weighted gradient
                 for j in range(d):
                     grad_w[j] += err * xi[j]
                 grad_b += err
-                # Binary cross-entropy, clamped to avoid log(0).
+                # Weighted binary cross-entropy, clamped to avoid log(0).
                 p = min(max(pred, 1e-12), 1 - 1e-12)
-                total_loss += -(yi * math.log(p) + (1 - yi) * math.log(1 - p))
+                total_loss += -cw * (yi * math.log(p) + (1 - yi) * math.log(1 - p))
+                weight_sum += cw
             for j in range(d):
                 # Average gradient + L2 penalty (bias is not regularized).
                 self.weights[j] -= lr * (grad_w[j] / n + l2 * self.weights[j])
             self.bias -= lr * (grad_b / n)
-            self.loss_history.append(total_loss / n)
+            self.loss_history.append(total_loss / weight_sum if weight_sum else 0.0)
         return self
 
     def predict_proba(self, xi: list[float]) -> float:

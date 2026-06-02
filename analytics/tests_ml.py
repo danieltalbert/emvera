@@ -113,6 +113,17 @@ class LogisticRegressionTests(SimpleTestCase):
         self.assertGreater(ml.sigmoid(50), 0.999)
         self.assertLess(ml.sigmoid(-50), 0.001)
 
+    def test_balanced_class_weight_learns_minority(self):
+        # Heavily imbalanced: 18 negatives, 2 positives, but cleanly separable.
+        # Unweighted GD tends to ignore the minority; 'balanced' should catch it.
+        X = [[-2.0 + 0.1 * i] for i in range(18)] + [[5.0], [5.2]]
+        y = [0] * 18 + [1, 1]
+        Xs = ml.standardize(X)
+        bal = ml.LogisticRegression().fit(Xs, y, lr=0.5, epochs=800, class_weight='balanced')
+        # Both true positives should be recovered at the default 0.5 cutoff.
+        self.assertEqual(bal.predict(Xs[-1]), 1)
+        self.assertEqual(bal.predict(Xs[-2]), 1)
+
 
 class MetricsTests(SimpleTestCase):
     def test_confusion_and_derived(self):

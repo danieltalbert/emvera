@@ -55,19 +55,28 @@ class Command(BaseCommand):
         n_visitors = opts['visitors']
         now = timezone.now()
 
-        # Three archetypes -> k-means should recover ~3 segments.
-        #   power: many views, many sections, most days
-        #   regular: moderate
-        #   casual: a handful of views, 1-2 sections
+        # Four archetypes. The first three drive k-means segmentation; the
+        # 'churning' archetype gives the churn model a *learnable behavioral*
+        # signal — they engage shallowly (few sections, few views) AND only in
+        # the first ~40% of the window, then go silent. So low engagement
+        # genuinely predicts going quiet (not via recency, which the model
+        # excludes to avoid leakage).
+        #   power:    many views, many sections, most days, throughout
+        #   regular:  moderate, throughout
+        #   casual:   light, throughout
+        #   churning: light + narrow, active only early in the window
         archetypes = (
             ['power'] * max(1, n_visitors // 10) +
             ['regular'] * max(1, n_visitors // 3) +
+            ['churning'] * max(1, n_visitors // 4) +
             ['casual'] * n_visitors
         )[:n_visitors]
         rng.shuffle(archetypes)
         visitors = [(_hash(f'seed-visitor-{i}'), archetypes[i]) for i in range(n_visitors)]
 
         spike_day = rng.randint(days // 3, days - 3)  # plant one anomaly
+        # Churners stop showing up after this fraction of the window.
+        churn_cutoff_day = int(days * 0.4)
         bulk = []
 
         for d in range(days):
@@ -80,15 +89,18 @@ class Command(BaseCommand):
             day_intensity = trend * weekend * spike
 
             for vhash, kind in visitors:
-                base = {'power': 14, 'regular': 5, 'casual': 1.2}[kind]
-                # Probability this visitor is active today.
-                p_active = {'power': 0.92, 'regular': 0.5, 'casual': 0.18}[kind]
+                # Churners only appear early in the window, then vanish.
+                if kind == 'churning' and d > churn_cutoff_day:
+                    continue
+                base = {'power': 14, 'regular': 5, 'casual': 1.2, 'churning': 1.5}[kind]
+                # Probability this visitor is active on a day they *could* be.
+                p_active = {'power': 0.92, 'regular': 0.5, 'casual': 0.18, 'churning': 0.35}[kind]
                 if rng.random() > p_active:
                     continue
                 n_views = max(1, int(rng.gauss(base, base * 0.4) * day_intensity))
                 n_views = min(n_views, 60)
-                # Which sections this visitor touches.
-                n_sec = {'power': 5, 'regular': 3, 'casual': 1}[kind]
+                # Which sections this visitor touches (churners stay narrow).
+                n_sec = {'power': 5, 'regular': 3, 'casual': 1, 'churning': 1}[kind]
                 visitor_sections = rng.sample(SECTIONS, min(n_sec, len(SECTIONS)))
 
                 for _ in range(n_views):
