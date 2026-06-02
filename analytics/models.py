@@ -59,3 +59,26 @@ class PageView(models.Model):
     def __str__(self):
         who = self.user_id or (self.session_hash[:8] + '…' if self.session_hash else 'anon')
         return f'{self.path} [{who}] @ {self.timestamp:%Y-%m-%d %H:%M}'
+
+
+class VisitorFeatures(models.Model):
+    """Materialized per-visitor feature snapshot (the 'store' in feature store).
+
+    Written by analytics.features.materialize() / the materialize_features
+    command. Lets the dashboard read cached features and supports point-in-time
+    / audit use instead of recomputing the matrix on every request. The feature
+    values live in a JSON blob so adding a feature to FEATURE_REGISTRY needs no
+    schema migration.
+    """
+    class Meta:
+        app_label = 'analytics'
+        ordering = ['-computed_at']
+
+    visitor_key = models.CharField(max_length=80, unique=True, db_index=True)
+    features = models.JSONField(default=dict)
+    recency_days = models.PositiveIntegerField(default=0)
+    window_days = models.PositiveSmallIntegerField(default=30)
+    computed_at = models.DateTimeField(db_index=True)
+
+    def __str__(self):
+        return f'features[{self.visitor_key}] @ {self.computed_at:%Y-%m-%d %H:%M}'

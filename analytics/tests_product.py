@@ -123,4 +123,7 @@ class ChurnModelTests(TestCase):
         # With cleanly separated behavior, ROC-AUC should be well above chance.
         self.assertGreaterEqual(out['report']['roc_auc'], 0.7)
         self.assertIn('importances', out)
-        self.assertEqual(len(out['importances']), 4)  # recency excluded
+        # All feature-store features except the recency label source.
+        from analytics import features as fs
+        self.assertEqual(len(out['importances']), len(fs.FEATURE_NAMES) - 1)
+        self.assertNotIn('recency_days', [imp['feature'] for imp in out['importances']])

@@ -31,6 +31,7 @@ from django.utils import timezone
 from .models import PageView
 from . import ml
 from . import metrics
+from . import features as features_store
 
 
 # A visit ends after this much inactivity — the industry-standard 30 minutes.
@@ -219,63 +220,18 @@ def cohort_retention(weeks: int = 6) -> dict:
 # Per-visitor features (shared by segmentation + churn)
 # ===========================================================================
 def engagement_features(days: int = 30):
-    """Build the per-visitor feature matrix used by clustering and churn.
+    """Thin backward-compatible wrapper over the feature store.
 
-    Single source of truth so segmentation and churn see identical features:
-        [ total_views, distinct_sections, active_days,
-          avg_session_pages, recency_days (days since last seen) ]
-    Returns (visitor_ids, raw_feature_rows, meta) where meta carries the
-    last-seen date per visitor (used to derive the churn label).
+    The canonical per-visitor feature definitions now live in analytics.features
+    (the feature store), so segmentation and churn share one source of truth.
+    Returns (visitor_ids, raw_feature_rows, meta) exactly as before.
     """
-    since = timezone.now() - timedelta(days=days)
-    rows = (PageView.objects.filter(timestamp__gte=since)
-            .exclude(session_hash='', user_id__isnull=True)
-            .values_list('user_id', 'session_hash', 'section', 'timestamp'))
-
-    views = Counter()
-    sections = defaultdict(set)
-    days_active = defaultdict(set)
-    last_seen = {}
-    timestamps = defaultdict(list)
-    for u, s, section, ts in rows:
-        vid = _visitor_id(u, s)
-        views[vid] += 1
-        sections[vid].add(section)
-        days_active[vid].add(ts.date())
-        timestamps[vid].append(ts)
-        if vid not in last_seen or ts > last_seen[vid]:
-            last_seen[vid] = ts
-
-    now = timezone.now()
-    visitor_ids, features, meta = [], [], []
-    for vid in views:
-        ses = _count_sessions(sorted(timestamps[vid]))
-        recency = (now - last_seen[vid]).days
-        visitor_ids.append(vid)
-        features.append([
-            float(views[vid]),
-            float(len(sections[vid])),
-            float(len(days_active[vid])),
-            float(views[vid] / ses) if ses else float(views[vid]),
-            float(recency),
-        ])
-        meta.append({'last_seen': last_seen[vid], 'recency_days': recency})
-    return visitor_ids, features, meta
+    visitor_ids, rows, _names, meta = features_store.build_matrix(days)
+    return visitor_ids, rows, meta
 
 
-def _count_sessions(ts_sorted) -> int:
-    """Number of sessions for one visitor's sorted timestamps (30-min rule)."""
-    if not ts_sorted:
-        return 0
-    sessions = 1
-    for prev, cur in zip(ts_sorted, ts_sorted[1:]):
-        if (cur - prev) > SESSION_TIMEOUT:
-            sessions += 1
-    return sessions
-
-
-FEATURE_NAMES = ['total_views', 'distinct_sections', 'active_days',
-                 'avg_session_pages', 'recency_days']
+# Canonical names come from the feature store registry.
+FEATURE_NAMES = features_store.FEATURE_NAMES
 
 
 # ===========================================================================
@@ -295,17 +251,16 @@ def churn_model(days: int = 30, churn_after_days: int = 7) -> dict:
     honest. Standardized coefficients are returned as feature importances so you
     can see WHICH behaviors predict retention vs. churn.
     """
-    visitor_ids, raw, meta = engagement_features(days)
+    # Pull features from the store, excluding recency (it defines the label, so
+    # including it would be leakage). meta still carries recency for labeling.
+    visitor_ids, X, feat_names, meta = features_store.build_matrix(
+        days, exclude=('recency_days',))
     n = len(visitor_ids)
     if n < 12:
         return {'available': False,
                 'note': f'Need ~12+ distinct visitors to train a churn model (have {n}).'}
 
-    # Label from recency, then exclude recency from the feature inputs (no leak).
     y = [1 if m['recency_days'] >= churn_after_days else 0 for m in meta]
-    recency_idx = FEATURE_NAMES.index('recency_days')
-    feat_names = [f for i, f in enumerate(FEATURE_NAMES) if i != recency_idx]
-    X = [[row[i] for i in range(len(row)) if i != recency_idx] for row in raw]
 
     pos = sum(y)
     if pos == 0 or pos == n:

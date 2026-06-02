@@ -18,6 +18,7 @@ from django.utils import timezone
 
 from .models import PageView
 from . import ml
+from . import features
 
 
 WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -151,62 +152,43 @@ def peak_activity(days: int = 30) -> dict:
 _SEGMENT_NAMES = ['Power users', 'Regulars', 'Casual visitors', 'One-and-done']
 
 
-def user_segments(days: int = 30, k: int = 3) -> dict:
-    """Cluster visitors by behavior using k-means.
+def user_segments(days: int = 30) -> dict:
+    """Cluster visitors by behavior using k-means, with k chosen by silhouette.
 
-    Per-visitor features (a compact, interpretable behavioral fingerprint):
-      [ total_views, distinct_sections, active_days, avg_response_ms ]
-    Features are min-max normalized so one large-magnitude column (e.g. views)
-    doesn't dominate the distance metric. Clusters are then labeled by their
-    average activity so the names are stable and meaningful.
+    Features come from the feature store (analytics.features) — the SAME ones the
+    churn model uses, minus recency (segments describe *how* people engage, not
+    *when* they last did). They're min-max normalized so no single large column
+    dominates the Euclidean distance. Rather than hard-coding k, we run the
+    elbow/silhouette sweep (ml.choose_k_elbow) and use the suggested k — a more
+    principled choice than picking 3 by hand. Clusters are named by activity rank.
     """
-    since = timezone.now() - timedelta(days=days)
-    qs = PageView.objects.filter(timestamp__gte=since)
-
-    # Build per-visitor aggregates keyed by a unified visitor id.
-    views = defaultdict(int)
-    sections = defaultdict(set)
-    active_days = defaultdict(set)
-    resp = defaultdict(list)
-    for pv in qs.values('user_id', 'session_hash', 'section', 'timestamp', 'response_ms'):
-        vid = f'u{pv["user_id"]}' if pv['user_id'] else f's{pv["session_hash"]}'
-        if vid in ('s', 's '):
-            continue
-        views[vid] += 1
-        sections[vid].add(pv['section'])
-        active_days[vid].add(pv['timestamp'].date())
-        resp[vid].append(pv['response_ms'])
-
-    visitor_ids = list(views.keys())
+    visitor_ids, rows, names, _meta = features.build_matrix(days, exclude=('recency_days',))
     if len(visitor_ids) < 2:
         return {'segments': [], 'note': 'Not enough distinct visitors yet to segment.'}
 
-    features = [[
-        float(views[v]),
-        float(len(sections[v])),
-        float(len(active_days[v])),
-        float(sum(resp[v]) / len(resp[v])) if resp[v] else 0.0,
-    ] for v in visitor_ids]
+    normalized = ml.minmax_normalize(rows)
 
-    normalized = ml.minmax_normalize(features)
-    result = ml.kmeans(normalized, k=min(k, len(visitor_ids)))
+    # Principled k: try k=2..4 and take the best silhouette (falls back to 2).
+    elbow = ml.choose_k_elbow(normalized, k_min=2, k_max=min(4, len(visitor_ids)))
+    k = elbow['suggested_k']
+    result = ml.kmeans(normalized, k=k)
+    sil = ml.silhouette_score(normalized, result.labels)
 
     # Summarize each cluster from the ORIGINAL (un-normalized) features.
+    idx = {name: i for i, name in enumerate(names)}
     clusters = defaultdict(list)
-    for idx, label in enumerate(result.labels):
-        clusters[label].append(features[idx])
+    for i, label in enumerate(result.labels):
+        clusters[label].append(rows[i])
 
     summaries = []
-    for label, rows in clusters.items():
-        n = len(rows)
-        avg_views = sum(r[0] for r in rows) / n
-        avg_sections = sum(r[1] for r in rows) / n
-        avg_days = sum(r[2] for r in rows) / n
+    for label, members in clusters.items():
+        m = len(members)
+        avg_views = sum(r[idx['total_views']] for r in members) / m
         summaries.append({
-            'size': n,
+            'size': m,
             'avg_views': round(avg_views, 1),
-            'avg_sections': round(avg_sections, 1),
-            'avg_active_days': round(avg_days, 1),
+            'avg_sections': round(sum(r[idx['distinct_sections']] for r in members) / m, 1),
+            'avg_active_days': round(sum(r[idx['active_days']] for r in members) / m, 1),
             '_rank': avg_views,
         })
 
@@ -219,9 +201,7 @@ def user_segments(days: int = 30, k: int = 3) -> dict:
     return {
         'segments': summaries,
         'total_visitors': len(visitor_ids),
-        'k': result_k(result),
+        'k': k,
+        'silhouette': round(sil, 3),
+        'elbow': elbow['metrics'],
     }
-
-
-def result_k(result) -> int:
-    return len([s for s in result.sizes if s > 0]) if result.sizes else 0
