@@ -20,6 +20,7 @@ from . import experiments as exp_runtime
 from . import features
 from . import reporting
 from . import conversion
+from . import health
 from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.utils import timezone
@@ -86,6 +87,7 @@ def dashboard(request):
         'cohorts': pa.cohort_retention(min(8, max(2, days // 7 + 1))),
         'churn': pa.churn_model(days),
         'conversion': conversion.conversion_model(days),
+        'health': health.engagement_health(days),
         'paths': pa.transition_matrix(days),
         # A/B experiments + the feature catalog (self-documentation).
         'experiments': exp_runtime.all_results(),

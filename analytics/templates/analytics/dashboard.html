@@ -431,6 +431,53 @@
   </div>
 </div>
 
+<!-- Engagement health -->
+{% if health.available %}
+<div class="card reveal" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Engagement Health</div>
+      <div class="card-subtitle">RFM-style 0–100 score per visitor · avg {{ health.avg_score }} · {{ health.at_risk_count }} at risk</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <!-- Band distribution bar -->
+    <div style="display:flex;height:28px;border-radius:var(--r-md);overflow:hidden;margin-bottom:var(--sp-5);">
+      {% for b in health.distribution %}
+      {% if b.count %}
+      <div title="{{ b.band }}: {{ b.count }}"
+           style="flex:{{ b.count }};display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);color:#fff;
+           background:{% if b.band == 'Champion' %}var(--forest-600){% elif b.band == 'Engaged' %}var(--teal-500){% elif b.band == 'Casual' %}var(--slate-400){% elif b.band == 'At risk' %}var(--amber-500){% else %}var(--stone-400){% endif %};">
+        {% if b.count > 1 %}{{ b.count }}{% endif %}
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    <div style="display:flex;gap:var(--sp-3);flex-wrap:wrap;font-size:var(--text-xs);margin-bottom:var(--sp-5);">
+      {% for b in health.distribution %}
+      <span class="text-muted">{{ b.band }}: <span class="font-mono">{{ b.count }}</span></span>
+      {% endfor %}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6);">
+      <div>
+        <div class="ml-tag" style="margin-bottom:var(--sp-2);">🏆 Champions</div>
+        <table class="data-table"><thead><tr><th>Visitor</th><th class="num">Score</th><th class="num">Active days</th></tr></thead>
+          <tbody>{% for s in health.champions %}<tr><td class="font-mono text-xs">{{ s.visitor }}…</td><td class="num font-mono">{{ s.score }}</td><td class="num font-mono">{{ s.active_days }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+      <div>
+        <div class="ml-tag" style="margin-bottom:var(--sp-2);">⚠ At risk</div>
+        {% if health.at_risk %}
+        <table class="data-table"><thead><tr><th>Visitor</th><th class="num">Score</th><th class="num">Days idle</th></tr></thead>
+          <tbody>{% for s in health.at_risk %}<tr><td class="font-mono text-xs">{{ s.visitor }}…</td><td class="num font-mono">{{ s.score }}</td><td class="num font-mono">{{ s.recency_days }}</td></tr>{% endfor %}</tbody>
+        </table>
+        {% else %}<p class="text-muted text-sm">No at-risk visitors — nice.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Conversion drivers (ML) -->
 <div class="card reveal" style="margin-bottom:var(--sp-6);">
   <div class="card-header">
