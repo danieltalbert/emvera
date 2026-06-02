@@ -76,6 +76,8 @@ def dashboard(request):
         'live': insights.live_activity(30),
         'traffic': insights.daily_traffic(days),
         'weekly_pattern': insights.weekly_pattern(days),
+        'stickiness': insights.stickiness(),
+        'retention_curve': insights.retention_curve(days),
         'top_pages': insights.top_pages(days),
         'sections': insights.section_breakdown(days),
         'heatmap': insights.hourly_heatmap(days),

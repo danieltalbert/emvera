@@ -322,6 +322,31 @@
   </div>
 </div>
 
+<!-- Stickiness + retention curve -->
+<div style="display:grid;grid-template-columns:340px 1fr;gap:var(--sp-6);margin-bottom:var(--sp-6);align-items:start;">
+  <div class="card reveal">
+    <div class="card-header"><div class="card-title">Stickiness</div></div>
+    <div class="card-body">
+      <div style="display:flex;justify-content:space-between;padding:var(--sp-2) 0;border-bottom:1px solid var(--color-border-light);">
+        <span class="text-muted">DAU <span class="text-xs">(avg/day)</span></span><span class="font-mono font-semibold">{{ stickiness.dau }}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:var(--sp-2) 0;border-bottom:1px solid var(--color-border-light);">
+        <span class="text-muted">WAU <span class="text-xs">(7d)</span></span><span class="font-mono font-semibold">{{ stickiness.wau }}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:var(--sp-2) 0;border-bottom:1px solid var(--color-border-light);">
+        <span class="text-muted">MAU <span class="text-xs">(30d)</span></span><span class="font-mono font-semibold">{{ stickiness.mau }}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:var(--sp-3) 0 0;">
+        <span class="font-medium">Stickiness <span class="text-xs text-muted">DAU/MAU</span></span>
+        <span class="font-mono font-bold" style="color:var(--color-accent);">{% widthratio stickiness.stickiness 1 100 %}%</span></div>
+    </div>
+  </div>
+  <div class="card reveal reveal-delay-1">
+    <div class="card-header"><div>
+      <div class="card-title">Retention Curve</div>
+      <div class="card-subtitle">Of visitors who could return on day N, the % that did. Day 0 = 100%.</div>
+    </div></div>
+    <div class="card-body"><div style="height:220px;"><canvas id="retentionChart"></canvas></div></div>
+  </div>
+</div>
+
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6);margin-bottom:var(--sp-6);align-items:start;">
   <!-- Conversion funnel -->
   <div class="card reveal">
@@ -675,6 +700,7 @@
 {{ sections|json_script:"section-data" }}
 {{ heatmap|json_script:"heat-data" }}
 {{ sessions.depth_distribution|json_script:"depth-data" }}
+{{ retention_curve.curve|json_script:"retention-data" }}
 {% endblock %}
 
 {% block extra_js %}
@@ -778,6 +804,25 @@
     }
     setInterval(refresh, 15000);  // every 15s
   })();
+
+  // ---- Retention curve.
+  var retEl = document.getElementById('retentionChart');
+  var retData = JSON.parse(document.getElementById('retention-data').textContent);
+  if (retEl && retData.length) {
+    new Chart(retEl, {
+      type: 'line',
+      data: { labels: retData.map(function (d) { return 'Day ' + d.day; }),
+        datasets: [{ data: retData.map(function (d) { return Math.round(d.retention * 100); }),
+          borderColor: accent, backgroundColor: 'rgba(61,157,152,0.12)', fill: true,
+          tension: 0.3, pointRadius: 3, pointBackgroundColor: accent }] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: function (c) { return c.parsed.y + '% retained'; } } } },
+        scales: { x: { grid: { display: false }, ticks: { color: muted, font: { size: 10 } } },
+                  y: { grid: { color: grid }, ticks: { color: muted, font: { size: 10 }, callback: function (v) { return v + '%'; } },
+                       beginAtZero: true, max: 100 } } }
+    });
+  }
 
   // ---- Session-depth bar chart.
   var depthEl = document.getElementById('depthChart');

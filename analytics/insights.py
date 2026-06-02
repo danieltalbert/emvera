@@ -102,6 +102,75 @@ def daily_traffic(days: int = 30) -> dict:
     }
 
 
+def stickiness() -> dict:
+    """DAU / WAU / MAU and the stickiness ratio (DAU÷MAU).
+
+    The canonical "is the product becoming a habit?" metric. DAU is the average
+    distinct visitors per active day; WAU/MAU are distinct visitors over the last
+    7/30 days. Stickiness = DAU/MAU (≈ what fraction of monthly users show up on
+    a given day) — higher is stickier. Always computed over a fixed 30-day
+    window, independent of the dashboard's selected range.
+    """
+    now = timezone.now()
+    end = now.date()
+    since = end - timedelta(days=29)
+    rows = (PageView.objects.filter(timestamp__date__gte=since)
+            .exclude(session_hash='', user_id__isnull=True)
+            .values_list('user_id', 'session_hash', 'timestamp'))
+    by_day = defaultdict(set)
+    last7, last30 = set(), set()
+    week_cut = end - timedelta(days=6)
+    for uid, sh, ts in rows:
+        vid = f'u{uid}' if uid else f's{sh}'
+        d = ts.date()
+        by_day[d].add(vid)
+        last30.add(vid)
+        if d >= week_cut:
+            last7.add(vid)
+    dau = (sum(len(v) for v in by_day.values()) / len(by_day)) if by_day else 0.0
+    mau = len(last30)
+    return {'dau': round(dau, 1), 'wau': len(last7), 'mau': mau,
+            'stickiness': round(dau / mau, 3) if mau else 0.0}
+
+
+def retention_curve(days: int = 30) -> dict:
+    """Day-N retention: of visitors who could have returned on day N after their
+    first visit, what fraction did?
+
+    For each offset (0,1,2,3,7,14,21,28 within the window) we count visitors
+    whose first-seen date is at least N days before the window end (so they had
+    the *chance* to return) and check whether they were active on day first+N.
+    Day 0 is 100% by definition — a good sanity anchor.
+    """
+    now = timezone.now()
+    end = now.date()
+    since = end - timedelta(days=days - 1)
+    rows = (PageView.objects.filter(timestamp__date__gte=since)
+            .exclude(session_hash='', user_id__isnull=True)
+            .values_list('user_id', 'session_hash', 'timestamp'))
+    active = defaultdict(set)
+    first = {}
+    for uid, sh, ts in rows:
+        vid = f'u{uid}' if uid else f's{sh}'
+        d = ts.date()
+        active[vid].add(d)
+        if vid not in first or d < first[vid]:
+            first[vid] = d
+
+    offsets = [o for o in (0, 1, 2, 3, 7, 14, 21, 28) if o < days]
+    curve = []
+    for n in offsets:
+        eligible = [vid for vid, fd in first.items() if fd <= end - timedelta(days=n)]
+        if not eligible:
+            curve.append({'day': n, 'retention': 0.0, 'eligible': 0})
+            continue
+        returned = sum(1 for vid in eligible
+                       if (first[vid] + timedelta(days=n)) in active[vid])
+        curve.append({'day': n, 'retention': round(returned / len(eligible), 3),
+                      'eligible': len(eligible)})
+    return {'curve': curve}
+
+
 def live_activity(minutes: int = 30) -> dict:
     """Near-real-time snapshot: who's active right now + a recent-events feed.
 
