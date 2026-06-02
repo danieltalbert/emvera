@@ -49,6 +49,44 @@
   </div>
 </div>
 
+<!-- Live activity (auto-refreshing) -->
+<div class="card reveal" id="live-card" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div class="card-title">
+      <span class="live-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green-500);margin-right:6px;" id="live-pulse"></span>
+      Live Activity
+    </div>
+    <span class="card-subtitle">Last 30 minutes · refreshes automatically</span>
+  </div>
+  <div class="card-body">
+    <div style="display:flex;gap:var(--sp-8);flex-wrap:wrap;margin-bottom:var(--sp-4);">
+      <div>
+        <div class="stat-label">Active visitors</div>
+        <div class="stat-value" id="live-active">{{ live.active_visitors }}</div>
+      </div>
+      <div>
+        <div class="stat-label">Views (30 min)</div>
+        <div class="stat-value" id="live-views">{{ live.views_in_window }}</div>
+      </div>
+      <div>
+        <div class="stat-label">Views today</div>
+        <div class="stat-value" id="live-today">{{ live.today_views }}</div>
+      </div>
+    </div>
+    <div class="ml-tag" style="margin-bottom:var(--sp-2);">Recent activity</div>
+    <ul id="live-feed" style="list-style:none;padding:0;margin:0;font-size:var(--text-sm);">
+      {% for r in live.recent %}
+      <li style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--color-border-light);">
+        <span><span class="badge badge-teal">{{ r.section }}</span> <span class="font-mono text-muted">{{ r.path }}</span></span>
+        <span class="text-muted text-xs">{{ r.ago_s }}s ago</span>
+      </li>
+      {% empty %}
+      <li class="text-muted">No activity in the last 30 minutes.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
 <!-- KPIs -->
 <div class="card-grid card-grid-4" style="margin-bottom:var(--sp-6);">
   <div class="stat-card teal hover-lift">
@@ -664,6 +702,35 @@
     // Blend transparent -> accent using rgba alpha for a clean heat ramp.
     cell.style.background = t === 0 ? '' : 'rgba(61,157,152,' + (0.12 + 0.78 * t).toFixed(3) + ')';
   });
+
+  // ---- Live activity: poll the JSON endpoint and refresh the panel in place.
+  (function () {
+    var pulse = document.getElementById('live-pulse');
+    function refresh() {
+      fetch('{% url "analytics:api_live" %}?minutes=30', { headers: { 'X-Requested-With': 'fetch' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d) return;
+          document.getElementById('live-active').textContent = d.active_visitors;
+          document.getElementById('live-views').textContent = d.views_in_window;
+          document.getElementById('live-today').textContent = d.today_views;
+          var feed = document.getElementById('live-feed');
+          if (d.recent && d.recent.length) {
+            feed.innerHTML = d.recent.map(function (r) {
+              return '<li style="display:flex;justify-content:space-between;padding:4px 0;'
+                + 'border-bottom:1px solid var(--color-border-light);">'
+                + '<span><span class="badge badge-teal">' + r.section + '</span> '
+                + '<span class="font-mono text-muted">' + r.path + '</span></span>'
+                + '<span class="text-muted text-xs">' + r.ago_s + 's ago</span></li>';
+            }).join('');
+          }
+          // Blink the pulse dot to signal a fresh poll.
+          if (pulse) { pulse.style.opacity = '0.3'; setTimeout(function () { pulse.style.opacity = '1'; }, 300); }
+        })
+        .catch(function () { /* transient; try again next tick */ });
+    }
+    setInterval(refresh, 15000);  // every 15s
+  })();
 
   // ---- Session-depth bar chart.
   var depthEl = document.getElementById('depthChart');

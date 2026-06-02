@@ -102,6 +102,35 @@ def daily_traffic(days: int = 30) -> dict:
     }
 
 
+def live_activity(minutes: int = 30) -> dict:
+    """Near-real-time snapshot: who's active right now + a recent-events feed.
+
+    Powers the auto-refreshing 'Live' panel. 'Active' = distinct visitors with a
+    page view in the last `minutes`. Also returns today's running view total and
+    the most recent events (path, section, seconds-ago) for a live ticker.
+    """
+    now = timezone.now()
+    since = now - timedelta(minutes=minutes)
+    window = PageView.objects.filter(timestamp__gte=since)
+    real = window.exclude(session_hash='', user_id__isnull=True)
+    users = real.filter(is_authenticated=True).values('user').distinct().count()
+    anon = real.filter(is_authenticated=False).values('session_hash').distinct().count()
+
+    recent = list(window.order_by('-timestamp')[:12]
+                  .values('path', 'section', 'timestamp', 'is_authenticated'))
+    feed = [{'path': r['path'], 'section': r['section'],
+             'ago_s': max(0, int((now - r['timestamp']).total_seconds())),
+             'auth': r['is_authenticated']} for r in recent]
+
+    return {
+        'window_min': minutes,
+        'active_visitors': users + anon,
+        'views_in_window': window.count(),
+        'today_views': PageView.objects.filter(timestamp__date=now.date()).count(),
+        'recent': feed,
+    }
+
+
 def weekly_pattern(days: int = 30) -> dict:
     """Day-of-week effect: each weekday's average daily views vs the overall mean.
 

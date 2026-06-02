@@ -72,6 +72,7 @@ def dashboard(request):
         'windows': ALLOWED_WINDOWS,
         # Descriptive insights (insights.py)
         'kpis': insights.kpis(days),
+        'live': insights.live_activity(30),
         'traffic': insights.daily_traffic(days),
         'weekly_pattern': insights.weekly_pattern(days),
         'top_pages': insights.top_pages(days),
@@ -117,6 +118,18 @@ def export_pdf(request):
     resp = HttpResponse(reporting.build_pdf(days), content_type='application/pdf')
     resp['Content-Disposition'] = f'attachment; filename="emvera-analytics-{days}d.pdf"'
     return resp
+
+
+@staff_member_required
+def api_live(request):
+    """Staff-only JSON for the auto-refreshing live-activity panel."""
+    from django.http import JsonResponse
+    try:
+        minutes = int(request.GET.get('minutes', 30))
+    except (TypeError, ValueError):
+        minutes = 30
+    minutes = min(max(minutes, 1), 240)
+    return JsonResponse(insights.live_activity(minutes))
 
 
 @staff_member_required
