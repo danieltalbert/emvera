@@ -21,23 +21,36 @@ flowchart TB
     subgraph Request path
         U[Visitor request] --> MW[PageViewMiddleware]
         MW --> V[Viewer page response]
+        V -. "sendBeacon dwell time" .-> BE[beacon endpoint]
     end
     MW -- "append-only INSERT" --> PV[(PageView table)]
+    BE -- "UPDATE dwell_ms by token" --> PV
 
     subgraph "Insight layer (read-only)"
+        PV --> FS[features.py<br/>feature store]
         PV --> INS[insights.py<br/>descriptive]
-        PV --> PA[product_analytics.py<br/>behavioral / predictive]
-        INS --> ML[ml.py<br/>regression · kmeans · logistic]
-        PA --> ML
+        PV --> PA[product_analytics.py<br/>sessions · funnel · cohorts · churn]
+        FS --> PA
+        FS --> INS
+        PA --> ML[ml.py<br/>regression · kmeans++ · logistic]
+        INS --> ML
         PA --> MET[metrics.py<br/>train/test · ROC-AUC · F1]
+        AB[ab_test.py<br/>z-test · Bayesian] --> EXP[experiments.py]
     end
 
     INS --> VIEW["views.dashboard<br/>staff_member_required"]
     PA --> VIEW
+    EXP --> VIEW
+    AL[(AnomalyAlert)] --> VIEW
     VIEW --> TPL[dashboard.html<br/>Chart.js + design system]
+    VIEW --> REP[reporting.py<br/>CSV always · PDF if reportlab]
     TPL --> STAFF[Staff user]
+    REP --> STAFF
 
-    SEED[seed_analytics<br/>management command] -. "synthetic demo data" .-> PV
+    SEED[seed_analytics] -. "synthetic demo data" .-> PV
+    CHK[check_anomalies<br/>scheduled] -- "raises" --> AL
+    MAT[materialize_features<br/>scheduled] -. "caches" .-> VF[(VisitorFeatures)]
+    FS --> VF
 ```
 
 ---
@@ -50,25 +63,48 @@ pre-extracted at write time so grouping is a cheap `GROUP BY`.
 ```mermaid
 erDiagram
     CUSTOM_USER ||--o{ PAGE_VIEW : "generates (when signed in)"
+    EXPERIMENT ||--o{ EXPERIMENT_ASSIGNMENT : "buckets visitors"
     PAGE_VIEW {
         bigint   id PK
         int      user_id FK "null for anonymous"
         string   session_hash "salted SHA-256, never the raw key/IP"
         string   path
         string   section "friendly group, e.g. 'Investments'"
-        string   method
-        smallint status_code
         int      response_ms
         bool     is_authenticated
+        string   view_token "per-view id for the dwell beacon"
+        int      dwell_ms "time-on-page from the client beacon"
         datetime timestamp
         smallint hour "0-23 UTC, denormalized"
         smallint weekday "0=Mon..6=Sun, denormalized"
     }
+    VISITOR_FEATURES {
+        string visitor_key PK "materialized feature snapshot"
+        json   features "name -> value (from FEATURE_REGISTRY)"
+        int    recency_days
+        datetime computed_at
+    }
+    EXPERIMENT {
+        string key PK "stable id used for hashing"
+        string name
+        string status "running | stopped"
+    }
+    EXPERIMENT_ASSIGNMENT {
+        int    experiment_id FK
+        string visitor_key
+        smallint variant "0=control, 1=variant"
+        bool   converted
+    }
+    ANOMALY_ALERT {
+        string metric
+        date   date "unique with metric (dedup)"
+        float  z_score
+        string direction "spike | dip"
+        bool   acknowledged
+    }
     CUSTOM_USER {
         int     id PK
-        string  username
         bool    is_staff "gates the dashboard"
-        bool    two_factor_enabled
     }
 ```
 
@@ -261,10 +297,10 @@ mindmap
       KPIs
       Daily traffic
         OLS trend + r²
-        Linear forecast
+        Linear / Holt forecast
         Z-score anomalies
       Top pages
-      Section donut
+        Time-on-page (beacon)
       Activity heatmap
       Peak timing
     Behavioral
@@ -272,17 +308,29 @@ mindmap
         Bounce rate
         Depth histogram
       Activation funnel
-        Per-step drop-off
       Cohort retention
       Markov path analysis
     Predictive / ML
+      Feature store
+        named registry
+        materialized cache
       User segments
-        k-means++ 
+        k-means++
         silhouette / elbow
       Churn risk
         Logistic regression
-        Held-out evaluation
-        Feature importance
+        Class-balanced
+        Held-out eval
+    Experimentation
+      A/B testing
+        two-proportion z-test
+        Bayesian P(B>A)
+        sample-size calc
+    Operations
+      Anomaly alerting
+        persist + email
+      Report export
+        CSV / PDF
 ```
 
 ---
@@ -291,16 +339,22 @@ mindmap
 
 | Concern | File |
 | --- | --- |
-| Event capture | `analytics/middleware.py` |
-| Event schema | `analytics/models.py` |
+| Event capture + dwell token | `analytics/middleware.py` |
+| Event schema + models | `analytics/models.py` |
 | ML fundamentals | `analytics/ml.py` |
 | Model evaluation | `analytics/metrics.py` |
+| Feature store | `analytics/features.py` |
 | Descriptive insights | `analytics/insights.py` |
 | Behavioral / predictive | `analytics/product_analytics.py` |
-| Dashboard view (staff-gated) | `analytics/views.py` |
+| A/B statistics | `analytics/ab_test.py` |
+| A/B runtime | `analytics/experiments.py` |
+| Report export (CSV/PDF) | `analytics/reporting.py` |
+| Dashboard + beacon + export views | `analytics/views.py` |
 | Dashboard UI | `analytics/templates/analytics/dashboard.html` |
-| Demo data | `analytics/management/commands/seed_analytics.py` |
-| Tests | `analytics/tests.py`, `tests_ml.py`, `tests_product.py` |
+| Demo data | `management/commands/seed_analytics.py` |
+| Anomaly alerting (cron) | `management/commands/check_anomalies.py` |
+| Feature materialization (cron) | `management/commands/materialize_features.py` |
+| Tests | `analytics/tests*.py` (8 modules, 81 cases) |
 
 Run the demo locally:
 
