@@ -98,3 +98,8 @@ python manage.py test
 - [ARCHITECTURE.md](ARCHITECTURE.md) — apps, data model, and request flow.
 - [DEPLOYMENT.md](DEPLOYMENT.md) — Docker, environment variables, CI/CD, and
   switching to Postgres.
+- [docs/system-architecture.md](docs/system-architecture.md) — whole-app UML:
+  component map, domain ER, class diagrams, request lifecycle, integration states.
+- [docs/analytics-architecture.md](docs/analytics-architecture.md) — the
+  analytics/ML subsystem: component flow, ML class diagrams, the churn-model
+  pipeline, and the insight catalog (all UML).
