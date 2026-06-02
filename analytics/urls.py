@@ -9,4 +9,5 @@ urlpatterns = [
     path('alerts/<int:pk>/ack/', views.acknowledge_alert, name='acknowledge_alert'),
     path('export.csv', views.export_csv, name='export_csv'),
     path('export.pdf', views.export_pdf, name='export_pdf'),
+    path('api/metrics/', views.api_metrics, name='api_metrics'),
 ]

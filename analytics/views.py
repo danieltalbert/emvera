@@ -119,6 +119,39 @@ def export_pdf(request):
     return resp
 
 
+@staff_member_required
+def api_metrics(request):
+    """Staff-only JSON snapshot of headline metrics — for external dashboards,
+    monitoring, or Slack bots. Mirrors the dashboard's key numbers in a compact,
+    machine-readable shape. ?days=7|30|90."""
+    from django.http import JsonResponse
+    days = _window(request)
+    k = insights.kpis(days)
+    t = insights.daily_traffic(days)
+    churn = pa.churn_model(days)
+    return JsonResponse({
+        'window_days': days,
+        'generated_at': timezone.now().isoformat(),
+        'kpis': k,
+        'trend': {
+            'direction': t['trend_direction'], 'per_day': t['trend_per_day'],
+            'r_squared': t['r_squared'], 'seasonal_adjusted': t['seasonal_adjusted'],
+        },
+        'forecast_next7': t['forecast'],
+        'open_anomaly_alerts': AnomalyAlert.objects.filter(acknowledged=False).count(),
+        'churn': {
+            'available': churn.get('available', False),
+            'rate': churn.get('churn_rate'),
+            'roc_auc': churn['report']['roc_auc'] if churn.get('available') else None,
+        },
+        'experiments': [
+            {'name': e['experiment'].name, 'significant': e['significant'],
+             'p_value': e['p_value'], 'prob_b_beats_a': e['prob_b_beats_a']}
+            for e in exp_runtime.all_results()
+        ],
+    })
+
+
 def _window(request) -> int:
     try:
         d = int(request.GET.get('days', 30))
