@@ -382,6 +382,38 @@
   </div>
 </div>
 
+<!-- Funnel by segment -->
+<div class="card reveal" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Funnel by Engagement Tier</div>
+      <div class="card-subtitle">Same activation funnel, split by how many days the visitor was active. Shows whether stalls are a funnel or acquisition problem.</div>
+    </div>
+  </div>
+  <div class="card-body" style="overflow-x:auto;">
+    <table class="data-table" style="min-width:520px;">
+      <thead><tr><th>Tier</th><th class="num">Visitors</th>
+        {% for label in funnel_by_segment.step_labels %}<th class="num">{{ label }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+        {% for seg in funnel_by_segment.segments %}
+        {% if seg.size %}
+        <tr>
+          <td class="text-sm font-medium">{{ seg.segment }}</td>
+          <td class="num font-mono">{{ seg.size }}</td>
+          {% for st in seg.steps %}
+          <td class="num" style="background:rgba(61,157,152,{{ st.pct }});color:{% if st.pct > 0.5 %}#fff{% else %}var(--color-text-primary){% endif %};font-family:var(--font-mono);font-size:var(--text-xs);">
+            {% widthratio st.pct 1 100 %}%
+          </td>
+          {% endfor %}
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <!-- Churn prediction (ML) -->
 <div class="card reveal" style="margin-bottom:var(--sp-6);">
   <div class="card-header">

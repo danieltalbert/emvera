@@ -170,6 +170,61 @@ def funnel(days: int = 30, steps=None) -> dict:
     return {'steps': out_steps, 'top_of_funnel': top}
 
 
+def funnel_by_segment(days: int = 30, steps=None) -> dict:
+    """The activation funnel split by engagement tier (New / Returning / Loyal).
+
+    Tier is derived from active-days (a dimension independent of the funnel steps
+    themselves, so the split isn't circular): 1 day = New, 2-3 = Returning, 4+ =
+    Loyal. Reveals, e.g., that loyal visitors march through the funnel while
+    one-day visitors stall at the top — telling you whether the problem is the
+    funnel or acquisition quality.
+    """
+    steps = steps or DEFAULT_FUNNEL
+    since = timezone.now() - timedelta(days=days)
+    rows = (PageView.objects.filter(timestamp__gte=since)
+            .exclude(session_hash='', user_id__isnull=True)
+            .values_list('user_id', 'session_hash', 'path', 'timestamp'))
+
+    paths = defaultdict(set)
+    active_days = defaultdict(set)
+    for uid, sh, path, ts in rows:
+        vid = _visitor_id(uid, sh)
+        paths[vid].add(path)
+        active_days[vid].add(ts.date())
+
+    def tier(vid):
+        n = len(active_days[vid])
+        if n >= 4:
+            return 'Loyal (4+ days)'
+        if n >= 2:
+            return 'Returning (2–3 days)'
+        return 'New (1 day)'
+
+    order = ['New (1 day)', 'Returning (2–3 days)', 'Loyal (4+ days)']
+    members = defaultdict(list)
+    for vid in paths:
+        members[tier(vid)].append(vid)
+
+    out_segments = []
+    for seg in order:
+        seg_members = members.get(seg, [])
+        counts = [0] * len(steps)
+        for vid in seg_members:
+            for k, (_, fragment) in enumerate(steps):
+                if any(fragment in p for p in paths[vid]):
+                    counts[k] += 1
+                else:
+                    break
+        top = counts[0] if counts else 0
+        out_segments.append({
+            'segment': seg, 'size': len(seg_members),
+            'steps': [{'label': steps[k][0], 'count': counts[k],
+                       'pct': round(counts[k] / top, 3) if top else 0.0}
+                      for k in range(len(steps))],
+        })
+    return {'segments': out_segments, 'step_labels': [label for label, _ in steps]}
+
+
 # ===========================================================================
 # Cohort retention
 # ===========================================================================

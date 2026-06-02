@@ -87,6 +87,7 @@ def dashboard(request):
         # Behavioral / predictive insights (product_analytics.py)
         'sessions': pa.sessionize(days),
         'funnel': pa.funnel(days),
+        'funnel_by_segment': pa.funnel_by_segment(days),
         'cohorts': pa.cohort_retention(min(8, max(2, days // 7 + 1))),
         'churn': pa.churn_model(days),
         'conversion': conversion.conversion_model(days),
