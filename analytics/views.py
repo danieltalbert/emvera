@@ -10,6 +10,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
 from . import insights
+from . import product_analytics as pa
 
 
 ALLOWED_WINDOWS = (7, 30, 90)
@@ -27,6 +28,7 @@ def dashboard(request):
     context = {
         'days': days,
         'windows': ALLOWED_WINDOWS,
+        # Descriptive insights (insights.py)
         'kpis': insights.kpis(days),
         'traffic': insights.daily_traffic(days),
         'top_pages': insights.top_pages(days),
@@ -34,5 +36,11 @@ def dashboard(request):
         'heatmap': insights.hourly_heatmap(days),
         'peak': insights.peak_activity(days),
         'segments': insights.user_segments(days),
+        # Behavioral / predictive insights (product_analytics.py)
+        'sessions': pa.sessionize(days),
+        'funnel': pa.funnel(days),
+        'cohorts': pa.cohort_retention(min(8, max(2, days // 7 + 1))),
+        'churn': pa.churn_model(days),
+        'paths': pa.transition_matrix(days),
     }
     return render(request, 'analytics/dashboard.html', context)

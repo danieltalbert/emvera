@@ -188,9 +188,205 @@
   </div>
 </div>
 
+<!-- Session quality -->
+<div class="card-grid card-grid-4" style="margin-bottom:var(--sp-6);">
+  <div class="stat-card teal hover-lift">
+    <span class="stat-label">Sessions</span>
+    <div class="stat-value" data-countup="{{ sessions.sessions }}">{{ sessions.sessions }}</div>
+    <div class="stat-meta"><span>30-min inactivity window</span></div>
+  </div>
+  <div class="stat-card blue hover-lift">
+    <span class="stat-label">Pages / Session</span>
+    <div class="stat-value" data-countup="{{ sessions.avg_pages }}" data-decimals="2">{{ sessions.avg_pages }}</div>
+    <div class="stat-meta"><span>Engagement depth</span></div>
+  </div>
+  <div class="stat-card amber hover-lift">
+    <span class="stat-label">Avg Duration</span>
+    <div class="stat-value" data-countup="{{ sessions.avg_duration_min }}" data-decimals="1" data-suffix=" min">{{ sessions.avg_duration_min }} min</div>
+    <div class="stat-meta"><span>Time on site</span></div>
+  </div>
+  <div class="stat-card red hover-lift">
+    <span class="stat-label">Bounce Rate</span>
+    <div class="stat-value" data-countup="{{ sessions.bounce_rate }}" data-decimals="2">{{ sessions.bounce_rate }}</div>
+    <div class="stat-meta"><span>Single-page sessions</span></div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6);margin-bottom:var(--sp-6);align-items:start;">
+  <!-- Conversion funnel -->
+  <div class="card reveal">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Activation Funnel</div>
+        <div class="card-subtitle">Sequential conversion through the core journey. {{ funnel.top_of_funnel }} visitors entered.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      {% for step in funnel.steps %}
+      <div style="margin-bottom:var(--sp-3);">
+        <div style="display:flex;justify-content:space-between;font-size:var(--text-sm);margin-bottom:4px;">
+          <span class="font-medium">{{ step.label }}</span>
+          <span class="font-mono text-muted">{{ step.count }} · {{ step.conversion_from_top|floatformat:0 }}%
+            {% widthratio step.conversion_from_top 1 100 as pct %}</span>
+        </div>
+        <div class="progress-track" style="height:10px;background:var(--color-surface-alt);border-radius:var(--r-full);overflow:hidden;">
+          <div style="height:100%;border-radius:var(--r-full);background:linear-gradient(90deg,var(--teal-500),var(--forest-500));width:{% widthratio step.conversion_from_top 1 100 %}%;transition:width 1s var(--ease-spring);"></div>
+        </div>
+        {% if step.dropoff_from_prev and not forloop.first %}
+        <div class="text-xs" style="color:var(--red-600);margin-top:2px;">▼ {% widthratio step.dropoff_from_prev 1 100 %}% drop-off from previous step</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Session depth distribution -->
+  <div class="card reveal reveal-delay-1">
+    <div class="card-header"><div class="card-title">Session Depth</div></div>
+    <div class="card-body"><div style="height:240px;"><canvas id="depthChart"></canvas></div></div>
+  </div>
+</div>
+
+<!-- Churn prediction (ML) -->
+<div class="card reveal" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Churn Risk Model</div>
+      <div class="card-subtitle">
+        <span class="ml-tag">ML · logistic regression</span>
+        Predicts who is likely to go quiet (no visit in {{ churn.churn_after_days }}+ days), trained &amp; evaluated on held-out data.
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if churn.available %}
+    <div class="card-grid card-grid-4" style="margin-bottom:var(--sp-5);">
+      <div class="stat-card red">
+        <span class="stat-label">Churn Rate</span>
+        <div class="stat-value" data-countup="{{ churn.churn_rate }}" data-decimals="2">{{ churn.churn_rate }}</div>
+      </div>
+      <div class="stat-card teal">
+        <span class="stat-label">ROC-AUC</span>
+        <div class="stat-value" data-countup="{{ churn.report.roc_auc }}" data-decimals="3">{{ churn.report.roc_auc }}</div>
+        <div class="stat-meta"><span>Ranking quality (0.5=chance)</span></div>
+      </div>
+      <div class="stat-card green">
+        <span class="stat-label">Precision / Recall</span>
+        <div class="stat-value" style="font-size:var(--text-xl);">{{ churn.report.precision }} / {{ churn.report.recall }}</div>
+        <div class="stat-meta"><span>F1 = {{ churn.report.f1 }}</span></div>
+      </div>
+      <div class="stat-card blue">
+        <span class="stat-label">Test Set</span>
+        <div class="stat-value" data-countup="{{ churn.report.n_test }}">{{ churn.report.n_test }}</div>
+        <div class="stat-meta"><span>Held-out visitors</span></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6);">
+      <div>
+        <div class="ml-tag" style="margin-bottom:var(--sp-2);">What drives retention vs. churn</div>
+        <p class="text-xs text-muted" style="margin-bottom:var(--sp-3);">Standardized coefficients — negative means more of this behavior predicts <em>staying</em>.</p>
+        {% for imp in churn.importances %}
+        <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-2);">
+          <span class="font-mono text-sm" style="width:150px;">{{ imp.feature }}</span>
+          <div style="flex:1;height:8px;background:var(--color-surface-alt);border-radius:var(--r-full);position:relative;">
+            <div style="position:absolute;top:0;height:100%;border-radius:var(--r-full);
+                 {% if imp.weight < 0 %}right:50%;background:var(--green-500);{% else %}left:50%;background:var(--red-500);{% endif %}
+                 width:{{ imp.weight_pct }}%;"></div>
+          </div>
+          <span class="font-mono text-sm" style="width:54px;text-align:right;color:{% if imp.weight < 0 %}var(--green-600){% else %}var(--red-600){% endif %};">{{ imp.weight }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div>
+        <div class="ml-tag" style="margin-bottom:var(--sp-2);">Highest-risk visitors</div>
+        <table class="data-table"><thead><tr><th>Visitor</th><th class="num">Risk</th><th class="num">Days idle</th></tr></thead>
+          <tbody>
+            {% for v in churn.at_risk_top %}
+            <tr>
+              <td class="font-mono text-xs">{{ v.visitor }}…</td>
+              <td class="num"><span class="badge {% if v.risk >= 0.6 %}badge-muted{% else %}badge-teal{% endif %}" style="{% if v.risk >= 0.6 %}background:var(--color-danger-light);color:var(--red-700);{% endif %}">{{ v.risk }}</span></td>
+              <td class="num font-mono">{{ v.recency_days }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-title">Not enough data to model churn yet</div>
+      <p class="empty-desc">{{ churn.note }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Cohort retention -->
+<div class="card reveal" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Cohort Retention</div>
+      <div class="card-subtitle">Each row is a weekly sign-up cohort; cells show the % returning in later weeks. Stickiness at a glance.</div>
+    </div>
+  </div>
+  <div class="card-body" style="overflow-x:auto;">
+    <table class="data-table" style="min-width:520px;">
+      <thead><tr><th>Cohort</th><th class="num">Size</th>
+        {% for w in cohorts.week_headers %}<th class="num">Wk {{ w }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+        {% for row in cohorts.cohorts %}
+        {% if row.size %}
+        <tr>
+          <td class="text-sm">Week {{ row.cohort_week }}</td>
+          <td class="num font-mono">{{ row.size }}</td>
+          {% for r in row.retention %}
+          <td class="num" style="background:rgba(61,157,152,{{ r }});color:{% if r > 0.5 %}#fff{% else %}var(--color-text-primary){% endif %};font-family:var(--font-mono);font-size:var(--text-xs);">
+            {% widthratio r 1 100 %}%
+          </td>
+          {% endfor %}
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Path / Markov transitions -->
+<div class="card reveal" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Top Navigation Paths</div>
+      <div class="card-subtitle"><span class="ml-tag">Markov</span> Most common page-to-page moves within a session — where users actually go next.</div>
+    </div>
+  </div>
+  {% if paths.transitions %}
+  <div class="table-wrap" style="border:none;border-radius:0;">
+    <table class="data-table">
+      <thead><tr><th>From</th><th></th><th>To</th><th class="num">Transitions</th><th class="num">Share</th></tr></thead>
+      <tbody>
+        {% for t in paths.transitions %}
+        <tr>
+          <td class="font-mono text-sm">{{ t.from }}</td>
+          <td style="color:var(--color-accent);">→</td>
+          <td class="font-mono text-sm">{{ t.to }}</td>
+          <td class="num font-mono">{{ t.count }}</td>
+          <td class="num font-mono text-muted">{% widthratio t.count paths.total_transitions 100 %}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-title">No multi-page sessions yet</div></div>
+  {% endif %}
+</div>
+
 {{ traffic|json_script:"traffic-data" }}
 {{ sections|json_script:"section-data" }}
 {{ heatmap|json_script:"heat-data" }}
+{{ sessions.depth_distribution|json_script:"depth-data" }}
 {% endblock %}
 
 {% block extra_js %}
@@ -265,6 +461,22 @@
     // Blend transparent -> accent using rgba alpha for a clean heat ramp.
     cell.style.background = t === 0 ? '' : 'rgba(61,157,152,' + (0.12 + 0.78 * t).toFixed(3) + ')';
   });
+
+  // ---- Session-depth bar chart.
+  var depthEl = document.getElementById('depthChart');
+  var depthData = JSON.parse(document.getElementById('depth-data').textContent);
+  if (depthEl && depthData.length) {
+    new Chart(depthEl, {
+      type: 'bar',
+      data: { labels: depthData.map(function (d) { return d.label; }),
+        datasets: [{ data: depthData.map(function (d) { return d.count; }),
+          backgroundColor: accent, borderRadius: 6 }] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false }, ticks: { color: muted, font: { size: 10 } } },
+                  y: { grid: { color: grid }, ticks: { color: muted, font: { size: 10 } }, beginAtZero: true } } }
+    });
+  }
 })();
 </script>
 {% endblock %}

@@ -212,7 +212,7 @@ def cohort_retention(weeks: int = 6) -> dict:
             returned = sum(1 for vid in members if (c + w) in active_weeks[vid])
             row.append(round(returned / size, 3))
         matrix.append({'cohort_week': c, 'size': size, 'retention': row})
-    return {'cohorts': matrix, 'weeks': weeks}
+    return {'cohorts': matrix, 'weeks': weeks, 'week_headers': list(range(weeks))}
 
 
 # ===========================================================================
@@ -333,12 +333,14 @@ def churn_model(days: int = 30, churn_after_days: int = 7) -> dict:
     test_scores = [model.predict_proba(xi) for xi in Xte]
     report = metrics.evaluate_classifier(yte, test_scores, threshold=best_threshold)
 
-    # Standardized weights = feature importance (sign shows direction).
-    importances = sorted(
-        ({'feature': feat_names[j], 'weight': round(model.weights[j], 3)}
-         for j in range(len(feat_names))),
-        key=lambda d: abs(d['weight']), reverse=True,
-    )
+    # Standardized weights = feature importance (sign shows direction). Add a
+    # 0-50 bar width (% of the largest |weight|) for the template's diverging bar.
+    raw_imps = [{'feature': feat_names[j], 'weight': round(model.weights[j], 3)}
+                for j in range(len(feat_names))]
+    max_abs = max((abs(d['weight']) for d in raw_imps), default=1.0) or 1.0
+    for d in raw_imps:
+        d['weight_pct'] = round(abs(d['weight']) / max_abs * 50, 1)  # half-width (diverging)
+    importances = sorted(raw_imps, key=lambda d: abs(d['weight']), reverse=True)
 
     # Score every current visitor; surface those most at risk.
     at_risk = []
