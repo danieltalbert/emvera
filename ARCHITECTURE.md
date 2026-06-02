@@ -31,16 +31,21 @@ apps build on top of them.
   `PaperPosition`, `PaperOrder`). Users trade with virtual cash priced by live
   market data. Decoupled from `competition` but ready to power it later. See
   "Optional integrations" below.
-- **analytics/** — staff-only user-activity dashboard with hand-rolled ML.
-  `PageViewMiddleware` logs each viewer page hit to `PageView` (privacy-conscious:
-  anonymous visitors are a salted session hash, never an IP). `ml.py` implements
-  the fundamentals in pure Python — least-squares linear regression (trend +
-  forecast), z-score anomaly detection, and k-means clustering (user
-  segmentation) — with no numpy/sklearn dependency so it runs offline. `insights.py`
-  turns `PageView` rows into dashboard structures; the dashboard (gated by
-  `is_staff`) shows KPIs, a traffic/trend/forecast chart with anomaly markers, top
-  pages, a section donut, a weekday×hour heatmap, and ML-derived segments. Seed
-  demo data with `python manage.py seed_analytics`.
+- **analytics/** — staff-only user-activity platform with hand-rolled ML (pure
+  Python, no numpy/sklearn, runs offline). `PageViewMiddleware` logs each viewer
+  page hit to `PageView` (privacy-conscious: anonymous visitors are a salted
+  session hash, never an IP) plus client-beacon dwell time. The ML/stats library
+  (`ml.py`, `metrics.py`, `ab_test.py`) covers linear/logistic regression with
+  honest held-out evaluation (ROC-AUC/F1), k-means++ with silhouette, seasonal
+  decomposition, Kaplan-Meier survival, and A/B significance (z-test + Bayesian).
+  On top of that: a **feature store**, **churn** and **conversion** models,
+  **engagement health** scoring, **funnels/cohorts/retention/stickiness**,
+  **anomaly alerting** (emailed, scheduled), **A/B experiments** with a
+  sequential-testing guardrail, **CSV/PDF reports**, **JSON + live APIs**, and a
+  real-time activity panel. The dashboard is gated by `is_staff`; full design is
+  documented with UML in [docs/analytics-architecture.md](docs/analytics-architecture.md).
+  Seed demo data with `python manage.py seed_analytics`; run periodic jobs with
+  `python manage.py run_analytics_jobs`.
 
 ## Data flow
 

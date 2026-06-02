@@ -295,42 +295,48 @@ mindmap
   root((Analytics))
     Descriptive
       KPIs
+      Live activity (polling)
       Daily traffic
         OLS trend + r²
-        Linear / Holt forecast
-        Z-score anomalies
-      Top pages
-        Time-on-page (beacon)
+        Seasonal / Holt forecast
+        Deseasonalized anomalies
+      Weekly pattern
+      Stickiness DAU/WAU/MAU
+      Retention curve
+      Performance p50/p90/p99
+      Top pages + time-on-page
       Activity heatmap
-      Peak timing
     Behavioral
       Sessionization
-        Bounce rate
-        Depth histogram
+        Bounce / depth
       Activation funnel
+        by engagement tier
       Cohort retention
+      Survival (Kaplan-Meier)
       Markov path analysis
     Predictive / ML
       Feature store
         named registry
         materialized cache
       User segments
-        k-means++
-        silhouette / elbow
+        k-means++ / silhouette
       Churn risk
-        Logistic regression
-        Class-balanced
-        Held-out eval
+        logistic, class-balanced
+      Conversion drivers
+        propensity + correlation
+      Engagement health (RFM)
     Experimentation
       A/B testing
-        two-proportion z-test
-        Bayesian P(B>A)
+        z-test + Bayesian
         sample-size calc
+      Sequential guardrail
+        peeking warning
+      Per-experiment detail
     Operations
-      Anomaly alerting
-        persist + email
-      Report export
-        CSV / PDF
+      Anomaly alerting (email)
+      Scheduled jobs runner
+      JSON metrics + live API
+      Report export CSV / PDF
 ```
 
 ---
@@ -341,20 +347,23 @@ mindmap
 | --- | --- |
 | Event capture + dwell token | `analytics/middleware.py` |
 | Event schema + models | `analytics/models.py` |
-| ML fundamentals | `analytics/ml.py` |
-| Model evaluation | `analytics/metrics.py` |
+| ML fundamentals (regression, k-means++, logistic, KM, percentile, seasonal) | `analytics/ml.py` |
+| Model evaluation (split, CV, ROC-AUC, F1) | `analytics/metrics.py` |
 | Feature store | `analytics/features.py` |
-| Descriptive insights | `analytics/insights.py` |
-| Behavioral / predictive | `analytics/product_analytics.py` |
+| Descriptive insights (traffic, seasonality, stickiness, retention, performance, live) | `analytics/insights.py` |
+| Behavioral / predictive (sessions, funnel, cohorts, churn, paths, survival) | `analytics/product_analytics.py` |
+| Conversion propensity + drivers | `analytics/conversion.py` |
+| Engagement health (RFM) | `analytics/health.py` |
 | A/B statistics | `analytics/ab_test.py` |
-| A/B runtime | `analytics/experiments.py` |
+| A/B runtime + sequential guardrail | `analytics/experiments.py` |
 | Report export (CSV/PDF) | `analytics/reporting.py` |
-| Dashboard + beacon + export views | `analytics/views.py` |
+| Views (dashboard, beacon, exports, JSON APIs, experiment detail) | `analytics/views.py` |
 | Dashboard UI | `analytics/templates/analytics/dashboard.html` |
 | Demo data | `management/commands/seed_analytics.py` |
 | Anomaly alerting (cron) | `management/commands/check_anomalies.py` |
 | Feature materialization (cron) | `management/commands/materialize_features.py` |
-| Tests | `analytics/tests*.py` (8 modules, 81 cases) |
+| All scheduled jobs (one entry point) | `management/commands/run_analytics_jobs.py` |
+| Tests | `analytics/tests*.py` (17 modules, 130+ cases) |
 
 Run the demo locally:
 
