@@ -140,3 +140,31 @@ class ExperimentAssignment(models.Model):
     def __str__(self):
         arm = 'B' if self.variant else 'A'
         return f'{self.experiment.key}:{arm} {self.visitor_key[:8]} conv={self.converted}'
+
+
+class AnomalyAlert(models.Model):
+    """A persisted traffic anomaly, raised by the check_anomalies command.
+
+    Detection (z-score on daily counts) is deduplicated by (metric, date) so the
+    same day is only ever raised once. Staff acknowledge alerts from the
+    dashboard once handled. This is the durable record behind alerting/emailing.
+    """
+    DIR_SPIKE = 'spike'
+    DIR_DIP = 'dip'
+
+    class Meta:
+        app_label = 'analytics'
+        ordering = ['-date']
+        unique_together = ('metric', 'date')
+
+    metric = models.CharField(max_length=40, default='daily_traffic')
+    date = models.DateField()
+    value = models.FloatField()
+    z_score = models.FloatField()
+    direction = models.CharField(max_length=8)
+    detected_at = models.DateTimeField(auto_now_add=True)
+    acknowledged = models.BooleanField(default=False)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f'{self.direction} in {self.metric} on {self.date} (z={self.z_score:.1f})'

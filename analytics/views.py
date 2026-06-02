@@ -18,7 +18,10 @@ from . import insights
 from . import product_analytics as pa
 from . import experiments as exp_runtime
 from . import features
-from .models import PageView
+from django.shortcuts import redirect, get_object_or_404
+from django.utils import timezone
+
+from .models import PageView, AnomalyAlert
 
 
 # Cap dwell at 30 minutes — a longer "visible" time almost always means a
@@ -81,5 +84,20 @@ def dashboard(request):
         # A/B experiments + the feature catalog (self-documentation).
         'experiments': exp_runtime.all_results(),
         'feature_catalog': features.feature_catalog(),
+        # Persisted anomaly alerts (unacknowledged first).
+        'alerts': AnomalyAlert.objects.order_by('acknowledged', '-date')[:10],
+        'open_alert_count': AnomalyAlert.objects.filter(acknowledged=False).count(),
     }
     return render(request, 'analytics/dashboard.html', context)
+
+
+@staff_member_required
+@require_POST
+def acknowledge_alert(request, pk):
+    """Mark an anomaly alert as handled (staff only)."""
+    alert = get_object_or_404(AnomalyAlert, pk=pk)
+    if not alert.acknowledged:
+        alert.acknowledged = True
+        alert.acknowledged_at = timezone.now()
+        alert.save(update_fields=['acknowledged', 'acknowledged_at'])
+    return redirect(request.META.get('HTTP_REFERER') or 'analytics:dashboard')

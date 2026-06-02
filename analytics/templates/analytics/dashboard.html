@@ -70,6 +70,44 @@
   </div>
 </div>
 
+<!-- Anomaly alerts (persisted by the check_anomalies command) -->
+{% if alerts %}
+<div class="card reveal" style="margin-bottom:var(--sp-6);{% if open_alert_count %}border-left:4px solid var(--color-warning);{% endif %}">
+  <div class="card-header">
+    <div class="card-title">
+      Anomaly Alerts
+      {% if open_alert_count %}<span class="badge" style="background:var(--color-warning-light);color:var(--amber-700);">{{ open_alert_count }} open</span>{% endif %}
+    </div>
+    <span class="card-subtitle">Raised by <code>manage.py check_anomalies</code> (z-score on daily traffic).</span>
+  </div>
+  <div class="table-wrap" style="border:none;border-radius:0;">
+    <table class="data-table">
+      <thead><tr><th>Date</th><th>Type</th><th class="num">Views</th><th class="num">z</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for a in alerts %}
+        <tr {% if a.acknowledged %}style="opacity:0.5;"{% endif %}>
+          <td class="text-sm">{{ a.date|date:"M j, Y" }}</td>
+          <td><span class="badge {% if a.direction == 'spike' %}badge-teal{% else %}badge-muted{% endif %}"
+               style="{% if a.direction == 'dip' %}background:var(--color-danger-light);color:var(--red-700);{% endif %}">{{ a.direction }}</span></td>
+          <td class="num font-mono">{{ a.value|floatformat:0 }}</td>
+          <td class="num font-mono">{{ a.z_score|floatformat:2 }}</td>
+          <td>
+            {% if a.acknowledged %}<span class="text-xs text-muted">acknowledged</span>
+            {% else %}
+            <form method="post" action="{% url 'analytics:acknowledge_alert' a.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-ghost btn-sm">Acknowledge</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <!-- Traffic + ML forecast -->
 <div class="card reveal" style="margin-bottom:var(--sp-6);">
   <div class="card-header">
