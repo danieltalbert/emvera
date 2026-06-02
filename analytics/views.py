@@ -174,6 +174,16 @@ def _window(request) -> int:
 
 
 @staff_member_required
+def experiment_detail(request, key):
+    """Single-experiment detail with the sequential-testing guardrail."""
+    from .models import Experiment
+    experiment = get_object_or_404(Experiment, key=key)
+    return render(request, 'analytics/experiment_detail.html', {
+        'r': exp_runtime.experiment_detail(experiment),
+    })
+
+
+@staff_member_required
 @require_POST
 def acknowledge_alert(request, pk):
     """Mark an anomaly alert as handled (staff only)."""

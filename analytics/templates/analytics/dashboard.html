@@ -565,7 +565,7 @@
       <div style="padding:var(--sp-4) 0;border-bottom:1px solid var(--color-border-light);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);flex-wrap:wrap;">
           <div>
-            <span class="font-medium">{{ e.experiment.name }}</span>
+            <a href="{% url 'analytics:experiment_detail' e.experiment.key %}" class="font-medium">{{ e.experiment.name }}</a>
             {% if e.significant %}
               <span class="badge badge-teal" style="background:var(--color-success-light);color:var(--green-700);">Significant (p={{ e.p_value }})</span>
             {% elif e.enough_data %}

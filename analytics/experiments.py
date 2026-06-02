@@ -89,3 +89,48 @@ def results(experiment: Experiment) -> dict:
 def all_results() -> list[dict]:
     """Results for every experiment, newest first (for the dashboard)."""
     return [results(exp) for exp in Experiment.objects.all()]
+
+
+def sequential_guardrail(res: dict) -> dict:
+    """Turn a results dict into peeking-aware guidance ("can I call this yet?").
+
+    The classic A/B trap is *peeking*: repeatedly checking and stopping the
+    moment p<0.05 inflates false positives badly. The fix is to size the test up
+    front and not decide until you reach it. We estimate the required per-arm n
+    for the *currently observed* effect (floored at a 1pt MDE so it stays finite)
+    and compare progress, then issue one of four honest verdicts.
+    """
+    baseline = res['control']['rate']
+    observed_mde = abs(res['variant']['rate'] - res['control']['rate'])
+    mde = max(observed_mde, 0.01)
+    required = ab_test.required_sample_size(baseline, mde) if baseline > 0 else 0
+    current = min(res['control']['n'], res['variant']['n'])
+    progress = min(1.0, current / required) if required else (1.0 if current >= 30 else 0.0)
+    powered = required > 0 and current >= required
+
+    if res['significant'] and powered:
+        verdict, level = 'Significant and adequately powered — safe to call.', 'good'
+    elif res['significant'] and not powered:
+        verdict, level = ('Significant, but underpowered — peeking risk. Collect to the '
+                          'target sample before deciding.'), 'warn'
+    elif not res['significant'] and powered:
+        verdict, level = 'Adequately powered; no significant difference detected.', 'neutral'
+    else:
+        verdict, level = 'Inconclusive — keep collecting data.', 'neutral'
+
+    return {
+        'required_per_arm': required,
+        'current_per_arm': current,
+        'progress': round(progress, 3),
+        'powered': powered,
+        'verdict': verdict,
+        'level': level,
+        'remaining': max(0, required - current),
+    }
+
+
+def experiment_detail(experiment: Experiment) -> dict:
+    """Full results for one experiment + the sequential guardrail (detail page)."""
+    res = results(experiment)
+    res['guardrail'] = sequential_guardrail(res)
+    return res
