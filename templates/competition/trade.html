@@ -1,89 +1,188 @@
 {% extends 'base.html' %}
 {% block title %}Trade — {{ competition.name }} — Emvera{% endblock %}
 {% block breadcrumb_current %}Trade{% endblock %}
+{% block nav_competition %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Shared trading-desk styling with the paper-trading dashboard, themed for
+     a live competition (goal progress front and center). */
+  .trade-hero {
+    position: relative; overflow: hidden;
+    background: linear-gradient(135deg, var(--slate-800) 0%, var(--teal-800) 100%);
+    color: #fff; border-radius: var(--r-2xl); padding: var(--sp-8); box-shadow: var(--shadow-lg);
+  }
+  .trade-hero::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(120% 120% at 100% 0%, rgba(91,191,185,0.35), transparent 55%);
+    pointer-events: none;
+  }
+  .trade-hero .eyebrow { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; font-weight: var(--font-semibold); }
+  .trade-hero .equity { font-family: var(--font-mono); font-size: var(--text-4xl); font-weight: var(--font-bold); letter-spacing: -0.03em; line-height: 1.05; margin-top: var(--sp-2); }
+  .trade-hero .sub { display:flex; gap: var(--sp-5); margin-top: var(--sp-4); flex-wrap: wrap; }
+  .trade-hero .sub-item .k { font-size: var(--text-xs); opacity: 0.7; }
+  .trade-hero .sub-item .v { font-family: var(--font-mono); font-size: var(--text-lg); font-weight: var(--font-semibold); }
+
+  /* Goal progress bar inside the hero */
+  .goal-track { margin-top: var(--sp-5); height: 8px; border-radius: var(--r-full); background: rgba(255,255,255,0.18); overflow: hidden; }
+  .goal-fill { height: 100%; border-radius: var(--r-full); background: linear-gradient(90deg, #5BBFB9, #B8F0C8);
+               transition: width 1.1s var(--ease-spring); }
+
+  .side-toggle { display:inline-flex; background: var(--color-surface-alt); border-radius: var(--r-md); padding: 3px; border:1px solid var(--color-border-light); }
+  .side-toggle input { position:absolute; opacity:0; pointer-events:none; }
+  .side-toggle label { padding: var(--sp-2) var(--sp-5); border-radius: calc(var(--r-md) - 2px); cursor:pointer; font-size: var(--text-sm); font-weight: var(--font-semibold); color: var(--color-text-secondary); transition: background var(--t-base) var(--ease-soft), color var(--t-base) var(--ease-soft), box-shadow var(--t-base); }
+  .side-toggle input[value="buy"]:checked  + label { background: var(--green-500); color:#fff; box-shadow: var(--shadow-sm); }
+  .side-toggle input[value="sell"]:checked + label { background: var(--red-500);   color:#fff; box-shadow: var(--shadow-sm); }
+
+  .pos-gain { color: var(--green-600); font-weight: var(--font-semibold); }
+  .pos-loss { color: var(--red-600);   font-weight: var(--font-semibold); }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>Trade — {{ competition.name }}</h1>
-  <p class="text-muted">
-    Buy and sell to grow your paper portfolio. Standings update from your live
-    account value. Goal: ${{ competition.investment_goal|floatformat:2 }}.
-  </p>
-  <a href="{% url 'competition:dashboard' competition.pk %}" class="btn btn-ghost btn-sm">← Back to competition</a>
+  <div class="page-header-inner">
+    <div>
+      <h1 class="page-title">Trade — {{ competition.name }}</h1>
+      <p class="page-subtitle">Buy and sell to grow your paper portfolio. Standings update live from your account value.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{% url 'competition:dashboard' competition.pk %}" class="btn btn-ghost btn-sm">← Back to competition</a>
+    </div>
+  </div>
 </div>
 
 {% if not alpaca_configured %}
-<div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:var(--sp-4);">
-  <strong>Live pricing isn't connected yet.</strong>
-  <p class="text-muted" style="margin:var(--sp-2) 0 0;">
-    Trades need live prices from Alpaca to fill. Add <code>ALPACA_API_KEY</code> /
-    <code>ALPACA_SECRET_KEY</code> (see <code>.env.example</code>). Until then,
-    holdings are valued at cost basis and new orders are recorded as rejected.
-  </p>
+<div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:var(--sp-6);">
+  <div class="card-body-sm">
+    <strong>Live pricing isn't connected yet.</strong>
+    <p class="text-muted" style="margin:var(--sp-2) 0 0;">
+      Trades need live prices from Alpaca to fill. Add <code>ALPACA_API_KEY</code> /
+      <code>ALPACA_SECRET_KEY</code> (see <code>.env.example</code>). Until then,
+      holdings are valued at cost basis and new orders are recorded as rejected.
+    </p>
+  </div>
 </div>
 {% endif %}
 
-<div class="card-grid card-grid-2" style="margin-bottom:var(--sp-4);">
-  <div class="stat-card blue">
-    <span class="stat-label">Cash</span>
-    <span class="stat-value">${{ account.cash|floatformat:2 }}</span>
+<!-- Hero: equity + goal progress -->
+<div class="trade-hero reveal" style="margin-bottom:var(--sp-6);">
+  <div class="eyebrow">Your Portfolio Value</div>
+  <div class="equity" data-countup="{{ equity|stringformat:'f' }}" data-prefix="$" data-decimals="2">${{ equity|floatformat:2 }}</div>
+  <div class="sub">
+    <div class="sub-item">
+      <div class="k">Cash available</div>
+      <div class="v" data-countup="{{ account.cash|stringformat:'f' }}" data-prefix="$" data-decimals="2">${{ account.cash|floatformat:2 }}</div>
+    </div>
+    <div class="sub-item">
+      <div class="k">Goal</div>
+      <div class="v">${{ competition.investment_goal|floatformat:2 }}</div>
+    </div>
   </div>
-  <div class="stat-card green">
-    <span class="stat-label">Portfolio Value</span>
-    <span class="stat-value">${{ equity|floatformat:2 }}</span>
+  {% if competition.investment_goal %}
+  <div class="goal-track" aria-label="Progress toward goal">
+    {% widthratio equity competition.investment_goal 100 as goalpct %}
+    <div class="goal-fill" style="width:{% if goalpct > 100 %}100{% else %}{{ goalpct }}{% endif %}%;"></div>
+  </div>
+  <div style="font-size:var(--text-xs);opacity:0.75;margin-top:var(--sp-2);">{{ goalpct }}% of goal reached</div>
+  {% endif %}
+</div>
+
+<!-- Order ticket -->
+<div class="card reveal reveal-delay-1" style="margin-bottom:var(--sp-6);">
+  <div class="card-header"><div class="card-title">Place an order</div></div>
+  <div class="card-body">
+    <form method="post" action="{% url 'competition:place_trade' competition.pk %}"
+          style="display:flex;gap:var(--sp-4);flex-wrap:wrap;align-items:flex-end;">
+      {% csrf_token %}
+      <div class="form-group" style="flex:1;min-width:140px;">
+        <label class="form-label" for="ct-symbol">Symbol</label>
+        <input class="form-input" id="ct-symbol" type="text" name="symbol" placeholder="AAPL" maxlength="20" required style="text-transform:uppercase;">
+      </div>
+      <div class="form-group">
+        <span class="form-label">Side</span>
+        <div class="side-toggle" role="radiogroup" aria-label="Order side">
+          <input type="radio" id="ct-buy" name="side" value="buy" checked>
+          <label for="ct-buy">Buy</label>
+          <input type="radio" id="ct-sell" name="side" value="sell">
+          <label for="ct-sell">Sell</label>
+        </div>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label" for="ct-qty">Quantity</label>
+        <input class="form-input" id="ct-qty" type="number" name="quantity" min="0" step="any" placeholder="10" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg">Submit order</button>
+    </form>
   </div>
 </div>
 
-<div class="card" style="margin-bottom:var(--sp-4);">
-  <h2>Place an order</h2>
-  <form method="post" action="{% url 'competition:place_trade' competition.pk %}" style="display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:flex-end;">
-    {% csrf_token %}
-    <label>Symbol <input type="text" name="symbol" placeholder="AAPL" maxlength="20" required></label>
-    <label>Side
-      <select name="side"><option value="buy">Buy</option><option value="sell">Sell</option></select>
-    </label>
-    <label>Quantity <input type="number" name="quantity" min="0" step="any" placeholder="10" required></label>
-    <button type="submit" class="btn btn-primary">Submit</button>
-  </form>
+<!-- Holdings -->
+<div class="card reveal reveal-delay-2" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div class="card-title">Your holdings</div>
+    <span class="badge badge-muted">{{ rows|length }} position{{ rows|length|pluralize }}</span>
+  </div>
+  {% if rows %}
+  <div class="table-wrap" style="border:none;border-radius:0;">
+    <table class="data-table">
+      <thead><tr><th>Symbol</th><th class="num">Quantity</th><th class="num">Avg Cost</th><th class="num">Last Price</th><th class="num">Market Value</th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:var(--sp-3);">
+              <div class="investment-icon" style="width:30px;height:30px;font-size:10px;border-radius:var(--r-md);">{{ row.symbol|first|upper }}</div>
+              <span class="font-medium font-mono">{{ row.symbol }}</span>
+            </div>
+          </td>
+          <td class="num font-mono">{{ row.quantity }}</td>
+          <td class="num font-mono">${{ row.avg_cost|floatformat:2 }}</td>
+          <td class="num font-mono">{% if row.price is not None %}${{ row.price|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td class="num font-mono">
+            {% if row.market_value is not None %}
+              <span class="{% if row.price >= row.avg_cost %}pos-gain{% else %}pos-loss{% endif %}">${{ row.market_value|floatformat:2 }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-title">No positions yet</div>
+    <p class="empty-desc">Place your first order above to climb the leaderboard.</p>
+  </div>
+  {% endif %}
 </div>
 
-<h2>Your holdings</h2>
-<table class="table">
-  <thead><tr><th>Symbol</th><th>Quantity</th><th>Avg Cost</th><th>Last Price</th><th>Market Value</th></tr></thead>
-  <tbody>
-    {% for row in rows %}
-    <tr>
-      <td>{{ row.symbol }}</td>
-      <td>{{ row.quantity }}</td>
-      <td>${{ row.avg_cost|floatformat:2 }}</td>
-      <td>{% if row.price is not None %}${{ row.price|floatformat:2 }}{% else %}—{% endif %}</td>
-      <td>{% if row.market_value is not None %}${{ row.market_value|floatformat:2 }}{% else %}—{% endif %}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="5" class="text-muted">No positions yet — place your first order above.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-<h2 style="margin-top:var(--sp-4);">Recent orders</h2>
-<table class="table">
-  <thead><tr><th>When</th><th>Side</th><th>Symbol</th><th>Qty</th><th>Fill</th><th>Status</th></tr></thead>
-  <tbody>
-    {% for o in recent_orders %}
-    <tr>
-      <td>{{ o.created_at|date:"M j, H:i" }}</td>
-      <td>{{ o.get_side_display }}</td>
-      <td>{{ o.symbol }}</td>
-      <td>{{ o.quantity }}</td>
-      <td>{% if o.fill_price %}${{ o.fill_price|floatformat:2 }}{% else %}—{% endif %}</td>
-      <td>
-        <span class="badge {% if o.status == 'filled' %}badge-teal{% else %}badge-muted{% endif %}">{{ o.get_status_display }}</span>
-        {% if o.note %}<span class="text-xs text-muted">{{ o.note }}</span>{% endif %}
-      </td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="6" class="text-muted">No orders yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<!-- Recent orders -->
+<div class="card reveal reveal-delay-3">
+  <div class="card-header"><div class="card-title">Recent orders</div></div>
+  {% if recent_orders %}
+  <div class="table-wrap" style="border:none;border-radius:0;">
+    <table class="data-table">
+      <thead><tr><th>When</th><th>Side</th><th>Symbol</th><th class="num">Qty</th><th class="num">Fill</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for o in recent_orders %}
+        <tr>
+          <td class="text-muted text-sm">{{ o.created_at|date:"M j, H:i" }}</td>
+          <td><span class="badge {% if o.side == 'buy' %}badge-teal{% else %}badge-muted{% endif %}">{{ o.get_side_display }}</span></td>
+          <td class="font-mono">{{ o.symbol }}</td>
+          <td class="num font-mono">{{ o.quantity }}</td>
+          <td class="num font-mono">{% if o.fill_price %}${{ o.fill_price|floatformat:2 }}{% else %}—{% endif %}</td>
+          <td>
+            <span class="badge {% if o.status == 'filled' %}badge-teal{% else %}badge-muted{% endif %}">{{ o.get_status_display }}</span>
+            {% if o.note %}<div class="text-xs text-muted">{{ o.note }}</div>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-title">No orders yet</div><p class="empty-desc">Your order history will appear here.</p></div>
+  {% endif %}
+</div>
 {% endblock %}

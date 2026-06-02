@@ -1600,3 +1600,219 @@ p { line-height: var(--leading-relaxed); }
 
 .sidebar::-webkit-scrollbar { width: 4px; }
 .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+
+
+/* 26. MOTION, DEPTH & POLISH  (Apple-esque layer)
+   =============================================================
+   A cross-cutting layer that gives every page the same feel:
+   spring easing, purposeful entrance motion, frosted-glass depth,
+   tactile hovers, and focus/scroll refinements. Designed to delight
+   a younger audience without overwhelming older users — every effect
+   is subtle, fast, and fully disabled under prefers-reduced-motion
+   (see the guard at the end of this section).
+
+   How to use in templates:
+   - Add `.reveal` to any element to fade-and-rise into view on load
+     or on scroll. Add `.reveal-delay-1..6` to stagger groups.
+   - Add `.hover-lift` for a tactile raise on hover (cards/tiles).
+   - Add `data-countup="<number>"` to a number element to animate it
+     counting up (wired in base.html; falls back to its text content).
+   ============================================================= */
+
+/* ---- Spring / expressive easing tokens ---- */
+:root {
+  /* ease-out-expo: fast start, gentle settle — the core "Apple" curve */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  /* a softer ease for hovers */
+  --ease-soft:   cubic-bezier(0.33, 1, 0.68, 1);
+  --t-spring: 520ms var(--ease-spring);
+}
+
+/* ---- Keyframes ---- */
+@keyframes em-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes em-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes em-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes em-shimmer {
+  0%   { background-position: -480px 0; }
+  100% { background-position: 480px 0; }
+}
+@keyframes em-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(61,157,152,0.35); }
+  70%  { box-shadow: 0 0 0 10px rgba(61,157,152,0); }
+  100% { box-shadow: 0 0 0 0 rgba(61,157,152,0); }
+}
+@keyframes em-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+/* ---- Page entrance: content rises in on load ---- */
+.main-content > * {
+  animation: em-fade-up 560ms var(--ease-spring) both;
+}
+/* Stagger the first several blocks so a page assembles gracefully. */
+.main-content > *:nth-child(1) { animation-delay: 40ms; }
+.main-content > *:nth-child(2) { animation-delay: 100ms; }
+.main-content > *:nth-child(3) { animation-delay: 160ms; }
+.main-content > *:nth-child(4) { animation-delay: 220ms; }
+.main-content > *:nth-child(5) { animation-delay: 280ms; }
+.main-content > *:nth-child(6) { animation-delay: 340ms; }
+
+/* ---- Opt-in reveal utility (used for grids/lists; JS adds .in) ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 600ms var(--ease-spring), transform 600ms var(--ease-spring);
+  will-change: opacity, transform;
+}
+.reveal.in { opacity: 1; transform: none; }
+.reveal-delay-1 { transition-delay: 60ms; }
+.reveal-delay-2 { transition-delay: 120ms; }
+.reveal-delay-3 { transition-delay: 180ms; }
+.reveal-delay-4 { transition-delay: 240ms; }
+.reveal-delay-5 { transition-delay: 300ms; }
+.reveal-delay-6 { transition-delay: 360ms; }
+
+/* ---- Tactile hover lift (cards, stat tiles, list rows) ---- */
+.card, .stat-card { transition: transform var(--t-base) var(--ease-soft), box-shadow var(--t-base) var(--ease-soft); }
+.hover-lift, .card.hover-lift, .stat-card.hover-lift { cursor: default; }
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+/* Stat cards get a gentle lift + accent glow by default — they're the hero
+   numbers younger users scan first. */
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Buttons: spring the lift on hover (press handled in §11) */
+.btn { transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast), box-shadow var(--t-base) var(--ease-soft), transform var(--t-fast) var(--ease-soft); }
+.btn-primary:hover, .btn-accent:hover { transform: translateY(-1px); }
+
+/* ---- Frosted-glass depth on chrome ---- */
+.top-header {
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+}
+.sidebar-overlay {
+  background: rgba(13,31,24,0.38);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+/* ---- Animated link underline (in-content prose links) ---- */
+.main-content a:not(.btn):not(.nav-item):not(.sidebar-logo):not(.card):not(.stat-card) {
+  background-image: linear-gradient(var(--color-accent), var(--color-accent));
+  background-size: 0% 1.5px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: background-size var(--t-base) var(--ease-soft);
+}
+.main-content a:not(.btn):not(.nav-item):not(.sidebar-logo):not(.card):not(.stat-card):hover {
+  background-size: 100% 1.5px;
+}
+
+/* ---- Nav items: slide the icon a touch on hover (playful, subtle) ---- */
+.nav-item { transition: background var(--t-fast), color var(--t-fast), padding-left var(--t-base) var(--ease-soft); }
+.nav-item:hover { padding-left: calc(var(--sp-4) + 3px); }
+
+/* ---- Skeleton shimmer (for async/empty loading states) ---- */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-surface-alt) 25%, var(--color-border-light) 37%, var(--color-surface-alt) 63%);
+  background-size: 960px 100%;
+  animation: em-shimmer 1.4s linear infinite;
+  border-radius: var(--r-md);
+}
+
+/* ---- Focus-visible: a crisp, modern focus ring for keyboard users ---- */
+a:focus-visible, button:focus-visible, .btn:focus-visible,
+.form-input:focus-visible, .form-select:focus-visible, .form-textarea:focus-visible,
+.nav-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ---- Count-up numbers shouldn't reflow layout while animating ---- */
+[data-countup] { font-variant-numeric: tabular-nums; }
+
+/* ---- Helper effect classes ---- */
+.animate-float      { animation: em-float 4s ease-in-out infinite; }
+.animate-pulse-ring { animation: em-pulse-ring 2s var(--ease-soft) infinite; }
+.scale-in          { animation: em-scale-in 420ms var(--ease-spring) both; }
+
+
+/* 27. DARK MODE  (auto — respects the OS / browser preference)
+   =============================================================
+   Younger users overwhelmingly browse in dark mode; this maps the
+   semantic tokens to a deep PNW-night palette. Because the whole
+   system is token-driven, every page adapts with no per-page work.
+   ============================================================= */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg:           #0C1714;
+    --color-surface:      #12211C;
+    --color-surface-alt:  #16271F;
+    --color-border:       #25413A;
+    --color-border-light: #1E332C;
+
+    --color-text-primary:   #E6F2EC;
+    --color-text-secondary: #9FBCB0;
+    --color-text-muted:     #6E8B81;
+    --color-text-placeholder: #5A746B;
+
+    --color-primary-light: #16302260;
+    --color-accent-light:  #0E3B3760;
+
+    --sidebar-bg:          #0B1A15;
+    --sidebar-border:      rgba(255,255,255,0.05);
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 14px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 28px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.45);
+    --shadow-xl: 0 20px 56px rgba(0,0,0,0.6);
+
+    --card-bg:        var(--color-surface);
+    --border:         var(--color-border);
+    --input-bg:       var(--color-surface-alt);
+  }
+  .top-header { background: rgba(12,23,20,0.72); }
+  .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236E8B81' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  img { filter: brightness(0.95); }
+}
+
+
+/* 28. REDUCED MOTION  (accessibility guard — keep this LAST)
+   =============================================================
+   Honors users (often older, or those with vestibular sensitivity)
+   who ask for less motion. Everything still works; it just stops
+   moving. This is why the polish above is safe for all ages.
+   ============================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .main-content > *,
+  .reveal { opacity: 1 !important; transform: none !important; }
+}
+
+/* Smooth in-page anchor scrolling for everyone who hasn't opted out. */
+html { scroll-behavior: smooth; }

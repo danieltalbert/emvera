@@ -349,6 +349,90 @@
     if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
   });
 })();
+
+</script>
+
+<!-- ===================================================================
+     Motion layer: scroll-reveal + count-up numbers.
+     Both are progressive enhancements — content is fully visible and
+     readable without JS — and both bow out under prefers-reduced-motion
+     so the experience stays comfortable for every age group.
+     =================================================================== -->
+<script>
+(function () {
+  var reduce = window.matchMedia &&
+               window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* --- Scroll reveal: fade/rise elements tagged `.reveal` as they enter view. */
+  var revealEls = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  if (reduce || !('IntersectionObserver' in window)) {
+    revealEls.forEach(function (el) { el.classList.add('in'); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(function (el) { io.observe(el); });
+  }
+
+  /* --- Count-up: animate elements with data-countup="<number>" from 0.
+     Preserves the prefix/suffix already in the element (e.g. "$", "%") by
+     reading them from data-prefix / data-suffix. */
+  function easeOutExpo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+
+  function formatNumber(n, decimals) {
+    return n.toLocaleString(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  }
+
+  function animateCount(el) {
+    var target = parseFloat(el.getAttribute('data-countup'));
+    if (isNaN(target)) return;
+    var decimals = parseInt(el.getAttribute('data-decimals') || '0', 10);
+    var prefix = el.getAttribute('data-prefix') || '';
+    var suffix = el.getAttribute('data-suffix') || '';
+    var dur = 1100;
+    var start = null;
+
+    function frame(ts) {
+      if (start === null) start = ts;
+      var p = Math.min((ts - start) / dur, 1);
+      var val = target * easeOutExpo(p);
+      el.textContent = prefix + formatNumber(val, decimals) + suffix;
+      if (p < 1) requestAnimationFrame(frame);
+      else el.textContent = prefix + formatNumber(target, decimals) + suffix;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  var countEls = Array.prototype.slice.call(document.querySelectorAll('[data-countup]'));
+  if (reduce) {
+    /* Still render the final, formatted value — just no animation. */
+    countEls.forEach(function (el) {
+      var target = parseFloat(el.getAttribute('data-countup'));
+      if (isNaN(target)) return;
+      var decimals = parseInt(el.getAttribute('data-decimals') || '0', 10);
+      el.textContent = (el.getAttribute('data-prefix') || '') +
+                       formatNumber(target, decimals) +
+                       (el.getAttribute('data-suffix') || '');
+    });
+  } else if ('IntersectionObserver' in window) {
+    var cio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { animateCount(entry.target); cio.unobserve(entry.target); }
+      });
+    }, { threshold: 0.4 });
+    countEls.forEach(function (el) { cio.observe(el); });
+  } else {
+    countEls.forEach(animateCount);
+  }
+})();
 </script>
 
 {% block extra_js %}{% endblock %}
