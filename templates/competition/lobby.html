@@ -37,9 +37,9 @@
     display: flex;
     flex-direction: column;
     gap: var(--sp-3);
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color var(--t-base) var(--ease-soft), box-shadow var(--t-base) var(--ease-soft), transform var(--t-base) var(--ease-soft);
   }
-  .comp-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+  .comp-card:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); transform: translateY(-4px); }
   .comp-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-2); }
   .comp-card h3 { font-size: 1rem; font-weight: 600; margin: 0; color: var(--text-primary); }
   .comp-badge {
@@ -77,7 +77,7 @@
 
 {% if my_competitions %}
 <p class="section-label">Your Active Competitions</p>
-<div class="comp-grid">
+<div class="comp-grid reveal">
   {% for comp in my_competitions %}
   <div class="comp-card">
     <div class="comp-card-header">
@@ -109,7 +109,7 @@
 
 {% if open_competitions %}
 <p class="section-label">Open Lobbies — Join Now</p>
-<div class="comp-grid">
+<div class="comp-grid reveal">
   {% for comp in open_competitions %}
   <div class="comp-card">
     <div class="comp-card-header">
@@ -138,7 +138,7 @@
 
 {% if active_competitions %}
 <p class="section-label">In Progress</p>
-<div class="comp-grid">
+<div class="comp-grid reveal">
   {% for comp in active_competitions %}
   <div class="comp-card">
     <div class="comp-card-header">
@@ -169,7 +169,7 @@
 
 {% if finished %}
 <p class="section-label" style="margin-top:var(--sp-6);">Recently Finished</p>
-<div class="comp-grid">
+<div class="comp-grid reveal">
   {% for comp in finished %}
   <div class="comp-card" style="opacity:0.7;">
     <div class="comp-card-header">

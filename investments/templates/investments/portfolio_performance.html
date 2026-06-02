@@ -45,7 +45,7 @@
         </svg>
       </div>
     </div>
-    <div class="stat-value">${{ total_invested|floatformat:2 }}</div>
+    <div class="stat-value" data-countup="{{ total_invested|default:0|stringformat:'f' }}" data-prefix="$" data-decimals="2">${{ total_invested|floatformat:2 }}</div>
     <div class="stat-meta"><span>Current market value</span></div>
   </div>
 
@@ -59,7 +59,7 @@
         </svg>
       </div>
     </div>
-    <div class="stat-value">${{ total_projected|floatformat:2 }}</div>
+    <div class="stat-value" data-countup="{{ total_projected|default:0|stringformat:'f' }}" data-prefix="$" data-decimals="2">${{ total_projected|floatformat:2 }}</div>
     <div class="stat-meta"><span>Based on growth projections</span></div>
   </div>
 

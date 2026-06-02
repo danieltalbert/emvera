@@ -36,17 +36,17 @@
 <div class="card-grid card-grid-3" style="margin-bottom:var(--sp-8);">
   <div class="stat-card red">
     <span class="stat-label">Overdue</span>
-    <div class="stat-value">{{ overdue_count }}</div>
+    <div class="stat-value" data-countup="{{ overdue_count }}">{{ overdue_count }}</div>
     <div class="stat-meta"><span>Payments past due</span></div>
   </div>
   <div class="stat-card amber">
     <span class="stat-label">Due This Week</span>
-    <div class="stat-value">{{ due_this_week_count }}</div>
+    <div class="stat-value" data-countup="{{ due_this_week_count }}">{{ due_this_week_count }}</div>
     <div class="stat-meta"><span>Payments in next 7 days</span></div>
   </div>
   <div class="stat-card teal">
     <span class="stat-label">Due This Month</span>
-    <div class="stat-value">{{ due_this_month_count }}</div>
+    <div class="stat-value" data-countup="{{ due_this_month_count }}">{{ due_this_month_count }}</div>
     <div class="stat-meta"><span>Total due in 30 days</span></div>
   </div>
 </div>

@@ -44,7 +44,7 @@
         </svg>
       </div>
     </div>
-    <div class="stat-value">${{ total_debt|floatformat:2 }}</div>
+    <div class="stat-value" data-countup="{{ total_debt|default:0|stringformat:'f' }}" data-prefix="$" data-decimals="2">${{ total_debt|floatformat:2 }}</div>
     <div class="stat-meta"><span>Across all accounts</span></div>
   </div>
 
@@ -71,7 +71,7 @@
         </svg>
       </div>
     </div>
-    <div class="stat-value">${{ monthly_minimum|floatformat:2 }}</div>
+    <div class="stat-value" data-countup="{{ monthly_minimum|default:0|stringformat:'f' }}" data-prefix="$" data-decimals="2">${{ monthly_minimum|floatformat:2 }}</div>
     <div class="stat-meta"><span>Required monthly payments</span></div>
   </div>
 
