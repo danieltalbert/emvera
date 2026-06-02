@@ -7,6 +7,17 @@
   <meta name="theme-color" content="#1B3A2D">
   <title>{% block title %}Emvera{% endblock %}</title>
 
+  <!-- Apply the saved theme BEFORE first paint to avoid a light/dark flash.
+       Values: 'light' | 'dark' | 'system' (default). -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('emvera-theme') || 'system';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { /* private mode / storage blocked — fall back to system */ }
+    })();
+  </script>
+
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -281,6 +292,17 @@
       <div class="header-spacer"></div>
 
       <div class="header-actions">
+        <!-- Theme switcher: cycles light → dark → system; persists choice. -->
+        <button class="theme-toggle" id="themeToggle" type="button"
+                aria-label="Toggle color theme" title="Toggle light / dark / system theme">
+          <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M10 1v2M10 17v2M1 10h2M17 10h2M3.5 3.5l1.5 1.5M15 15l1.5 1.5M16.5 3.5L15 5M5 15l-1.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M16 11.5A6.5 6.5 0 018.5 4a6.5 6.5 0 100 12 6.5 6.5 0 007.5-4.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+        </button>
         {% if user.is_authenticated %}
           <span class="header-greeting">
             Hello, {{ user.first_name|default:user.username }}
@@ -348,6 +370,27 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
   });
+
+  /* --- Theme switcher: cycles light -> dark -> system, persisted. --- */
+  var themeBtn = document.getElementById('themeToggle');
+  var ORDER = ['light', 'dark', 'system'];
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'system';
+  }
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('emvera-theme', t); } catch (e) {}
+    if (themeBtn) themeBtn.setAttribute('title', 'Theme: ' + t + ' (click to change)');
+  }
+  if (themeBtn) {
+    // Enable transition only after the user interacts (avoids first-paint flash).
+    themeBtn.addEventListener('click', function () {
+      document.documentElement.classList.add('theme-anim');
+      var next = ORDER[(ORDER.indexOf(currentTheme()) + 1) % ORDER.length];
+      applyTheme(next);
+    });
+    themeBtn.setAttribute('title', 'Theme: ' + currentTheme() + ' (click to change)');
+  }
 })();
 
 </script>

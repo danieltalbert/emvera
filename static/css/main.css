@@ -543,6 +543,29 @@ p { line-height: var(--leading-relaxed); }
   white-space: nowrap;
 }
 
+/* Theme switcher button */
+.theme-toggle {
+  width: 36px; height: 36px;
+  border-radius: var(--r-md);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--color-text-secondary);
+  background: transparent; border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast) var(--ease-soft);
+}
+.theme-toggle:hover { background: var(--color-surface-alt); color: var(--color-text-primary); transform: translateY(-1px); }
+.theme-toggle:active { transform: translateY(0); }
+/* Show the sun in light contexts, the moon in dark — toggled by theme tokens. */
+.theme-toggle .theme-icon-moon { display: none; }
+:root[data-theme="dark"] .theme-toggle .theme-icon-sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .theme-icon-moon { display: inline; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .theme-icon-sun { display: none; }
+  :root:not([data-theme="light"]) .theme-toggle .theme-icon-moon { display: inline; }
+  :root[data-theme="light"] .theme-toggle .theme-icon-moon { display: none; }
+  :root[data-theme="light"] .theme-toggle .theme-icon-sun { display: inline; }
+}
+
 
 /* 7. MESSAGES / ALERTS
    ============================================================= */
@@ -1754,46 +1777,94 @@ a:focus-visible, button:focus-visible, .btn:focus-visible,
 .scale-in          { animation: em-scale-in 420ms var(--ease-spring) both; }
 
 
-/* 27. DARK MODE  (auto — respects the OS / browser preference)
+/* 27. DARK MODE  (auto + manual toggle)
    =============================================================
-   Younger users overwhelmingly browse in dark mode; this maps the
-   semantic tokens to a deep PNW-night palette. Because the whole
-   system is token-driven, every page adapts with no per-page work.
+   The deep PNW-night palette is applied in three situations:
+     1. <html data-theme="dark">              — user explicitly chose dark
+     2. OS prefers dark AND no explicit choice — <html data-theme="system">
+        (or the attribute absent), via the media query below
+   The header's theme switcher sets data-theme and persists it in
+   localStorage (see base.html). Because the whole system is token-driven,
+   every page adapts with no per-page work. The token block is defined once
+   in a custom property set and referenced by both selectors to avoid drift.
    ============================================================= */
+:root {
+  /* Dark palette values, parked as -dark-* so both triggers can apply them
+     without duplicating the list. */
+  --dk-bg: #0C1714;            --dk-surface: #12211C;     --dk-surface-alt: #16271F;
+  --dk-border: #25413A;        --dk-border-light: #1E332C;
+  --dk-text: #E6F2EC;          --dk-text-2: #9FBCB0;      --dk-text-muted: #6E8B81;
+  --dk-text-ph: #5A746B;       --dk-sidebar: #0B1A15;
+}
+
+/* Shared rule: everything needed to "go dark". Applied to the explicit
+   attribute and (further down) to the system-preference media query. */
+:root[data-theme="dark"] {
+  --color-bg: var(--dk-bg);
+  --color-surface: var(--dk-surface);
+  --color-surface-alt: var(--dk-surface-alt);
+  --color-border: var(--dk-border);
+  --color-border-light: var(--dk-border-light);
+  --color-text-primary: var(--dk-text);
+  --color-text-secondary: var(--dk-text-2);
+  --color-text-muted: var(--dk-text-muted);
+  --color-text-placeholder: var(--dk-text-ph);
+  --color-primary-light: #16302260;
+  --color-accent-light: #0E3B3760;
+  --sidebar-bg: var(--dk-sidebar);
+  --sidebar-border: rgba(255,255,255,0.05);
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 28px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.45);
+  --shadow-xl: 0 20px 56px rgba(0,0,0,0.6);
+  --card-bg: var(--color-surface);
+  --border: var(--color-border);
+  --input-bg: var(--color-surface-alt);
+}
+:root[data-theme="dark"] .top-header { background: rgba(12,23,20,0.72); }
+:root[data-theme="dark"] .form-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236E8B81' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] img { filter: brightness(0.95); }
+
+/* System preference: apply the same dark tokens UNLESS the user has explicitly
+   chosen light. data-theme is "system" (or unset) when they haven't decided. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg:           #0C1714;
-    --color-surface:      #12211C;
-    --color-surface-alt:  #16271F;
-    --color-border:       #25413A;
-    --color-border-light: #1E332C;
-
-    --color-text-primary:   #E6F2EC;
-    --color-text-secondary: #9FBCB0;
-    --color-text-muted:     #6E8B81;
-    --color-text-placeholder: #5A746B;
-
+  :root:not([data-theme="light"]):not([data-theme="dark"]),
+  :root[data-theme="system"] {
+    --color-bg: var(--dk-bg);
+    --color-surface: var(--dk-surface);
+    --color-surface-alt: var(--dk-surface-alt);
+    --color-border: var(--dk-border);
+    --color-border-light: var(--dk-border-light);
+    --color-text-primary: var(--dk-text);
+    --color-text-secondary: var(--dk-text-2);
+    --color-text-muted: var(--dk-text-muted);
+    --color-text-placeholder: var(--dk-text-ph);
     --color-primary-light: #16302260;
-    --color-accent-light:  #0E3B3760;
-
-    --sidebar-bg:          #0B1A15;
-    --sidebar-border:      rgba(255,255,255,0.05);
-
+    --color-accent-light: #0E3B3760;
+    --sidebar-bg: var(--dk-sidebar);
+    --sidebar-border: rgba(255,255,255,0.05);
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
     --shadow-sm: 0 1px 4px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.4);
     --shadow-md: 0 4px 14px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.4);
     --shadow-lg: 0 8px 28px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.45);
     --shadow-xl: 0 20px 56px rgba(0,0,0,0.6);
-
-    --card-bg:        var(--color-surface);
-    --border:         var(--color-border);
-    --input-bg:       var(--color-surface-alt);
+    --card-bg: var(--color-surface);
+    --border: var(--color-border);
+    --input-bg: var(--color-surface-alt);
   }
-  .top-header { background: rgba(12,23,20,0.72); }
-  .form-select {
+  :root:not([data-theme="light"]) .top-header { background: rgba(12,23,20,0.72); }
+  :root:not([data-theme="light"]) .form-select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236E8B81' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
-  img { filter: brightness(0.95); }
+  :root:not([data-theme="light"]) img { filter: brightness(0.95); }
+}
+
+/* Smooth the swap between themes (but not on first paint — see base.html). */
+:root.theme-anim, :root.theme-anim * {
+  transition: background-color var(--t-base), border-color var(--t-base), color var(--t-base) !important;
 }
 
 
