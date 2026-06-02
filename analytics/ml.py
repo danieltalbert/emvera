@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import math
 import random
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 
@@ -200,6 +201,95 @@ def moving_average(series: list[float], window: int = 7) -> list[float]:
     for i in range(len(series)):
         chunk = series[max(0, i - window + 1):i + 1]
         out.append(sum(chunk) / len(chunk))
+    return out
+
+
+# ===========================================================================
+# Seasonal decomposition  (additive: trend + seasonal + residual)
+# ===========================================================================
+def seasonal_decompose(series: list[float], period: int = 7) -> dict:
+    """Classic additive decomposition  y = trend + seasonal + residual.
+
+    Why it matters: traffic has a weekly rhythm. Comparing today to a flat mean
+    is misleading ("high for a Sunday" may still be a dip). We:
+      1. estimate trend with a centered moving average of length `period`,
+      2. average the detrended values per phase (e.g. weekday) -> seasonal index
+         (re-centered to sum 0 so it's a pure offset),
+      3. residual = y - trend - seasonal (what's left after rhythm + drift).
+    Trend edges (where the centered window runs off the series) are filled from
+    an OLS line so residuals are defined everywhere. Falls back to a trend-only
+    split when there isn't at least two full periods of data.
+    """
+    n = len(series)
+    if n == 0:
+        return {'trend': [], 'seasonal': [], 'residual': [], 'seasonal_index': [0.0] * period}
+    if n < 2 * period:
+        trend = moving_average(series, min(period, n))
+        return {'trend': trend, 'seasonal': [0.0] * n,
+                'residual': [series[i] - trend[i] for i in range(n)],
+                'seasonal_index': [0.0] * period}
+
+    half = period // 2
+    trend = [None] * n
+    for i in range(n):
+        lo, hi = i - half, i + half
+        if lo >= 0 and hi < n:
+            trend[i] = sum(series[lo:hi + 1]) / (hi - lo + 1)
+
+    # Seasonal index = mean detrended value per phase, then centered to sum 0.
+    buckets = defaultdict(list)
+    for i in range(n):
+        if trend[i] is not None:
+            buckets[i % period].append(series[i] - trend[i])
+    seasonal_index = [(sum(buckets[p]) / len(buckets[p])) if buckets[p] else 0.0
+                      for p in range(period)]
+    mean_idx = sum(seasonal_index) / period
+    seasonal_index = [s - mean_idx for s in seasonal_index]
+    seasonal = [seasonal_index[i % period] for i in range(n)]
+
+    # Fill trend edges with an OLS line over the known interior trend points.
+    known_x = [i for i in range(n) if trend[i] is not None]
+    lm = linear_regression(known_x, [trend[i] for i in known_x]) if len(known_x) >= 2 else None
+    trend_filled = [trend[i] if trend[i] is not None
+                    else (lm.predict(i) if lm else series[i]) for i in range(n)]
+    residual = [series[i] - trend_filled[i] - seasonal[i] for i in range(n)]
+    return {'trend': trend_filled, 'seasonal': seasonal,
+            'residual': residual, 'seasonal_index': seasonal_index}
+
+
+def seasonal_forecast(series: list[float], horizon: int, period: int = 7) -> list[float]:
+    """Forecast = projected trend + repeating seasonal index.
+
+    Fits an OLS line to the decomposed trend and adds back the seasonal offset
+    for each future phase — a transparent stand-in for Holt-Winters that keeps
+    the weekly shape instead of forecasting a straight line. Clamped at 0.
+    """
+    n = len(series)
+    if n == 0:
+        return [0.0] * horizon
+    dec = seasonal_decompose(series, period)
+    lm = linear_regression(list(range(n)), dec['trend'])
+    out = []
+    for h in range(1, horizon + 1):
+        idx = n - 1 + h
+        out.append(max(0.0, lm.predict(idx) + dec['seasonal_index'][idx % period]))
+    return out
+
+
+def seasonal_anomalies(series: list[float], period: int = 7,
+                       threshold: float = 2.5) -> list[Anomaly]:
+    """Anomalies on the DESEASONALIZED residual, so weekly rhythm isn't flagged.
+
+    Decompose, then z-score the residual. A day is only anomalous if it deviates
+    after accounting for both its trend and its weekday — catching, e.g., a
+    Tuesday that's unusually low *for a Tuesday*. Anomaly.value keeps the
+    original observed count for display.
+    """
+    dec = seasonal_decompose(series, period)
+    resid_anoms = zscore_anomalies(dec['residual'], threshold)
+    out = []
+    for a in resid_anoms:
+        out.append(Anomaly(a.index, series[a.index], a.z, a.direction))
     return out
 
 

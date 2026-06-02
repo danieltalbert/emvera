@@ -68,6 +68,47 @@ class SmoothingTests(SimpleTestCase):
         self.assertTrue(all(v >= 0 for v in fc))
 
 
+class SeasonalTests(SimpleTestCase):
+    def _weekly_series(self, weeks=6, trend=0.0):
+        # A clear weekly pattern: weekends low, midweek high, optional drift.
+        pattern = [10, 12, 14, 13, 11, 4, 3]  # Mon..Sun
+        s = []
+        for w in range(weeks):
+            for d in range(7):
+                s.append(pattern[d] + trend * (w * 7 + d))
+        return s
+
+    def test_decompose_recovers_weekly_shape(self):
+        s = self._weekly_series(weeks=6)
+        dec = ml.seasonal_decompose(s, period=7)
+        idx = dec['seasonal_index']
+        self.assertEqual(len(idx), 7)
+        # Seasonal index sums to ~0 (centered) and weekend phases are lowest.
+        self.assertAlmostEqual(sum(idx), 0.0, places=6)
+        self.assertEqual(min(range(7), key=lambda p: idx[p]), 6)  # Sunday lowest
+        self.assertLess(idx[5], idx[2])  # Sat below Wed
+
+    def test_seasonal_forecast_keeps_rhythm(self):
+        s = self._weekly_series(weeks=6)
+        fc = ml.seasonal_forecast(s, horizon=7, period=7)
+        self.assertEqual(len(fc), 7)
+        # The forecast should vary across the week (not a flat line).
+        self.assertGreater(max(fc) - min(fc), 3)
+        self.assertTrue(all(v >= 0 for v in fc))
+
+    def test_seasonal_anomaly_catches_low_for_its_weekday(self):
+        # A normally-high Wednesday that drops to weekend levels: invisible to a
+        # flat mean, but obvious after deseasonalizing.
+        s = self._weekly_series(weeks=6)
+        s[7 * 5 + 2] = 3  # last Wednesday crashes to 3 (normally ~14)
+        anoms = ml.seasonal_anomalies(s, period=7, threshold=2.0)
+        self.assertTrue(any(a.index == 7 * 5 + 2 and a.direction == 'dip' for a in anoms))
+
+    def test_short_series_degrades_gracefully(self):
+        dec = ml.seasonal_decompose([1, 2, 3], period=7)
+        self.assertEqual(len(dec['residual']), 3)
+
+
 class ClusteringQualityTests(SimpleTestCase):
     def test_silhouette_high_for_separated_blobs(self):
         pts = [[0, 0], [0.1, 0], [0, 0.1], [10, 10], [10.1, 10], [10, 10.1]]

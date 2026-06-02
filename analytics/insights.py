@@ -65,11 +65,20 @@ def daily_traffic(days: int = 30) -> dict:
 
     model = ml.linear_regression(list(range(len(counts))), counts)
     horizon = 7
-    forecast = ml.forecast_linear(counts, horizon)
     last = since + timedelta(days=days - 1)
     forecast_labels = [(last + timedelta(days=i + 1)).strftime('%b %d') for i in range(horizon)]
 
-    anomalies = ml.zscore_anomalies(counts, threshold=2.0)
+    # Seasonal-aware where we have >=2 weeks of data (keeps the weekly rhythm in
+    # the forecast and only flags anomalies that survive deseasonalizing);
+    # otherwise fall back to the simple linear trend + flat z-score.
+    seasonal = len(counts) >= 14
+    if seasonal:
+        forecast = ml.seasonal_forecast(counts, horizon, period=7)
+        anomalies = ml.seasonal_anomalies(counts, period=7, threshold=2.0)
+    else:
+        forecast = ml.forecast_linear(counts, horizon)
+        anomalies = ml.zscore_anomalies(counts, threshold=2.0)
+
     trend_dir = 'flat'
     if model.slope > 0.05:
         trend_dir = 'up'
@@ -85,11 +94,38 @@ def daily_traffic(days: int = 30) -> dict:
         'trend_direction': trend_dir,
         'trend_per_day': round(model.slope, 2),
         'r_squared': round(model.r_squared, 3),
+        'seasonal_adjusted': seasonal,
         'anomalies': [
             {'label': labels[a.index], 'value': a.value, 'z': round(a.z, 2), 'direction': a.direction}
             for a in anomalies
         ],
     }
+
+
+def weekly_pattern(days: int = 30) -> dict:
+    """Day-of-week effect: each weekday's average daily views vs the overall mean.
+
+    Computed directly from the data (group by weekday) so it's easy to read:
+    'Mondays run +18% above an average day, Sundays -40%'. This is the human-
+    facing companion to the seasonal index used in forecasting.
+    """
+    since = (timezone.now() - timedelta(days=days - 1)).date()
+    rows = (PageView.objects.filter(timestamp__date__gte=since)
+            .values('timestamp__date', 'weekday').annotate(c=Count('id')))
+    per_weekday = defaultdict(list)
+    for r in rows:
+        per_weekday[r['weekday']].append(r['c'])
+    # Average daily count per weekday (days with zero views still count as 0 —
+    # approximate by averaging observed days, which is fine for a pattern view).
+    avg = {wd: (sum(v) / len(v)) if v else 0.0 for wd, v in per_weekday.items()}
+    overall = (sum(avg.values()) / len(avg)) if avg else 0.0
+    out = []
+    for wd in range(7):
+        a = avg.get(wd, 0.0)
+        rel = ((a - overall) / overall) if overall else 0.0
+        out.append({'weekday': WEEKDAY_NAMES[wd], 'avg': round(a, 1),
+                    'rel_pct': round(rel * 100, 1)})
+    return {'pattern': out, 'overall_avg': round(overall, 1)}
 
 
 def top_pages(days: int = 30, limit: int = 8) -> list[dict]:

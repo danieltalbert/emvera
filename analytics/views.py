@@ -72,6 +72,7 @@ def dashboard(request):
         # Descriptive insights (insights.py)
         'kpis': insights.kpis(days),
         'traffic': insights.daily_traffic(days),
+        'weekly_pattern': insights.weekly_pattern(days),
         'top_pages': insights.top_pages(days),
         'sections': insights.section_breakdown(days),
         'heatmap': insights.hourly_heatmap(days),
