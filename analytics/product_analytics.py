@@ -390,6 +390,48 @@ def _best_f1_threshold(y_true: list[int], scores: list[float]) -> float:
     return best_t
 
 
+def survival_analysis(days: int = 90, churn_after_days: int = 7) -> dict:
+    """Kaplan-Meier survival of visitor *engagement lifespan*.
+
+    Each visitor's lifetime = days from first to last visit. A visitor is an
+    observed "event" (churned) if their last visit is older than
+    `churn_after_days`; otherwise they're censored (still potentially active).
+    The KM curve then answers "what fraction of visitors are still engaged N days
+    after they arrived?" — accounting for those who simply haven't had time to
+    churn yet. Returns the curve, the median engaged lifespan, and the n.
+    """
+    since = timezone.now() - timedelta(days=days)
+    rows = (PageView.objects.filter(timestamp__gte=since)
+            .exclude(session_hash='', user_id__isnull=True)
+            .values_list('user_id', 'session_hash', 'timestamp'))
+    first, last = {}, {}
+    for uid, sh, ts in rows:
+        vid = _visitor_id(uid, sh)
+        if vid not in first or ts < first[vid]:
+            first[vid] = ts
+        if vid not in last or ts > last[vid]:
+            last[vid] = ts
+    if len(first) < 3:
+        return {'available': False, 'note': 'Not enough visitors for survival analysis.'}
+
+    now = timezone.now()
+    durations, events = [], []
+    for vid in first:
+        durations.append(max(0, (last[vid] - first[vid]).days))
+        # Churned (event observed) if gone quiet; else censored (still in play).
+        events.append(1 if (now - last[vid]).days >= churn_after_days else 0)
+
+    km = ml.kaplan_meier(durations, events)
+    return {
+        'available': True,
+        'n': len(first),
+        'events': sum(events),
+        'censored': len(events) - sum(events),
+        'median_lifespan_days': km['median'],
+        'curve': km['curve'],
+    }
+
+
 # ===========================================================================
 # Path analysis  (first-order Markov transitions)
 # ===========================================================================

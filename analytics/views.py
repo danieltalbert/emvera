@@ -92,6 +92,7 @@ def dashboard(request):
         'churn': pa.churn_model(days),
         'conversion': conversion.conversion_model(days),
         'health': health.engagement_health(days),
+        'survival': pa.survival_analysis(max(days, 60)),
         'paths': pa.transition_matrix(days),
         # A/B experiments + the feature catalog (self-documentation).
         'experiments': exp_runtime.all_results(),

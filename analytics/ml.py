@@ -346,6 +346,43 @@ def zscore_anomalies(series: list[float], threshold: float = 2.0) -> list[Anomal
 
 
 # ===========================================================================
+# Survival analysis  (Kaplan-Meier estimator)
+# ===========================================================================
+def kaplan_meier(durations: list[float], events: list[int]) -> dict:
+    """Kaplan-Meier survival curve from right-censored lifetimes.
+
+    The product-limit estimator handles the fact that many visitors haven't had
+    the chance to churn yet (censored), which a naive "what % churned" calc gets
+    wrong. For each observed event time t:
+
+        S(t) = Π_{tᵢ ≤ t} ( 1 - dᵢ / nᵢ )
+
+    where dᵢ = events at tᵢ and nᵢ = subjects still "at risk" (duration ≥ tᵢ).
+    Censored subjects contribute to the at-risk set until their censor time, then
+    drop out without causing a step. Returns the step curve and the median
+    survival time (first t where S(t) ≤ 0.5, or None if never reached).
+    """
+    n = len(durations)
+    if n == 0:
+        return {'curve': [{'t': 0, 'survival': 1.0, 'at_risk': 0}], 'median': None}
+    data = list(zip(durations, events))
+    event_times = sorted({t for t, e in data if e == 1})
+
+    surv = 1.0
+    curve = [{'t': 0, 'survival': 1.0, 'at_risk': n}]
+    median = None
+    for t in event_times:
+        at_risk = sum(1 for dur, _ in data if dur >= t)
+        d = sum(1 for dur, e in data if dur == t and e == 1)
+        if at_risk > 0:
+            surv *= (1 - d / at_risk)
+        curve.append({'t': t, 'survival': round(surv, 4), 'at_risk': at_risk})
+        if median is None and surv <= 0.5:
+            median = t
+    return {'curve': curve, 'median': median}
+
+
+# ===========================================================================
 # Correlation & feature scaling
 # ===========================================================================
 def pearson_correlation(xs: list[float], ys: list[float]) -> float:

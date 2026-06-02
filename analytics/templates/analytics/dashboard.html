@@ -590,6 +590,24 @@
   </div>
 </div>
 
+<!-- Survival analysis (Kaplan-Meier) -->
+{% if survival.available %}
+<div class="card reveal" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Visitor Survival</div>
+      <div class="card-subtitle">
+        <span class="ml-tag">Kaplan-Meier</span>
+        Probability a visitor is still engaged N days after arriving (censoring those who can't have churned yet).
+        {% if survival.median_lifespan_days %}Median engaged lifespan: <strong>{{ survival.median_lifespan_days }} days</strong>.{% endif %}
+        {{ survival.events }} churned / {{ survival.censored }} still active.
+      </div>
+    </div>
+  </div>
+  <div class="card-body"><div style="height:240px;"><canvas id="survivalChart"></canvas></div></div>
+</div>
+{% endif %}
+
 <!-- Cohort retention -->
 <div class="card reveal" style="margin-bottom:var(--sp-6);">
   <div class="card-header">
@@ -767,6 +785,7 @@
 {{ heatmap|json_script:"heat-data" }}
 {{ sessions.depth_distribution|json_script:"depth-data" }}
 {{ retention_curve.curve|json_script:"retention-data" }}
+{{ survival.curve|json_script:"survival-data" }}
 {% endblock %}
 
 {% block extra_js %}
@@ -870,6 +889,28 @@
     }
     setInterval(refresh, 15000);  // every 15s
   })();
+
+  // ---- Survival curve (Kaplan-Meier step function).
+  var survEl = document.getElementById('survivalChart');
+  var survNode = document.getElementById('survival-data');
+  if (survEl && survNode) {
+    var sd = JSON.parse(survNode.textContent);
+    if (sd && sd.length) {
+      new Chart(survEl, {
+        type: 'line',
+        data: { labels: sd.map(function (p) { return 'd' + p.t; }),
+          datasets: [{ data: sd.map(function (p) { return Math.round(p.survival * 100); }),
+            borderColor: accent, backgroundColor: 'rgba(61,157,152,0.10)', fill: true,
+            stepped: true, pointRadius: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: function (c) { return c.parsed.y + '% still engaged'; } } } },
+          scales: { x: { grid: { display: false }, ticks: { color: muted, font: { size: 9 }, maxTicksLimit: 12 } },
+                    y: { grid: { color: grid }, ticks: { color: muted, font: { size: 10 }, callback: function (v) { return v + '%'; } },
+                         beginAtZero: true, max: 100 } } }
+      });
+    }
+  }
 
   // ---- Retention curve.
   var retEl = document.getElementById('retentionChart');
