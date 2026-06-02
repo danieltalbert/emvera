@@ -393,6 +393,61 @@
   </div>
 </div>
 
+<!-- Conversion drivers (ML) -->
+<div class="card reveal" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">What Drives Activation</div>
+      <div class="card-subtitle">
+        <span class="ml-tag">ML · logistic + correlation</span>
+        Predicts reaching <strong>{{ conversion.goal_section }}</strong> from behavior elsewhere (goal excluded — no leakage).
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if conversion.available %}
+    <div class="card-grid card-grid-3" style="margin-bottom:var(--sp-5);">
+      <div class="stat-card green">
+        <span class="stat-label">Activation Rate</span>
+        <div class="stat-value" data-countup="{{ conversion.conversion_rate }}" data-decimals="2">{{ conversion.conversion_rate }}</div>
+        <div class="stat-meta"><span>reach {{ conversion.goal_section }}</span></div>
+      </div>
+      <div class="stat-card teal">
+        <span class="stat-label">Model ROC-AUC</span>
+        <div class="stat-value" data-countup="{{ conversion.report.roc_auc }}" data-decimals="3">{{ conversion.report.roc_auc }}</div>
+      </div>
+      <div class="stat-card blue">
+        <span class="stat-label">Precision / Recall</span>
+        <div class="stat-value" style="font-size:var(--text-xl);">{{ conversion.report.precision }} / {{ conversion.report.recall }}</div>
+      </div>
+    </div>
+    <div class="ml-tag" style="margin-bottom:var(--sp-2);">Behavior correlated with activating</div>
+    <table class="data-table">
+      <thead><tr><th>Behavior</th><th class="num">Correlation</th><th>Direction</th></tr></thead>
+      <tbody>
+        {% for d in conversion.correlations %}
+        <tr>
+          <td class="text-sm">{{ d.feature }}</td>
+          <td class="num font-mono">{{ d.corr }}</td>
+          <td>
+            <div style="height:8px;background:var(--color-surface-alt);border-radius:var(--r-full);position:relative;max-width:160px;">
+              <div style="position:absolute;top:0;height:100%;border-radius:var(--r-full);
+                   {% if d.corr < 0 %}right:50%;background:var(--red-500);{% else %}left:50%;background:var(--green-500);{% endif %}
+                   width:{% widthratio d.corr_abs_pct 1 1 %}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><div class="empty-title">Not enough data to model activation</div>
+      <p class="empty-desc">{{ conversion.note }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 <!-- Cohort retention -->
 <div class="card reveal" style="margin-bottom:var(--sp-6);">
   <div class="card-header">
