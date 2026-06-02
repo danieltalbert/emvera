@@ -88,3 +88,55 @@ class VisitorFeatures(models.Model):
 
     def __str__(self):
         return f'features[{self.visitor_key}] @ {self.computed_at:%Y-%m-%d %H:%M}'
+
+
+class Experiment(models.Model):
+    """A two-arm A/B experiment (control vs. variant).
+
+    Visitors are deterministically hashed into an arm (see analytics.experiments
+    .assign), so assignment is stable and roughly 50/50 without storing a row
+    until a conversion or exposure is recorded. Results + significance are
+    computed by analytics.experiments.results using analytics.ab_test.
+    """
+    STATUS_RUNNING = 'running'
+    STATUS_STOPPED = 'stopped'
+    STATUS_CHOICES = [(STATUS_RUNNING, 'Running'), (STATUS_STOPPED, 'Stopped')]
+
+    class Meta:
+        app_label = 'analytics'
+        ordering = ['-created_at']
+
+    key = models.SlugField(max_length=60, unique=True, help_text='Stable id used for hashing.')
+    name = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    control_label = models.CharField(max_length=40, default='A (control)')
+    variant_label = models.CharField(max_length=40, default='B (variant)')
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_RUNNING)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.name} [{self.status}]'
+
+
+class ExperimentAssignment(models.Model):
+    """One visitor's membership in an experiment arm, plus whether they converted.
+
+    `variant` is 0 (control) or 1 (variant). `converted` flips to True the first
+    time the visitor completes the experiment's goal. Unique per (experiment,
+    visitor) so a visitor is counted once per arm.
+    """
+    class Meta:
+        app_label = 'analytics'
+        unique_together = ('experiment', 'visitor_key')
+        indexes = [models.Index(fields=['experiment', 'variant'])]
+
+    experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE, related_name='assignments')
+    visitor_key = models.CharField(max_length=80, db_index=True)
+    variant = models.PositiveSmallIntegerField(default=0)  # 0 = control, 1 = variant
+    converted = models.BooleanField(default=False)
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    converted_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        arm = 'B' if self.variant else 'A'
+        return f'{self.experiment.key}:{arm} {self.visitor_key[:8]} conv={self.converted}'

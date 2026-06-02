@@ -123,3 +123,34 @@ class Command(BaseCommand):
             f'Seeded {len(bulk)} page views across {days} days and {n_visitors} visitors '
             f'(spike planted on day index {spike_day}).'
         ))
+
+        self._seed_experiment(rng)
+
+    def _seed_experiment(self, rng):
+        """Seed one demo A/B experiment with a genuine, detectable effect so the
+        dashboard's significance tests have something real to report."""
+        from analytics.models import Experiment, ExperimentAssignment
+        exp, created = Experiment.objects.get_or_create(
+            key='onboarding-cta',
+            defaults={
+                'name': 'Onboarding CTA wording',
+                'description': 'Does "Start investing" convert better than "Get started"?',
+                'control_label': 'A · "Get started"',
+                'variant_label': 'B · "Start investing"',
+            },
+        )
+        if not created and exp.assignments.exists():
+            self.stdout.write('Demo experiment already seeded; skipping.')
+            return
+        # Control converts ~12%, variant ~17% — a real lift the z-test should catch.
+        rows = []
+        for i in range(300):
+            rows.append(ExperimentAssignment(experiment=exp, visitor_key=f'exp-a-{i}',
+                                             variant=0, converted=(rng.random() < 0.12)))
+        for i in range(300):
+            rows.append(ExperimentAssignment(experiment=exp, visitor_key=f'exp-b-{i}',
+                                             variant=1, converted=(rng.random() < 0.17)))
+        ExperimentAssignment.objects.bulk_create(rows, batch_size=500)
+        self.stdout.write(self.style.SUCCESS(
+            f'Seeded demo experiment "{exp.name}" with {len(rows)} assignments.'
+        ))

@@ -384,6 +384,82 @@
   {% endif %}
 </div>
 
+<!-- A/B experiments -->
+<div class="card reveal" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">A/B Experiments</div>
+      <div class="card-subtitle">
+        <span class="ml-tag">stats</span>
+        Two-proportion z-test (frequentist) + Bayesian P(B&gt;A). 30+ per arm before calling a result.
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if experiments %}
+      {% for e in experiments %}
+      <div style="padding:var(--sp-4) 0;border-bottom:1px solid var(--color-border-light);">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);flex-wrap:wrap;">
+          <div>
+            <span class="font-medium">{{ e.experiment.name }}</span>
+            {% if e.significant %}
+              <span class="badge badge-teal" style="background:var(--color-success-light);color:var(--green-700);">Significant (p={{ e.p_value }})</span>
+            {% elif e.enough_data %}
+              <span class="badge badge-muted">Not significant (p={{ e.p_value }})</span>
+            {% else %}
+              <span class="badge badge-muted">Collecting data…</span>
+            {% endif %}
+          </div>
+          <div class="text-sm text-muted">P(B&gt;A) = <span class="font-mono">{{ e.prob_b_beats_a }}</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin-top:var(--sp-3);">
+          <div>
+            <div class="text-xs text-muted">{{ e.control.label }}</div>
+            <div class="font-mono">{{ e.control.conversions }}/{{ e.control.n }}
+              · {% widthratio e.control.rate 1 100 %}%</div>
+          </div>
+          <div>
+            <div class="text-xs text-muted">{{ e.variant.label }}</div>
+            <div class="font-mono">{{ e.variant.conversions }}/{{ e.variant.n }}
+              · {% widthratio e.variant.rate 1 100 %}%
+              {% if e.rel_lift > 0 %}<span class="pos-gain" style="color:var(--green-600);">▲ {% widthratio e.rel_lift 1 100 %}%</span>
+              {% elif e.rel_lift < 0 %}<span style="color:var(--red-600);">▼</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="text-xs text-muted" style="margin-top:var(--sp-2);">
+          95% CI on difference: [{{ e.ci95.0 }}, {{ e.ci95.1 }}] · z={{ e.z }} · χ²={{ e.chi2 }}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="empty-state"><div class="empty-title">No experiments yet</div>
+      <p class="empty-desc">Create an <code>Experiment</code> and assign visitors via
+        <code>analytics.experiments.assign()</code>. Seed a demo with
+        <code>python manage.py seed_analytics</code>.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Feature catalog (self-documentation of the ML inputs) -->
+<details class="card reveal" style="margin-bottom:var(--sp-6);">
+  <summary class="card-header" style="cursor:pointer;list-style:none;">
+    <div class="card-title">ML Feature Catalog</div>
+  </summary>
+  <div class="card-body">
+    <p class="text-sm text-muted" style="margin-top:0;">The per-visitor features the segmentation and churn models are built on (from the feature store).</p>
+    <table class="data-table">
+      <thead><tr><th>Feature</th><th>Description</th></tr></thead>
+      <tbody>
+        {% for f in feature_catalog %}
+        <tr><td class="font-mono text-sm">{{ f.name }}</td><td class="text-sm">{{ f.description }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</details>
+
 {{ traffic|json_script:"traffic-data" }}
 {{ sections|json_script:"section-data" }}
 {{ heatmap|json_script:"heat-data" }}
