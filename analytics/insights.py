@@ -102,6 +102,49 @@ def daily_traffic(days: int = 30) -> dict:
     }
 
 
+def performance(days: int = 30, slow_limit: int = 8) -> dict:
+    """Server render-time health: latency percentiles + the slowest pages.
+
+    Averages hide tail latency, so we report p50/p90/p99 across all page views,
+    and rank pages by their p90 (the experience a frustrated user actually has)
+    rather than the mean. Also returns a daily p90 trend for the chart.
+    """
+    since = timezone.now() - timedelta(days=days)
+    qs = PageView.objects.filter(timestamp__gte=since)
+    all_ms = list(qs.values_list('response_ms', flat=True))
+    if not all_ms:
+        return {'available': False}
+
+    # Per-path latency lists for the slow-page ranking.
+    per_path = defaultdict(list)
+    for path, ms in qs.values_list('path', 'response_ms'):
+        per_path[path].append(ms)
+    slow = []
+    for path, vals in per_path.items():
+        slow.append({'path': path, 'count': len(vals),
+                     'p50': round(ml.percentile(vals, 50)),
+                     'p90': round(ml.percentile(vals, 90)),
+                     'avg': round(sum(vals) / len(vals))})
+    slow.sort(key=lambda d: d['p90'], reverse=True)
+
+    # Daily p90 trend.
+    per_day = defaultdict(list)
+    for d, ms in qs.values_list('timestamp__date', 'response_ms'):
+        per_day[d].append(ms)
+    trend_days = sorted(per_day)
+    trend = [{'label': d.strftime('%b %d'), 'p90': round(ml.percentile(per_day[d], 90))}
+             for d in trend_days]
+
+    return {
+        'available': True,
+        'p50': round(ml.percentile(all_ms, 50)),
+        'p90': round(ml.percentile(all_ms, 90)),
+        'p99': round(ml.percentile(all_ms, 99)),
+        'slow_pages': slow[:slow_limit],
+        'trend': trend,
+    }
+
+
 def stickiness() -> dict:
     """DAU / WAU / MAU and the stickiness ratio (DAU÷MAU).
 

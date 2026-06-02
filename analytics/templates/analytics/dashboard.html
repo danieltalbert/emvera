@@ -678,6 +678,40 @@
   </div>
 </div>
 
+<!-- Performance monitoring -->
+{% if performance.available %}
+<div class="card reveal" style="margin-bottom:var(--sp-6);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Performance</div>
+      <div class="card-subtitle">Server render time. Pages ranked by p90 — the latency a frustrated user actually sees.</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="card-grid card-grid-3" style="margin-bottom:var(--sp-5);">
+      <div class="stat-card green"><span class="stat-label">p50 (median)</span><div class="stat-value" data-countup="{{ performance.p50 }}" data-suffix=" ms">{{ performance.p50 }} ms</div></div>
+      <div class="stat-card amber"><span class="stat-label">p90</span><div class="stat-value" data-countup="{{ performance.p90 }}" data-suffix=" ms">{{ performance.p90 }} ms</div></div>
+      <div class="stat-card red"><span class="stat-label">p99 (tail)</span><div class="stat-value" data-countup="{{ performance.p99 }}" data-suffix=" ms">{{ performance.p99 }} ms</div></div>
+    </div>
+    <div class="ml-tag" style="margin-bottom:var(--sp-2);">Slowest pages (by p90)</div>
+    <table class="data-table">
+      <thead><tr><th>Page</th><th class="num">Views</th><th class="num">Avg</th><th class="num">p50</th><th class="num">p90</th></tr></thead>
+      <tbody>
+        {% for p in performance.slow_pages %}
+        <tr>
+          <td class="font-mono text-sm">{{ p.path }}</td>
+          <td class="num font-mono">{{ p.count }}</td>
+          <td class="num font-mono">{{ p.avg }} ms</td>
+          <td class="num font-mono">{{ p.p50 }} ms</td>
+          <td class="num font-mono" style="{% if p.p90 > 200 %}color:var(--red-600);{% endif %}">{{ p.p90 }} ms</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <!-- Feature catalog (self-documentation of the ML inputs) -->
 <details class="card reveal" style="margin-bottom:var(--sp-6);">
   <summary class="card-header" style="cursor:pointer;list-style:none;">

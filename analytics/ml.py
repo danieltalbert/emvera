@@ -41,6 +41,25 @@ def mean(xs: list[float]) -> float:
     return sum(xs) / len(xs) if xs else 0.0
 
 
+def percentile(values: list[float], p: float) -> float:
+    """The p-th percentile via linear interpolation between closest ranks.
+
+    Matches numpy's default ('linear') method. p in [0,100]. Empty -> 0.0,
+    single value -> that value. Used for latency p50/p90/p99 etc.
+    """
+    if not values:
+        return 0.0
+    s = sorted(values)
+    if len(s) == 1:
+        return float(s[0])
+    k = (len(s) - 1) * (p / 100.0)
+    lo = math.floor(k)
+    hi = math.ceil(k)
+    if lo == hi:
+        return float(s[int(k)])
+    return s[lo] + (s[hi] - s[lo]) * (k - lo)
+
+
 def stdev(xs: list[float], population: bool = True) -> float:
     """Standard deviation. Population (÷n) by default; sample (÷n-1) optional."""
     n = len(xs)

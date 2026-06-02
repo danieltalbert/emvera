@@ -78,6 +78,7 @@ def dashboard(request):
         'weekly_pattern': insights.weekly_pattern(days),
         'stickiness': insights.stickiness(),
         'retention_curve': insights.retention_curve(days),
+        'performance': insights.performance(days),
         'top_pages': insights.top_pages(days),
         'sections': insights.section_breakdown(days),
         'heatmap': insights.hourly_heatmap(days),
