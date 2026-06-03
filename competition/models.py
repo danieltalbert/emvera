@@ -1,3 +1,6 @@
+"""Database models for the competition feature: Competition, its
+Participants, the MiniGame instances, and per-player MiniGameResult rows."""
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone

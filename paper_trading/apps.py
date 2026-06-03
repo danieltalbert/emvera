@@ -1,3 +1,5 @@
+"""AppConfig for the paper trading app."""
+
 from django.apps import AppConfig
 
 

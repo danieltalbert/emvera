@@ -1,3 +1,5 @@
+"""URL routing for the analytics app."""
+
 from django.urls import path
 from . import views
 

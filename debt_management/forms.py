@@ -1,3 +1,5 @@
+"""Form definitions for the debt management app."""
+
 from django import forms
 
 from .models import CreditScore, PaymentReminder

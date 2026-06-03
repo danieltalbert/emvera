@@ -1,3 +1,4 @@
+"""Form definitions for the data integration app."""
 # data_integration/forms.py
 from django import forms
 from .models import Account, Debt, Transaction

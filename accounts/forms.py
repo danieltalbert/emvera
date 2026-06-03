@@ -1,3 +1,5 @@
+"""Form definitions for the accounts app."""
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm
 class ChangePasswordForm(PasswordChangeForm):

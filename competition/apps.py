@@ -1,3 +1,5 @@
+"""AppConfig for the competition app."""
+
 from django.apps import AppConfig
 
 

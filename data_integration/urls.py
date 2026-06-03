@@ -1,3 +1,4 @@
+"""URL routing for the data integration app."""
 # data_integration/urls.py
 from django.urls import path
 from . import views

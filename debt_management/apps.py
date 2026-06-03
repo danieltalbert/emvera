@@ -1,3 +1,5 @@
+"""AppConfig for the debt management app."""
+
 from django.apps import AppConfig
 
 class DebtManagementConfig(AppConfig):

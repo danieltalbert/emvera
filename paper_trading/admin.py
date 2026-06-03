@@ -1,3 +1,5 @@
+"""Django admin registrations for the paper trading app."""
+
 from django.contrib import admin
 
 from .models import PaperAccount, PaperPosition, PaperOrder

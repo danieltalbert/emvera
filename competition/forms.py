@@ -1,3 +1,5 @@
+"""Form definitions for the competition app."""
+
 from django import forms
 from .models import Competition
 

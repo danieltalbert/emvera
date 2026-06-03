@@ -1,0 +1,17 @@
+{% extends "admin/index.html" %}
+{# Custom admin home: surfaces the staff Analytics & ML dashboard prominently so
+   admin users can find it (wired via admin.site.index_template in analytics/apps.py). #}
+{% block content %}
+<div class="module" style="margin-bottom:22px;padding:18px 20px;background:linear-gradient(135deg,#1B3A2D,#124A47);border-radius:10px;">
+  <h2 style="color:#fff;margin:0 0 6px;border:none;background:none;padding:0;font-size:1.1rem;">📊 Analytics &amp; ML Dashboard</h2>
+  <p style="color:#cfeee9;margin:0 0 12px;font-size:0.9rem;">
+    User-activity insights, ML models (churn, conversion, segmentation, survival),
+    A/B experiments, anomaly alerts, and report export — staff only.
+  </p>
+  <a href="{% url 'analytics:dashboard' %}"
+     style="display:inline-block;background:#3D9D98;color:#fff;padding:9px 16px;border-radius:6px;text-decoration:none;font-weight:600;">
+    Open the dashboard →
+  </a>
+</div>
+{{ block.super }}
+{% endblock %}

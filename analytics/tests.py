@@ -134,6 +134,21 @@ class DashboardAccessTests(TestCase):
         # staff_member_required bounces non-staff to the admin login.
         self.assertEqual(r.status_code, 302)
 
+    def test_superuser_admin_can_view(self):
+        # Admins (superusers) have is_staff=True via createsuperuser, so the
+        # analytics pages are accessible to them.
+        admin = User.objects.create_superuser(username='root', password='x', email='r@e.com')
+        self.client.force_login(admin)
+        self.assertEqual(self.client.get(reverse('analytics:dashboard')).status_code, 200)
+
+    def test_admin_index_links_to_dashboard(self):
+        # The Django admin home surfaces the analytics dashboard for admins.
+        admin = User.objects.create_superuser(username='root2', password='x', email='r2@e.com')
+        self.client.force_login(admin)
+        r = self.client.get(reverse('admin:index'))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, reverse('analytics:dashboard'))
+
 
 class MiddlewareTests(TestCase):
     def test_get_html_is_logged(self):

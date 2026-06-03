@@ -1,3 +1,4 @@
+"""Django admin registrations for the data integration app."""
 # data_integration/admin.py
 from django.contrib import admin
 from .models import Account, Transaction, Investment, Debt, PlaidItem, BrokerageLink

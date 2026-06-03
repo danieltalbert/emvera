@@ -1,3 +1,5 @@
+"""Django admin registrations for the competition app."""
+
 from django.contrib import admin
 from .models import Competition, CompetitionParticipant, MiniGame, MiniGameResult
 

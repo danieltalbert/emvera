@@ -1,3 +1,5 @@
+"""Django admin registrations for the debt management app."""
+
 from django.contrib import admin
 
 from .models import CreditScore, PaymentReminder

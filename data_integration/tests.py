@@ -1,3 +1,5 @@
+"""Test suite for the data integration app."""
+
 import io
 from datetime import date
 from decimal import Decimal

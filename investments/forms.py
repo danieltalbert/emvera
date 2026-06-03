@@ -1,3 +1,5 @@
+"""Form definitions for the investments app."""
+
 from django import forms
 from .models import InvestmentProjection
 

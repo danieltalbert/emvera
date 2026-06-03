@@ -1,3 +1,5 @@
+"""Test suite for the investments app."""
+
 from datetime import date
 from decimal import Decimal
 from unittest import mock

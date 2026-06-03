@@ -1,3 +1,5 @@
+"""Test suite for the debt management app."""
+
 from datetime import date
 from decimal import Decimal
 

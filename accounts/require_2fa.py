@@ -1,3 +1,7 @@
+"""The require_2fa view decorator: bounces users who have not enabled
+two-factor authentication to the 2FA setup flow before they can reach
+sensitive views."""
+
 from functools import wraps
 from django.shortcuts import redirect
 from django.contrib import messages
