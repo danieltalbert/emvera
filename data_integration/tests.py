@@ -1,6 +1,8 @@
 import io
+import os
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
@@ -192,6 +194,30 @@ class DataIntegrationViewsTest(TestCase):
         response = self.client.get(reverse('data_integration:connect_plaid'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'data_integration/connect_plaid.html')
+
+    @patch.dict(os.environ, {'PLAID_CLIENT_ID': '', 'PLAID_SECRET': ''})
+    def test_plaid_link_token_returns_configuration_error_when_unconfigured(self):
+        response = self.client.post(reverse('data_integration:plaid_link_token'))
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('PLAID_CLIENT_ID', response.json()['error'])
+
+    def test_plaid_link_token_rejects_get(self):
+        response = self.client.get(reverse('data_integration:plaid_link_token'))
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.json()['error'], 'POST required.')
+
+    def test_plaid_exchange_requires_public_token(self):
+        response = self.client.post(reverse('data_integration:plaid_exchange'))
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['error'], 'public_token is required.')
+
+    @patch.dict(os.environ, {'PLAID_CLIENT_ID': '', 'PLAID_SECRET': ''})
+    def test_plaid_exchange_returns_configuration_error_when_unconfigured(self):
+        response = self.client.post(reverse('data_integration:plaid_exchange'), {
+            'public_token': 'public-sandbox-test',
+        })
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('PLAID_CLIENT_ID', response.json()['error'])
 
     def test_manual_account_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_account_entry'))
