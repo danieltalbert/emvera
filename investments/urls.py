@@ -3,8 +3,6 @@ from . import views
 
 app_name = "investments"
 
-from . import views
-
 urlpatterns = [
     path('', views.portfolio_overview, name='portfolio_overview'),
     path('growth-chart/', views.investment_growth_chart, name='investment_growth_chart'),
