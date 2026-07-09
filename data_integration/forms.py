@@ -12,6 +12,11 @@ class ManualTransactionForm(forms.ModelForm):
         model = Transaction
         fields = ['account', 'date', 'amount', 'category', 'description', 'source']
 
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            self.fields['account'].queryset = Account.objects.filter(user=user)
+
 class ManualDebtForm(forms.ModelForm):
     class Meta:
         model = Debt

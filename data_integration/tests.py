@@ -179,6 +179,13 @@ class DataIntegrationViewsTest(TestCase):
         self.user = get_user_model().objects.create_user(
             username='viewer', password='x', two_factor_enabled=True,
         )
+        self.account = Account.objects.create(user=self.user, name='Checking', type='checking')
+        self.other_user = get_user_model().objects.create_user(
+            username='other-viewer', password='x', two_factor_enabled=True,
+        )
+        self.other_account = Account.objects.create(
+            user=self.other_user, name='Other Checking', type='checking',
+        )
         self.client.login(username='viewer', password='x')
 
     def test_connect_plaid_view(self):
@@ -191,10 +198,59 @@ class DataIntegrationViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'data_integration/manual_account_entry.html')
 
+    def test_manual_account_entry_redirects_incomplete_user_to_onboarding(self):
+        response = self.client.post(reverse('data_integration:manual_account_entry'), {
+            'name': 'Savings',
+            'type': 'savings',
+            'institution': 'Local Credit Union',
+        })
+        self.assertRedirects(response, reverse('accounts:onboarding'))
+        self.assertTrue(Account.objects.filter(user=self.user, name='Savings').exists())
+
+    def test_manual_account_entry_redirects_complete_user_to_portfolio(self):
+        self.user.profile_complete = True
+        self.user.save()
+        response = self.client.post(reverse('data_integration:manual_account_entry'), {
+            'name': 'Brokerage',
+            'type': 'investment',
+            'institution': 'Local Broker',
+        })
+        self.assertRedirects(response, reverse('investments:portfolio_overview'))
+        self.assertTrue(Account.objects.filter(user=self.user, name='Brokerage').exists())
+
     def test_manual_transaction_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_transaction_entry'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'data_integration/manual_transaction_entry.html')
+
+    def test_manual_transaction_entry_redirects_to_portfolio(self):
+        response = self.client.post(reverse('data_integration:manual_transaction_entry'), {
+            'account': self.account.pk,
+            'date': '2026-07-09',
+            'amount': '42.50',
+            'category': 'Groceries',
+            'description': 'Market',
+            'source': 'manual',
+        })
+        self.assertRedirects(response, reverse('investments:portfolio_overview'))
+        self.assertTrue(Transaction.objects.filter(account=self.account, category='Groceries').exists())
+
+    def test_manual_transaction_rejects_another_users_account(self):
+        response = self.client.post(reverse('data_integration:manual_transaction_entry'), {
+            'account': self.other_account.pk,
+            'date': '2026-07-09',
+            'amount': '42.50',
+            'category': 'Leaked',
+            'description': 'Wrong account',
+            'source': 'manual',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Transaction.objects.filter(account=self.other_account).exists())
+        self.assertFormError(
+            response.context['form'],
+            'account',
+            'Select a valid choice. That choice is not one of the available choices.',
+        )
 
     def test_csv_upload_view(self):
         response = self.client.get(reverse('data_integration:csv_upload'))

@@ -224,13 +224,16 @@
           </svg>
           Profile &amp; Settings
         </a>
-        <a href="/accounts/logout/" class="sidebar-signout">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M7 10h9M13 7l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M10 4H5a1 1 0 00-1 1v10a1 1 0 001 1h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          Sign Out
-        </a>
+        <form method="post" action="{% url 'accounts:logout' %}" style="margin:0;">
+          {% csrf_token %}
+          <button type="submit" class="sidebar-signout" style="width:100%;text-align:left;">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M7 10h9M13 7l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M10 4H5a1 1 0 00-1 1v10a1 1 0 001 1h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            Sign Out
+          </button>
+        </form>
       {% else %}
         <a href="/accounts/login/" class="btn btn-accent btn-full" style="margin-top:var(--sp-2);">Sign In</a>
       {% endif %}
