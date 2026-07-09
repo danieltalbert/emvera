@@ -84,7 +84,9 @@ def manual_account_entry(request):
             account = form.save(commit=False)
             account.user = request.user
             account.save()
-            return redirect('accounts:list')
+            if request.user.profile_complete:
+                return redirect('investments:portfolio_overview')
+            return redirect('accounts:onboarding')
     else:
         form = ManualAccountForm()
     return render(request, 'data_integration/manual_account_entry.html', {'form': form})
@@ -93,12 +95,12 @@ def manual_account_entry(request):
 @require_2fa
 def manual_transaction_entry(request):
     if request.method == 'POST':
-        form = ManualTransactionForm(request.POST)
+        form = ManualTransactionForm(request.POST, user=request.user)
         if form.is_valid():
             transaction = form.save()
-            return redirect('accounts:detail', pk=transaction.account.pk)
+            return redirect('investments:portfolio_overview')
     else:
-        form = ManualTransactionForm()
+        form = ManualTransactionForm(user=request.user)
     return render(request, 'data_integration/manual_transaction_entry.html', {'form': form})
 
 @login_required

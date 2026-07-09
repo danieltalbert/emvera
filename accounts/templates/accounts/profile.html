@@ -105,10 +105,13 @@
     <div class="card-body">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);">
         <div>
-          <div class="font-medium text-sm">Sign out of all devices</div>
-          <div class="text-xs text-muted">Invalidates all active sessions for this account</div>
+          <div class="font-medium text-sm">Sign out of this session</div>
+          <div class="text-xs text-muted">Ends the current browser session for this account</div>
         </div>
-        <a href="/accounts/logout/" class="btn btn-danger btn-sm">Sign Out</a>
+        <form method="post" action="{% url 'accounts:logout' %}" style="margin:0;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-sm">Sign Out</button>
+        </form>
       </div>
     </div>
   </div>
