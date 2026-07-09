@@ -5,6 +5,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
@@ -282,6 +283,48 @@ class DataIntegrationViewsTest(TestCase):
         response = self.client.get(reverse('data_integration:csv_upload'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'data_integration/csv_upload.html')
+
+    def test_csv_upload_imports_transactions_for_selected_account(self):
+        upload = SimpleUploadedFile(
+            'transactions.csv',
+            (
+                b'date,amount,category,description\n'
+                b'2026-07-09,-42.50,Groceries,Market\n'
+                b'2026-07-10,1500.00,Salary,Payroll\n'
+            ),
+            content_type='text/csv',
+        )
+
+        response = self.client.post(reverse('data_integration:csv_upload'), {
+            'account': self.account.pk,
+            'file': upload,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'data_integration/csv_upload.html')
+        self.assertContains(response, 'Imported 2 transaction(s).')
+        self.assertEqual(Transaction.objects.filter(account=self.account, source='csv').count(), 2)
+        self.assertTrue(Transaction.objects.filter(account=self.account, category='Groceries').exists())
+
+    def test_csv_upload_rejects_another_users_account(self):
+        upload = SimpleUploadedFile(
+            'transactions.csv',
+            b'date,amount,category\n2026-07-09,-42.50,Leaked\n',
+            content_type='text/csv',
+        )
+
+        response = self.client.post(reverse('data_integration:csv_upload'), {
+            'account': self.other_account.pk,
+            'file': upload,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Transaction.objects.filter(account=self.other_account).exists())
+        self.assertFormError(
+            response.context['form'],
+            'account',
+            'Select a valid choice. That choice is not one of the available choices.',
+        )
 
     def test_manual_debt_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_debt_entry'))
