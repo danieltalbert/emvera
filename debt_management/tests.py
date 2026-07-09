@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from data_integration.models import Account, Debt
 
-from .models import PaymentReminder
+from .models import CreditScore, PaymentReminder
 from debt_management.utils import (
     add_months,
     avalanche_plan,
@@ -196,6 +196,40 @@ class DebtManagementViewsTest(TestCase):
         response = self.client.get(reverse('debt_management:credit_score_tracking'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/credit_score_tracking.html')
+
+    def test_credit_score_tracking_logs_score_for_signed_in_user(self):
+        response = self.client.post(reverse('debt_management:credit_score_tracking'), {
+            'score': '721',
+            'bureau': 'experian',
+            'recorded_on': '2026-07-09',
+            'notes': 'FICO update',
+        })
+
+        self.assertRedirects(response, reverse('debt_management:credit_score_tracking'))
+        score = CreditScore.objects.get(user=self.user)
+        self.assertEqual(score.score, 721)
+        self.assertEqual(score.bureau, 'experian')
+        self.assertFalse(CreditScore.objects.filter(user=self.other_user).exists())
+
+    def test_credit_score_tracking_only_lists_signed_in_users_scores(self):
+        CreditScore.objects.create(
+            user=self.user,
+            score=721,
+            bureau='experian',
+            recorded_on=date(2026, 7, 9),
+        )
+        CreditScore.objects.create(
+            user=self.other_user,
+            score=640,
+            bureau='equifax',
+            recorded_on=date(2026, 7, 9),
+        )
+
+        response = self.client.get(reverse('debt_management:credit_score_tracking'))
+
+        self.assertContains(response, '721')
+        self.assertNotContains(response, '640')
+        self.assertEqual(response.context['latest_score'].user, self.user)
 
     def test_consolidation_suggestion_view(self):
         response = self.client.get(reverse('debt_management:consolidation_suggestion'))
