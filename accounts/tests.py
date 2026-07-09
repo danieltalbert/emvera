@@ -118,4 +118,31 @@ class PasswordResetViewTest(TestCase):
 		self.user.refresh_from_db()
 		self.assertTrue(self.user.check_password('NewPass123!'))
 
-# 2FA and session security tests will be added after reviewing implementation details.
+
+class TwoFactorGateTest(TestCase):
+	def setUp(self):
+		self.user = get_user_model().objects.create_user(
+			username='needs2fa', password='testpass', two_factor_enabled=False,
+		)
+		self.client.login(username='needs2fa', password='testpass')
+
+	def assertRequiresTwoFactorSetup(self, route_name):
+		response = self.client.get(reverse(route_name))
+		self.assertRedirects(response, reverse('accounts:two_factor_setup'))
+
+	def test_onboarding_remains_available_before_two_factor_setup(self):
+		response = self.client.get(reverse('accounts:onboarding'))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, reverse('accounts:two_factor_setup'))
+
+	def test_profile_requires_two_factor_setup(self):
+		self.assertRequiresTwoFactorSetup('accounts:profile')
+
+	def test_data_entry_requires_two_factor_setup(self):
+		self.assertRequiresTwoFactorSetup('data_integration:manual_account_entry')
+		self.assertRequiresTwoFactorSetup('data_integration:manual_transaction_entry')
+		self.assertRequiresTwoFactorSetup('data_integration:csv_upload')
+
+	def test_investments_require_two_factor_setup(self):
+		self.assertRequiresTwoFactorSetup('investments:portfolio_overview')
+		self.assertRequiresTwoFactorSetup('investments:investment_growth_chart')
