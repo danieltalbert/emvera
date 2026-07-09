@@ -7,7 +7,6 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
 from data_integration.models import Account
-from .models import CustomUser
 
 class RegistrationViewTest(TestCase):
 	def test_register_page_loads(self):
