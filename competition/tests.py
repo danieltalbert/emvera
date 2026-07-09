@@ -166,6 +166,26 @@ class CompetitionFlowTests(TestCase):
         self.assertEqual(response.json(), {'ok': False, 'error': 'Already submitted.'})
         self.assertEqual(mini_game.results.filter(participant=participant).count(), 1)
 
+    def test_outsider_cannot_play_or_submit_mini_game(self):
+        competition = self.create_competition(status=Competition.STATUS_ACTIVE)
+        self.add_participant(competition, self.creator)
+        mini_game = MiniGame.objects.create(competition=competition, bonus_amount=competition.mini_game_bonus)
+        self.client.force_login(self.outsider)
+
+        paintball_response = self.client.get(reverse('competition:paintball', kwargs={
+            'pk': competition.pk,
+            'game_pk': mini_game.pk,
+        }))
+        self.assertEqual(paintball_response.status_code, 404)
+
+        submit_response = self.client.post(
+            reverse('competition:submit_score', kwargs={'pk': competition.pk, 'game_pk': mini_game.pk}),
+            data=json.dumps({'score': 99}),
+            content_type='application/json',
+        )
+        self.assertEqual(submit_response.status_code, 404)
+        self.assertFalse(MiniGameResult.objects.filter(mini_game=mini_game).exists())
+
     def test_creator_can_end_active_competition(self):
         competition = self.create_competition(status=Competition.STATUS_ACTIVE)
         self.add_participant(competition, self.creator)
@@ -178,3 +198,17 @@ class CompetitionFlowTests(TestCase):
         mini_game.refresh_from_db()
         self.assertEqual(competition.status, Competition.STATUS_FINISHED)
         self.assertEqual(mini_game.status, MiniGame.STATUS_FINISHED)
+
+    def test_outsider_cannot_end_active_competition(self):
+        competition = self.create_competition(status=Competition.STATUS_ACTIVE)
+        self.add_participant(competition, self.creator)
+        mini_game = MiniGame.objects.create(competition=competition, bonus_amount=competition.mini_game_bonus)
+        self.client.force_login(self.outsider)
+
+        response = self.client.post(reverse('competition:end', kwargs={'pk': competition.pk}))
+
+        self.assertEqual(response.status_code, 404)
+        competition.refresh_from_db()
+        mini_game.refresh_from_db()
+        self.assertEqual(competition.status, Competition.STATUS_ACTIVE)
+        self.assertEqual(mini_game.status, MiniGame.STATUS_ACTIVE)
