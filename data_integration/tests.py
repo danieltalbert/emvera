@@ -189,6 +189,12 @@ class DataIntegrationViewsTest(TestCase):
         self.other_account = Account.objects.create(
             user=self.other_user, name='Other Checking', type='checking',
         )
+        self.debt_account = Account.objects.create(
+            user=self.user, name='Auto Loan', type='debt',
+        )
+        self.other_debt_account = Account.objects.create(
+            user=self.other_user, name='Other Auto Loan', type='debt',
+        )
         self.client.login(username='viewer', password='x')
 
     def test_connect_plaid_view(self):
@@ -330,3 +336,40 @@ class DataIntegrationViewsTest(TestCase):
         response = self.client.get(reverse('data_integration:manual_debt_entry'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'data_integration/manual_debt_entry.html')
+
+    def test_manual_debt_entry_creates_debt_for_selected_account(self):
+        response = self.client.post(reverse('data_integration:manual_debt_entry'), {
+            'account': self.debt_account.pk,
+            'name': 'Auto Loan Balance',
+            'principal': '24000.00',
+            'interest_rate': '6.25',
+            'balance': '19000.00',
+            'minimum_payment': '425.00',
+            'due_date': '2026-08-15',
+            'as_of': '2026-07-09',
+        })
+
+        self.assertRedirects(response, reverse('debt_management:debt_dashboard'))
+        debt = Debt.objects.get(account=self.debt_account, name='Auto Loan Balance')
+        self.assertEqual(debt.balance, Decimal('19000.00'))
+        self.assertEqual(debt.minimum_payment, Decimal('425.00'))
+
+    def test_manual_debt_entry_rejects_another_users_account(self):
+        response = self.client.post(reverse('data_integration:manual_debt_entry'), {
+            'account': self.other_debt_account.pk,
+            'name': 'Leaked Loan',
+            'principal': '24000.00',
+            'interest_rate': '6.25',
+            'balance': '19000.00',
+            'minimum_payment': '425.00',
+            'due_date': '2026-08-15',
+            'as_of': '2026-07-09',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Debt.objects.filter(account=self.other_debt_account).exists())
+        self.assertFormError(
+            response.context['form'],
+            'account',
+            'Select a valid choice. That choice is not one of the available choices.',
+        )
