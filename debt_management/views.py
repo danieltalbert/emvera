@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import redirect, render
 
+from accounts.require_2fa import require_2fa
 from data_integration.models import Debt
 
 from .forms import CreditScoreForm, CustomPayoffForm, PaymentReminderForm
@@ -26,6 +27,7 @@ def _user_debts(user):
 
 
 @login_required
+@require_2fa
 def debt_dashboard(request):
     debt_qs = _user_debts(request.user).order_by('-interest_rate')
     debts = debts_from_queryset(debt_qs)
@@ -60,6 +62,7 @@ def _extra_payment_from_request(request) -> Decimal:
 
 
 @login_required
+@require_2fa
 def payoff_avalanche(request):
     debts = debts_from_queryset(_user_debts(request.user))
     extra = _extra_payment_from_request(request)
@@ -81,6 +84,7 @@ def payoff_avalanche(request):
 
 
 @login_required
+@require_2fa
 def payoff_snowball(request):
     debts = debts_from_queryset(_user_debts(request.user))
     extra = _extra_payment_from_request(request)
@@ -102,6 +106,7 @@ def payoff_snowball(request):
 
 
 @login_required
+@require_2fa
 def payoff_custom(request):
     debt_qs = _user_debts(request.user)
     debts = debts_from_queryset(debt_qs)
@@ -128,6 +133,7 @@ def payoff_custom(request):
 
 
 @login_required
+@require_2fa
 def consolidation_suggestion(request):
     debts = debts_from_queryset(_user_debts(request.user))
     recommendation = recommend_consolidation(debts) if debts else None
@@ -142,6 +148,7 @@ def consolidation_suggestion(request):
 
 
 @login_required
+@require_2fa
 def credit_score_tracking(request):
     if request.method == 'POST':
         form = CreditScoreForm(request.POST)
@@ -169,6 +176,7 @@ def credit_score_tracking(request):
 
 
 @login_required
+@require_2fa
 def debt_reminders(request):
     if request.method == 'POST':
         form = PaymentReminderForm(request.POST, user=request.user)
@@ -220,6 +228,7 @@ def debt_reminders(request):
 
 
 @login_required
+@require_2fa
 def mark_reminder_paid(request, pk):
     if request.method != 'POST':
         return redirect('debt_management:debt_reminders')

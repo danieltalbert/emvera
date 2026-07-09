@@ -140,7 +140,11 @@ class ConsolidationRecommendationTests(SimpleTestCase):
 
 class DebtManagementViewsTest(TestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user(username='testuser', password='testpass')
+        self.user = get_user_model().objects.create_user(
+            username='testuser',
+            password='testpass',
+            two_factor_enabled=True,
+        )
         self.client.login(username='testuser', password='testpass')
 
     def test_debt_dashboard_view(self):

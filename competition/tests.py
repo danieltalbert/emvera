@@ -12,9 +12,9 @@ class CompetitionFlowTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         User = get_user_model()
-        cls.creator = User.objects.create_user(username='creator', password='x')
-        cls.joiner = User.objects.create_user(username='joiner', password='x')
-        cls.outsider = User.objects.create_user(username='outsider', password='x')
+        cls.creator = User.objects.create_user(username='creator', password='x', two_factor_enabled=True)
+        cls.joiner = User.objects.create_user(username='joiner', password='x', two_factor_enabled=True)
+        cls.outsider = User.objects.create_user(username='outsider', password='x', two_factor_enabled=True)
 
     def setUp(self):
         self.client.force_login(self.creator)
