@@ -12,6 +12,20 @@
 {% block nav_portfolio %}active{% endblock %}
 
 {% block extra_css %}
+<style>
+  .portfolio-main-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: var(--sp-6);
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .portfolio-main-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 {% endblock %}
 
@@ -89,7 +103,7 @@
 </div>
 
 <!-- Chart + Holdings -->
-<div style="display:grid;grid-template-columns:1fr 380px;gap:var(--sp-6);align-items:start;">
+<div class="portfolio-main-grid">
 
   <!-- Holdings Table -->
   <div class="card">
