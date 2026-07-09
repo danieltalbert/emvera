@@ -55,12 +55,13 @@ def _products() -> Iterable[str]:
 
 def create_link_token(user) -> str:
     """Return a short-lived link_token for the browser SDK."""
+    client = _client()
+
     from plaid.model.link_token_create_request import LinkTokenCreateRequest
     from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
     from plaid.model.products import Products
     from plaid.model.country_code import CountryCode
 
-    client = _client()
     request = LinkTokenCreateRequest(
         products=[Products(p) for p in _products()],
         client_name='Ridge & River Financial',
@@ -73,9 +74,10 @@ def create_link_token(user) -> str:
 
 def exchange_public_token(public_token: str) -> dict:
     """Exchange a public_token from the browser for an access_token + item_id."""
+    client = _client()
+
     from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 
-    client = _client()
     resp = client.item_public_token_exchange(
         ItemPublicTokenExchangeRequest(public_token=public_token)
     )
@@ -83,9 +85,10 @@ def exchange_public_token(public_token: str) -> dict:
 
 
 def fetch_accounts(access_token: str) -> list[dict]:
+    client = _client()
+
     from plaid.model.accounts_get_request import AccountsGetRequest
 
-    client = _client()
     resp = client.accounts_get(AccountsGetRequest(access_token=access_token))
     return [
         {
@@ -101,11 +104,12 @@ def fetch_accounts(access_token: str) -> list[dict]:
 
 
 def get_institution_name(access_token: str) -> str:
+    client = _client()
+
     from plaid.model.item_get_request import ItemGetRequest
     from plaid.model.institutions_get_by_id_request import InstitutionsGetByIdRequest
     from plaid.model.country_code import CountryCode
 
-    client = _client()
     item_resp = client.item_get(ItemGetRequest(access_token=access_token))
     inst_id = item_resp.item.institution_id
     if not inst_id:
