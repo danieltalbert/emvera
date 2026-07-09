@@ -5,6 +5,9 @@ from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
+from data_integration.models import Account, Debt
+
+from .models import PaymentReminder
 from debt_management.utils import (
     add_months,
     avalanche_plan,
@@ -145,6 +148,43 @@ class DebtManagementViewsTest(TestCase):
             password='testpass',
             two_factor_enabled=True,
         )
+        self.other_user = get_user_model().objects.create_user(
+            username='otheruser',
+            password='testpass',
+            two_factor_enabled=True,
+        )
+        self.account = Account.objects.create(
+            user=self.user,
+            name='Credit Card',
+            type='credit',
+            institution='Codex Card',
+        )
+        self.debt = Debt.objects.create(
+            account=self.account,
+            name='Credit Card Balance',
+            principal=Decimal('5000.00'),
+            balance=Decimal('4200.00'),
+            interest_rate=Decimal('19.99'),
+            minimum_payment=Decimal('125.00'),
+            due_date=date(2026, 8, 1),
+            as_of=date(2026, 7, 9),
+        )
+        self.other_account = Account.objects.create(
+            user=self.other_user,
+            name='Other Credit Card',
+            type='credit',
+            institution='Other Bank',
+        )
+        self.other_debt = Debt.objects.create(
+            account=self.other_account,
+            name='Other Credit Card Balance',
+            principal=Decimal('2500.00'),
+            balance=Decimal('2100.00'),
+            interest_rate=Decimal('15.50'),
+            minimum_payment=Decimal('75.00'),
+            due_date=date(2026, 8, 1),
+            as_of=date(2026, 7, 9),
+        )
         self.client.login(username='testuser', password='testpass')
 
     def test_debt_dashboard_view(self):
@@ -166,6 +206,73 @@ class DebtManagementViewsTest(TestCase):
         response = self.client.get(reverse('debt_management:debt_reminders'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/debt_reminders.html')
+
+    def test_debt_reminders_create_for_selected_user_debt(self):
+        response = self.client.post(reverse('debt_management:debt_reminders'), {
+            'debt': self.debt.pk,
+            'name': 'Credit card payment',
+            'institution': '',
+            'amount': '125.00',
+            'due_date': '2026-08-01',
+            'notify_days_before': '3',
+        })
+
+        self.assertRedirects(response, reverse('debt_management:debt_reminders'))
+        reminder = PaymentReminder.objects.get(user=self.user, debt=self.debt)
+        self.assertEqual(reminder.amount, Decimal('125.00'))
+        self.assertEqual(reminder.institution, 'Codex Card')
+
+    def test_debt_reminders_reject_another_users_debt(self):
+        response = self.client.post(reverse('debt_management:debt_reminders'), {
+            'debt': self.other_debt.pk,
+            'name': 'Wrong payment',
+            'institution': '',
+            'amount': '75.00',
+            'due_date': '2026-08-01',
+            'notify_days_before': '3',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(PaymentReminder.objects.filter(debt=self.other_debt).exists())
+        self.assertFormError(
+            response.context['form'],
+            'debt',
+            'Select a valid choice. That choice is not one of the available choices.',
+        )
+
+    def test_mark_reminder_paid_only_updates_signed_in_users_reminder(self):
+        own_reminder = PaymentReminder.objects.create(
+            user=self.user,
+            debt=self.debt,
+            name='Credit card payment',
+            institution='Codex Card',
+            amount=Decimal('125.00'),
+            due_date=date(2026, 8, 1),
+        )
+        other_reminder = PaymentReminder.objects.create(
+            user=self.other_user,
+            debt=self.other_debt,
+            name='Other payment',
+            institution='Other Bank',
+            amount=Decimal('75.00'),
+            due_date=date(2026, 8, 1),
+        )
+
+        response = self.client.post(
+            reverse('debt_management:mark_reminder_paid', kwargs={'pk': own_reminder.pk})
+        )
+        self.assertRedirects(response, reverse('debt_management:debt_reminders'))
+        own_reminder.refresh_from_db()
+        self.assertTrue(own_reminder.is_paid)
+        self.assertEqual(own_reminder.paid_on, date.today())
+
+        response = self.client.post(
+            reverse('debt_management:mark_reminder_paid', kwargs={'pk': other_reminder.pk})
+        )
+        self.assertRedirects(response, reverse('debt_management:debt_reminders'))
+        other_reminder.refresh_from_db()
+        self.assertFalse(other_reminder.is_paid)
+        self.assertIsNone(other_reminder.paid_on)
 
     def test_payoff_avalanche_view(self):
         response = self.client.get(reverse('debt_management:payoff_avalanche'))
