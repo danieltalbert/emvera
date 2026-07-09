@@ -6,11 +6,14 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from accounts.require_2fa import require_2fa
+
 from .forms import CompetitionForm
 from .models import Competition, CompetitionParticipant, MiniGame, MiniGameResult
 
 
 @login_required
+@require_2fa
 def lobby(request):
     open_competitions = Competition.objects.filter(status=Competition.STATUS_LOBBY)
     active_competitions = Competition.objects.filter(status=Competition.STATUS_ACTIVE)
@@ -28,6 +31,7 @@ def lobby(request):
 
 
 @login_required
+@require_2fa
 def create_competition(request):
     if request.method == 'POST':
         form = CompetitionForm(request.POST)
@@ -48,6 +52,7 @@ def create_competition(request):
 
 
 @login_required
+@require_2fa
 @require_POST
 def join_competition(request, pk):
     competition = get_object_or_404(Competition, pk=pk, status=Competition.STATUS_LOBBY)
@@ -64,6 +69,7 @@ def join_competition(request, pk):
 
 
 @login_required
+@require_2fa
 @require_POST
 def start_competition(request, pk):
     competition = get_object_or_404(Competition, pk=pk, created_by=request.user, status=Competition.STATUS_LOBBY)
@@ -76,6 +82,7 @@ def start_competition(request, pk):
 
 
 @login_required
+@require_2fa
 def competition_dashboard(request, pk):
     competition = get_object_or_404(Competition, pk=pk)
     try:
@@ -101,6 +108,7 @@ def competition_dashboard(request, pk):
 
 
 @login_required
+@require_2fa
 def competition_state(request, pk):
     """Polling endpoint — returns JSON snapshot of competition state."""
     competition = get_object_or_404(Competition, pk=pk)
@@ -138,6 +146,7 @@ def competition_state(request, pk):
 
 
 @login_required
+@require_2fa
 @require_POST
 def trigger_mini_game(request, pk):
     competition = get_object_or_404(Competition, pk=pk, created_by=request.user, status=Competition.STATUS_ACTIVE)
@@ -154,6 +163,7 @@ def trigger_mini_game(request, pk):
 
 
 @login_required
+@require_2fa
 def paintball_game(request, pk, game_pk):
     competition = get_object_or_404(Competition, pk=pk, status=Competition.STATUS_ACTIVE)
     mini_game = get_object_or_404(MiniGame, pk=game_pk, competition=competition, status=MiniGame.STATUS_ACTIVE)
@@ -171,6 +181,7 @@ def paintball_game(request, pk, game_pk):
 
 
 @login_required
+@require_2fa
 @require_POST
 def submit_score(request, pk, game_pk):
     competition = get_object_or_404(Competition, pk=pk)
@@ -207,6 +218,7 @@ def _check_winner(competition):
 
 
 @login_required
+@require_2fa
 @require_POST
 def end_competition(request, pk):
     competition = get_object_or_404(Competition, pk=pk, created_by=request.user, status=Competition.STATUS_ACTIVE)
@@ -217,6 +229,7 @@ def end_competition(request, pk):
 
 
 @login_required
+@require_2fa
 def competition_winner(request, pk):
     competition = get_object_or_404(Competition, pk=pk, status=Competition.STATUS_FINISHED)
     leaderboard = competition.participants.order_by('-portfolio_value', '-bonus_earned')

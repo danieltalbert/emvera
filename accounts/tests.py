@@ -140,8 +140,22 @@ class TwoFactorGateTest(TestCase):
 	def test_data_entry_requires_two_factor_setup(self):
 		self.assertRequiresTwoFactorSetup('data_integration:manual_account_entry')
 		self.assertRequiresTwoFactorSetup('data_integration:manual_transaction_entry')
+		self.assertRequiresTwoFactorSetup('data_integration:manual_debt_entry')
 		self.assertRequiresTwoFactorSetup('data_integration:csv_upload')
 
 	def test_investments_require_two_factor_setup(self):
 		self.assertRequiresTwoFactorSetup('investments:portfolio_overview')
 		self.assertRequiresTwoFactorSetup('investments:investment_growth_chart')
+
+	def test_debt_tools_require_two_factor_setup(self):
+		self.assertRequiresTwoFactorSetup('debt_management:debt_dashboard')
+		self.assertRequiresTwoFactorSetup('debt_management:payoff_avalanche')
+		self.assertRequiresTwoFactorSetup('debt_management:payoff_snowball')
+		self.assertRequiresTwoFactorSetup('debt_management:payoff_custom')
+		self.assertRequiresTwoFactorSetup('debt_management:debt_reminders')
+		self.assertRequiresTwoFactorSetup('debt_management:consolidation_suggestion')
+		self.assertRequiresTwoFactorSetup('debt_management:credit_score_tracking')
+
+	def test_competition_entry_requires_two_factor_setup(self):
+		self.assertRequiresTwoFactorSetup('competition:lobby')
+		self.assertRequiresTwoFactorSetup('competition:create')
