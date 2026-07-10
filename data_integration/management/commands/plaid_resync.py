@@ -33,7 +33,8 @@ class Command(BaseCommand):
         parser.add_argument('--dry-run', action='store_true', help='Skip side effects, just report.')
 
     def handle(self, *args, **options):
-        if not plaid_client.is_configured():
+        dry_run = options['dry_run']
+        if not dry_run and not plaid_client.is_configured():
             raise CommandError(
                 'Plaid is not configured. Set PLAID_CLIENT_ID and PLAID_SECRET in your environment.'
             )
@@ -59,7 +60,7 @@ class Command(BaseCommand):
         self.stdout.write(f'Syncing {total} item(s)...')
         for item in qs:
             self.stdout.write(f'- {item.user.username} / {item.institution_name or item.item_id}')
-            if options['dry_run']:
+            if dry_run:
                 continue
             summary = SyncSummary()
             try:

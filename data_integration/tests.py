@@ -2,14 +2,17 @@ import io
 import os
 import sys
 from types import ModuleType, SimpleNamespace
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .crypto import PREFIX, decrypt, encrypt
 from .csv_import import _parse_amount, _parse_date, _resolve_columns, import_transactions
@@ -342,6 +345,56 @@ class PlaidSyncTests(TestCase):
         self.assertFalse(Transaction.objects.filter(account=self.account, external_id='tx-removed').exists())
         self.assertEqual(summary.transactions_modified, 1)
         self.assertEqual(summary.transactions_removed, 1)
+
+
+class PlaidResyncCommandTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username='resync-user', password='x')
+        self.other_user = User.objects.create_user(username='other-resync-user', password='x')
+        self.item = self.create_item(self.user, 'item-resync', 'Ridge Bank')
+        self.other_item = self.create_item(self.other_user, 'item-other-resync', 'River Bank')
+
+    def create_item(self, user, item_id, institution):
+        item = PlaidItem(user=user, item_id=item_id, institution_name=institution)
+        item.set_access_token(f'access-{item_id}')
+        item.save()
+        return item
+
+    @patch.dict(os.environ, {'PLAID_CLIENT_ID': '', 'PLAID_SECRET': ''})
+    def test_dry_run_reports_filtered_items_without_plaid_credentials(self):
+        stdout = io.StringIO()
+
+        call_command('plaid_resync', '--dry-run', f'--user={self.user.username}', stdout=stdout)
+
+        output = stdout.getvalue()
+        self.assertIn('Syncing 1 item(s)...', output)
+        self.assertIn('- resync-user / Ridge Bank', output)
+        self.assertNotIn('other-resync-user', output)
+        self.item.refresh_from_db()
+        self.assertIsNone(self.item.last_synced_at)
+
+    @patch.dict(os.environ, {'PLAID_CLIENT_ID': '', 'PLAID_SECRET': ''})
+    def test_dry_run_honors_stale_hours_filter_without_side_effects(self):
+        self.item.last_synced_at = timezone.now()
+        self.item.save(update_fields=['last_synced_at'])
+        self.other_item.last_synced_at = timezone.now() - timedelta(hours=48)
+        self.other_item.save(update_fields=['last_synced_at'])
+        stdout = io.StringIO()
+
+        call_command('plaid_resync', '--dry-run', '--stale-hours=24', stdout=stdout)
+
+        output = stdout.getvalue()
+        self.assertIn('Syncing 1 item(s)...', output)
+        self.assertIn('- other-resync-user / River Bank', output)
+        self.assertNotIn('- resync-user / Ridge Bank', output)
+        self.other_item.refresh_from_db()
+        self.assertLess(self.other_item.last_synced_at, timezone.now() - timedelta(hours=24))
+
+    @patch.dict(os.environ, {'PLAID_CLIENT_ID': '', 'PLAID_SECRET': ''})
+    def test_resync_requires_plaid_credentials_when_not_dry_run(self):
+        with self.assertRaisesMessage(CommandError, 'Plaid is not configured'):
+            call_command('plaid_resync', stdout=io.StringIO())
 
 
 # ---------- Legacy model + view tests, kept passing ----------
