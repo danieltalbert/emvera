@@ -83,6 +83,13 @@ class InvestmentsViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'investments/investment_recommendations.html')
 
+    def test_investment_recommendations_empty_state_has_next_actions(self):
+        response = self.client.get(reverse('investments:investment_recommendations'))
+
+        self.assertContains(response, 'No recommendations yet')
+        self.assertContains(response, 'Add investment holdings first')
+        self.assertContains(response, 'Add Investments')
+
     def test_export_investments_csv_only_includes_signed_in_user_data(self):
         own_investment = Investment.objects.create(
             account=self.account,

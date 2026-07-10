@@ -61,11 +61,6 @@
     letter-spacing: 0.08em; color: var(--color-text-secondary);
     margin-bottom: var(--sp-3);
   }
-  .empty-state {
-    text-align: center; padding: var(--sp-8) var(--sp-4);
-    color: var(--color-text-secondary); font-size: 0.9rem;
-  }
-  .empty-state svg { opacity: 0.3; margin-bottom: var(--sp-3); }
 </style>
 {% endblock %}
 
@@ -160,11 +155,18 @@
 
 {% if not open_competitions and not active_competitions and not my_competitions %}
 <div class="empty-state">
-  <svg width="48" height="48" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path d="M10 2l2.4 5H18l-4.3 3.1L15 16 10 12.7 5 16l1.3-5.9L2 7h5.6L10 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-  </svg>
-  <p>No competitions yet. Create one and invite your friends!</p>
-  <a href="{% url 'competition:create' %}" class="btn btn-accent" style="margin-top:var(--sp-3);">Create First Competition</a>
+  <div class="empty-icon">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+      <path d="M14 4l3 6h7l-5.5 4 2 7L14 17.5 7.5 21l2-7L4 10h7l3-6z" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="empty-title">No competitions yet</div>
+  <p class="empty-desc">
+    Create a virtual portfolio challenge when you are ready to invite players and track progress toward a goal.
+  </p>
+  <div class="empty-actions">
+    <a href="{% url 'competition:create' %}" class="btn btn-accent">Create Competition</a>
+  </div>
 </div>
 {% endif %}
 

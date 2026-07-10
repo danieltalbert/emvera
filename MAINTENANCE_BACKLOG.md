@@ -18,7 +18,9 @@ Last updated: 2026-07-10
   - Added validation coverage for manual account, transaction, and debt entry forms with empty or invalid fields.
   - Let `plaid_resync --dry-run` audit eligible items without Plaid credentials, with user/stale filters covered by tests.
   - Hardened `send_due_reminders` so email/SMS send failures are logged per reminder and do not stop later reminders.
+  - Afternoon continuation normalized empty-state copy/actions for payoff, recommendation, and competition pages and made payoff sidebar layouts responsive.
 
 ## Next Candidates
 
-1. Review empty states on debt payoff, investment recommendations, and competition pages for consistent copy and responsive layout.
+1. Audit investment recommendation generation end-to-end so account-level recommendations can be created and displayed.
+2. Review remaining fixed two-column grids in dashboard/reminders/comparison pages for mobile overflow.
