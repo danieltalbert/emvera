@@ -7,7 +7,6 @@ from django.shortcuts import render
 
 from accounts.require_2fa import require_2fa
 from data_integration.models import Account, Investment
-from .forms import InvestmentProjectionForm
 from .models import InvestmentProjection, InvestmentRecommendation
 from .recommendation_utils import generate_recommendations
 
