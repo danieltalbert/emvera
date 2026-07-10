@@ -16,8 +16,9 @@ Last updated: 2026-07-10
   - Hardened Plaid transaction sync so same-ID rows from another user are not moved, edited, or deleted.
   - Added mocked Plaid cursor, replay, and ownership regression coverage.
   - Added validation coverage for manual account, transaction, and debt entry forms with empty or invalid fields.
+  - Let `plaid_resync --dry-run` audit eligible items without Plaid credentials, with user/stale filters covered by tests.
 
 ## Next Candidates
 
 1. Review empty states on debt payoff, investment recommendations, and competition pages for consistent copy and responsive layout.
-2. Audit management commands (`plaid_resync`, `send_due_reminders`) for dry-run behavior, user filtering, and safe error reporting.
+2. Audit `send_due_reminders` dry-run behavior and safe error reporting.
