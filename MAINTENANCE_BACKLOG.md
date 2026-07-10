@@ -21,8 +21,9 @@ Last updated: 2026-07-10
   - Afternoon continuation normalized empty-state copy/actions for payoff, recommendation, and competition pages and made payoff sidebar layouts responsive.
   - Displayed generated portfolio-wide investment recommendations without creating recommendation rows during GET requests.
   - Reused responsive layout helpers on debt dashboard, reminders, credit score, and investment comparison pages to avoid fixed-grid mobile overflow.
+  - Replaced the consolidation recommendation detail grid with the responsive card-grid helper.
 
 ## Next Candidates
 
 1. Add recommendation count/status coverage if reviewed recommendations become user-actionable.
-2. Review consolidation recommendation detail grids for small-screen polish.
+2. Add browser screenshot coverage for the highest-traffic dashboard pages if visual QA tooling is available.

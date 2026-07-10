@@ -241,6 +241,7 @@ class DebtManagementViewsTest(TestCase):
         response = self.client.get(reverse('debt_management:consolidation_suggestion'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/consolidation_suggestion.html')
+        self.assertContains(response, 'card-grid card-grid-2')
 
     def test_debt_reminders_view(self):
         response = self.client.get(reverse('debt_management:debt_reminders'))

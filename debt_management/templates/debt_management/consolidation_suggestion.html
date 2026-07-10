@@ -148,7 +148,7 @@
   </div>
   {% if has_debts and recommendation %}
     <div class="card-body" style="display:flex;flex-direction:column;gap:var(--sp-4);">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);">
+      <div class="card-grid card-grid-2" style="gap:var(--sp-4);">
         <div>
           <div class="stat-label">Total balance to consolidate</div>
           <div class="stat-value" style="font-size:var(--text-2xl);margin-top:var(--sp-1);">${{ total_balance|floatformat:2 }}</div>
