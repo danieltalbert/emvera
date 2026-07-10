@@ -1,7 +1,6 @@
 from data_integration.models import Investment, Account, Debt
 from .models import InvestmentRecommendation
 from django.db.models import Sum
-from datetime import date
 
 def generate_recommendations(user, target_allocation=None, annual_goal=None, projections=None):
     """

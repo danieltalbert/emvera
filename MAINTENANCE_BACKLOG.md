@@ -22,6 +22,7 @@ Last updated: 2026-07-10
   - Displayed generated portfolio-wide investment recommendations without creating recommendation rows during GET requests.
   - Reused responsive layout helpers on debt dashboard, reminders, credit score, and investment comparison pages to avoid fixed-grid mobile overflow.
   - Replaced the consolidation recommendation detail grid with the responsive card-grid helper.
+  - Removed stale imports from the investment recommendation/view modules.
 
 ## Next Candidates
 
