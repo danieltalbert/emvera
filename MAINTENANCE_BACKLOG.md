@@ -20,8 +20,9 @@ Last updated: 2026-07-10
   - Hardened `send_due_reminders` so email/SMS send failures are logged per reminder and do not stop later reminders.
   - Afternoon continuation normalized empty-state copy/actions for payoff, recommendation, and competition pages and made payoff sidebar layouts responsive.
   - Displayed generated portfolio-wide investment recommendations without creating recommendation rows during GET requests.
+  - Reused responsive layout helpers on debt dashboard, reminders, credit score, and investment comparison pages to avoid fixed-grid mobile overflow.
 
 ## Next Candidates
 
-1. Review remaining fixed two-column grids in dashboard/reminders/comparison pages for mobile overflow.
-2. Add recommendation count/status coverage if reviewed recommendations become user-actionable.
+1. Add recommendation count/status coverage if reviewed recommendations become user-actionable.
+2. Review consolidation recommendation detail grids for small-screen polish.

@@ -195,11 +195,13 @@ class DebtManagementViewsTest(TestCase):
         response = self.client.get(reverse('debt_management:debt_dashboard'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/debt_dashboard.html')
+        self.assertContains(response, 'layout-with-sidebar')
 
     def test_credit_score_tracking_view(self):
         response = self.client.get(reverse('debt_management:credit_score_tracking'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/credit_score_tracking.html')
+        self.assertContains(response, 'layout-with-leading-sidebar')
 
     def test_credit_score_tracking_logs_score_for_signed_in_user(self):
         response = self.client.post(reverse('debt_management:credit_score_tracking'), {
@@ -244,6 +246,7 @@ class DebtManagementViewsTest(TestCase):
         response = self.client.get(reverse('debt_management:debt_reminders'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/debt_reminders.html')
+        self.assertContains(response, 'layout-with-sidebar')
 
     def test_debt_reminders_create_for_selected_user_debt(self):
         response = self.client.post(reverse('debt_management:debt_reminders'), {

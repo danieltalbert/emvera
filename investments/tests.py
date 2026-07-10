@@ -73,6 +73,23 @@ class InvestmentsViewsTest(TestCase):
         response = self.client.get(reverse('investments:investment_growth_chart'))
         self.assertEqual(response.status_code, 200)
 
+    def test_investment_comparison_view_uses_responsive_layout(self):
+        Investment.objects.create(
+            account=self.account,
+            name='Balanced Fund',
+            type='fund',
+            value=Decimal('2500.00'),
+            quantity=Decimal('5.0000'),
+            symbol='BAL',
+            as_of=date(2026, 7, 10),
+        )
+
+        response = self.client.get(reverse('investments:investment_comparison'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'investments/investment_comparison.html')
+        self.assertContains(response, 'layout-with-sidebar')
+
     def test_investment_projections_view(self):
         response = self.client.get(reverse('investments:investment_projections'))
         self.assertEqual(response.status_code, 200)
