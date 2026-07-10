@@ -1,5 +1,7 @@
 import io
 import os
+import sys
+from types import ModuleType, SimpleNamespace
 from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
@@ -12,6 +14,7 @@ from django.urls import reverse
 from .crypto import PREFIX, decrypt, encrypt
 from .csv_import import _parse_amount, _parse_date, _resolve_columns, import_transactions
 from .models import Account, Debt, Investment, PlaidItem, Transaction
+from .plaid_sync import SyncSummary, _sync_transactions
 
 
 # ---------- CSV importer ----------
@@ -125,6 +128,220 @@ class PlaidItemTokenTests(TestCase):
         self.assertTrue(reloaded.access_token.startswith(PREFIX))
         self.assertNotIn('secret', reloaded.access_token)
         self.assertEqual(reloaded.get_access_token(), 'access-sandbox-secret')
+
+
+class FakeTransactionsSyncRequest:
+    def __init__(self, **kwargs):
+        self.access_token = kwargs['access_token']
+        self.cursor = kwargs.get('cursor', '')
+
+
+class FakePlaidTransactionsClient:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.requests = []
+
+    def transactions_sync(self, request):
+        self.requests.append(request)
+        return self.responses.pop(0)
+
+
+class PlaidSyncTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username='sync-user', password='x')
+        self.other_user = User.objects.create_user(username='other-sync-user', password='x')
+        self.account = Account.objects.create(
+            user=self.user,
+            name='Sync Checking',
+            type='checking',
+            external_id='plaid-account-1',
+        )
+        self.other_account = Account.objects.create(
+            user=self.other_user,
+            name='Other Checking',
+            type='checking',
+            external_id='plaid-account-2',
+        )
+        self.item = PlaidItem(user=self.user, item_id='item-sync', cursor='cursor-0')
+        self.item.set_access_token('access-sync')
+        self.item.save()
+
+    def plaid_modules(self):
+        plaid_package = ModuleType('plaid')
+        plaid_package.__path__ = []
+        model_package = ModuleType('plaid.model')
+        model_package.__path__ = []
+        sync_request_module = ModuleType('plaid.model.transactions_sync_request')
+        sync_request_module.TransactionsSyncRequest = FakeTransactionsSyncRequest
+        return {
+            'plaid': plaid_package,
+            'plaid.model': model_package,
+            'plaid.model.transactions_sync_request': sync_request_module,
+        }
+
+    def response(self, *, added=(), modified=(), removed=(), next_cursor='cursor-next', has_more=False):
+        return SimpleNamespace(
+            added=list(added),
+            modified=list(modified),
+            removed=list(removed),
+            next_cursor=next_cursor,
+            has_more=has_more,
+        )
+
+    def plaid_transaction(self, transaction_id, *, account_id='plaid-account-1', amount=12.34):
+        return SimpleNamespace(
+            account_id=account_id,
+            transaction_id=transaction_id,
+            date=date(2026, 7, 10),
+            amount=Decimal(str(amount)),
+            category=['Groceries'],
+            name='Market',
+        )
+
+    def run_sync(self, responses):
+        client = FakePlaidTransactionsClient(responses)
+        summary = SyncSummary()
+        with patch.dict(sys.modules, self.plaid_modules()), \
+             patch('data_integration.plaid_client._client', return_value=client):
+            _sync_transactions(self.user, self.item, summary)
+        self.item.refresh_from_db()
+        return client, summary
+
+    def test_sync_transactions_persists_cursor_across_pages(self):
+        client, summary = self.run_sync([
+            self.response(
+                added=[self.plaid_transaction('tx-1')],
+                next_cursor='cursor-1',
+                has_more=True,
+            ),
+            self.response(next_cursor='cursor-2'),
+        ])
+
+        self.assertEqual([request.cursor for request in client.requests], ['cursor-0', 'cursor-1'])
+        self.assertEqual(self.item.cursor, 'cursor-2')
+        self.assertEqual(summary.transactions_added, 1)
+        transaction = Transaction.objects.get(account=self.account, external_id='tx-1')
+        self.assertEqual(transaction.amount, Decimal('-12.34'))
+        self.assertEqual(transaction.category, 'Groceries')
+
+    def test_sync_transactions_replays_added_transaction_without_duplicate(self):
+        Transaction.objects.create(
+            account=self.account,
+            external_id='tx-existing',
+            date=date(2026, 7, 9),
+            amount=Decimal('-10.00'),
+            category='Old',
+            description='Old market',
+            source='api',
+        )
+
+        _, summary = self.run_sync([
+            self.response(
+                added=[self.plaid_transaction('tx-existing', amount=14.56)],
+                next_cursor='cursor-1',
+            ),
+        ])
+
+        self.assertEqual(Transaction.objects.filter(account=self.account, external_id='tx-existing').count(), 1)
+        transaction = Transaction.objects.get(account=self.account, external_id='tx-existing')
+        self.assertEqual(transaction.amount, Decimal('-14.56'))
+        self.assertEqual(transaction.category, 'Groceries')
+        self.assertEqual(summary.transactions_added, 0)
+
+    def test_sync_transactions_does_not_hijack_another_users_same_external_id(self):
+        other_transaction = Transaction.objects.create(
+            account=self.other_account,
+            external_id='tx-shared',
+            date=date(2026, 7, 9),
+            amount=Decimal('-99.00'),
+            category='Other',
+            description='Other user row',
+            source='api',
+        )
+
+        _, summary = self.run_sync([
+            self.response(
+                added=[self.plaid_transaction('tx-shared', amount=20.00)],
+                next_cursor='cursor-1',
+            ),
+        ])
+
+        other_transaction.refresh_from_db()
+        self.assertEqual(other_transaction.account, self.other_account)
+        self.assertEqual(other_transaction.amount, Decimal('-99.00'))
+        self.assertEqual(Transaction.objects.filter(external_id='tx-shared').count(), 2)
+        self.assertTrue(Transaction.objects.filter(account=self.account, external_id='tx-shared').exists())
+        self.assertEqual(summary.transactions_added, 1)
+
+    def test_sync_transactions_does_not_modify_or_remove_another_users_rows(self):
+        modified = Transaction.objects.create(
+            account=self.other_account,
+            external_id='tx-modified',
+            date=date(2026, 7, 9),
+            amount=Decimal('-99.00'),
+            category='Other',
+            description='Other user modified row',
+            source='api',
+        )
+        removed = Transaction.objects.create(
+            account=self.other_account,
+            external_id='tx-removed',
+            date=date(2026, 7, 9),
+            amount=Decimal('-50.00'),
+            category='Other',
+            description='Other user removed row',
+            source='api',
+        )
+
+        _, summary = self.run_sync([
+            self.response(
+                modified=[self.plaid_transaction('tx-modified', amount=20.00)],
+                removed=[SimpleNamespace(transaction_id='tx-removed')],
+                next_cursor='cursor-1',
+            ),
+        ])
+
+        modified.refresh_from_db()
+        removed.refresh_from_db()
+        self.assertEqual(modified.amount, Decimal('-99.00'))
+        self.assertEqual(removed.account, self.other_account)
+        self.assertEqual(summary.transactions_modified, 0)
+        self.assertEqual(summary.transactions_removed, 0)
+
+    def test_sync_transactions_updates_and_removes_current_users_rows(self):
+        Transaction.objects.create(
+            account=self.account,
+            external_id='tx-modified',
+            date=date(2026, 7, 9),
+            amount=Decimal('-99.00'),
+            category='Old',
+            description='Old row',
+            source='api',
+        )
+        Transaction.objects.create(
+            account=self.account,
+            external_id='tx-removed',
+            date=date(2026, 7, 9),
+            amount=Decimal('-50.00'),
+            category='Old',
+            description='Removed row',
+            source='api',
+        )
+
+        _, summary = self.run_sync([
+            self.response(
+                modified=[self.plaid_transaction('tx-modified', amount=20.00)],
+                removed=[SimpleNamespace(transaction_id='tx-removed')],
+                next_cursor='cursor-1',
+            ),
+        ])
+
+        modified = Transaction.objects.get(account=self.account, external_id='tx-modified')
+        self.assertEqual(modified.amount, Decimal('-20.00'))
+        self.assertFalse(Transaction.objects.filter(account=self.account, external_id='tx-removed').exists())
+        self.assertEqual(summary.transactions_modified, 1)
+        self.assertEqual(summary.transactions_removed, 1)
 
 
 # ---------- Legacy model + view tests, kept passing ----------
