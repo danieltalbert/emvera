@@ -125,6 +125,40 @@ class InvestmentsViewsTest(TestCase):
         self.assertNotContains(response, 'No recommendations yet')
         self.assertEqual(InvestmentRecommendation.objects.count(), 0)
 
+    def test_investment_recommendations_counts_reviewed_and_new_items(self):
+        investment = Investment.objects.create(
+            account=self.account,
+            name='Target Fund',
+            type='401k',
+            value=Decimal('2500.00'),
+            quantity=Decimal('5.0000'),
+            symbol='TGT',
+            as_of=date(2026, 7, 10),
+        )
+        InvestmentRecommendation.objects.create(
+            user=self.user,
+            investment=investment,
+            recommendation_type='increase_contribution',
+            message='Increase monthly contribution.',
+            reviewed=False,
+        )
+        InvestmentRecommendation.objects.create(
+            user=self.user,
+            investment=investment,
+            recommendation_type='rebalance',
+            message='Already reviewed recommendation.',
+            reviewed=True,
+        )
+
+        response = self.client.get(reverse('investments:investment_recommendations'))
+
+        self.assertEqual(response.context['total_recommendation_count'], 3)
+        self.assertEqual(response.context['new_recommendation_count'], 2)
+        self.assertEqual(response.context['reviewed_recommendation_count'], 1)
+        self.assertContains(response, '<div class="stat-value">3</div>', html=True)
+        self.assertContains(response, '<div class="stat-value">2</div>', html=True)
+        self.assertContains(response, '<div class="stat-value">1</div>', html=True)
+
     def test_export_investments_csv_only_includes_signed_in_user_data(self):
         own_investment = Investment.objects.create(
             account=self.account,
