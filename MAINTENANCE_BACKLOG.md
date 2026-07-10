@@ -17,8 +17,8 @@ Last updated: 2026-07-10
   - Added mocked Plaid cursor, replay, and ownership regression coverage.
   - Added validation coverage for manual account, transaction, and debt entry forms with empty or invalid fields.
   - Let `plaid_resync --dry-run` audit eligible items without Plaid credentials, with user/stale filters covered by tests.
+  - Hardened `send_due_reminders` so email/SMS send failures are logged per reminder and do not stop later reminders.
 
 ## Next Candidates
 
 1. Review empty states on debt payoff, investment recommendations, and competition pages for consistent copy and responsive layout.
-2. Audit `send_due_reminders` dry-run behavior and safe error reporting.

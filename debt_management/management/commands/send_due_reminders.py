@@ -60,7 +60,11 @@ def _send_sms(to_number, body, stdout):
     except ImportError:
         stdout.write('  SMS skipped: install `twilio` to enable.')
         return False
-    Client(sid, token).messages.create(to=to_number, from_=from_number, body=body)
+    try:
+        Client(sid, token).messages.create(to=to_number, from_=from_number, body=body)
+    except Exception as exc:
+        stdout.write(f'  SMS failed: {exc}')
+        return False
     return True
 
 
@@ -99,6 +103,7 @@ class Command(BaseCommand):
             days_until = (r.due_date - today).days
             subject = f'Payment reminder: {r.name} ({"overdue" if days_until < 0 else f"due in {days_until} day(s)"})'
             body = _build_email_body(r, days_until)
+            delivery_failed = False
 
             self.stdout.write(f'- {r.user} -> {r.name} (due {r.due_date}, days_until={days_until})')
 
@@ -106,8 +111,12 @@ class Command(BaseCommand):
                 if dry_run:
                     self.stdout.write(f'  [dry-run] would email {r.user.email}')
                 else:
-                    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [r.user.email])
-                    sent_email += 1
+                    try:
+                        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [r.user.email])
+                        sent_email += 1
+                    except Exception as exc:
+                        delivery_failed = True
+                        self.stdout.write(self.style.ERROR(f'  email failed: {exc}'))
 
             if r.notify_via_sms:
                 phone = getattr(r.user, 'phone_number', '')
@@ -119,7 +128,7 @@ class Command(BaseCommand):
                     if _send_sms(phone, f'{subject}\n{body}', self.stdout):
                         sent_sms += 1
 
-            if not dry_run:
+            if not dry_run and not delivery_failed:
                 r.last_notified_at = now
                 r.save(update_fields=['last_notified_at', 'updated_at'])
 
