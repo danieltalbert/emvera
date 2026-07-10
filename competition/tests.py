@@ -19,6 +19,13 @@ class CompetitionFlowTests(TestCase):
     def setUp(self):
         self.client.force_login(self.creator)
 
+    def test_lobby_empty_state_invites_first_competition(self):
+        response = self.client.get(reverse('competition:lobby'))
+
+        self.assertContains(response, 'No competitions yet')
+        self.assertContains(response, 'Create a virtual portfolio challenge')
+        self.assertContains(response, 'Create Competition')
+
     def create_competition(self, **overrides):
         values = {
             'name': 'Test Cup',

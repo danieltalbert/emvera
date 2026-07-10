@@ -51,7 +51,7 @@
   <a href="{% url 'debt_management:payoff_custom' %}" class="nav-tab">Custom</a>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 300px;gap:var(--sp-6);align-items:start;">
+<div class="layout-with-sidebar">
 
   <!-- Payoff Order -->
   <div class="card">
@@ -90,10 +90,10 @@
         </div>
         <div class="empty-title">No debts to analyze</div>
         <p class="empty-desc">
-          Add your debts to see your personalized avalanche payoff sequence here.
+          Add a debt balance, interest rate, and minimum payment to build a dated avalanche payoff plan.
         </p>
         <a href="{% url 'data_integration:manual_debt_entry' %}" class="btn btn-primary" style="margin-top:var(--sp-2);">
-          Add Debts
+          Add a Debt
         </a>
       </div>
     {% endif %}

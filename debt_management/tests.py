@@ -327,6 +327,26 @@ class DebtManagementViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/payoff_custom.html')
 
+    def test_payoff_empty_states_offer_next_steps(self):
+        empty_user = get_user_model().objects.create_user(
+            username='no-debts',
+            password='testpass',
+            two_factor_enabled=True,
+        )
+        self.client.force_login(empty_user)
+
+        for route_name, expected_copy in (
+            ('payoff_avalanche', 'dated avalanche payoff plan'),
+            ('payoff_snowball', 'dated snowball payoff plan'),
+            ('payoff_custom', 'custom payoff order'),
+        ):
+            with self.subTest(route_name=route_name):
+                response = self.client.get(reverse(f'debt_management:{route_name}'))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, expected_copy)
+                self.assertContains(response, 'Add a Debt')
+
 
 class SendDueRemindersCommandTests(TestCase):
     def setUp(self):

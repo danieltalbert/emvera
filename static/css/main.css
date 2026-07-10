@@ -655,6 +655,14 @@ p { line-height: var(--leading-relaxed); }
 .card-grid-4 { grid-template-columns: repeat(4, 1fr); }
 .card-grid-auto { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 
+/* Layouts */
+.layout-with-sidebar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  gap: var(--sp-6);
+  align-items: start;
+}
+
 
 /* 10. STAT CARDS
    ============================================================= */
@@ -1120,6 +1128,16 @@ p { line-height: var(--leading-relaxed); }
   max-width: 340px;
   line-height: var(--leading-relaxed);
 }
+.empty-actions {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
+}
+.empty-actions .btn {
+  min-width: 140px;
+}
 
 
 /* 18. DEBT-SPECIFIC COMPONENTS
@@ -1522,6 +1540,7 @@ p { line-height: var(--leading-relaxed); }
 @media (max-width: 1024px) {
   .card-grid-4 { grid-template-columns: repeat(2, 1fr); }
   .card-grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .layout-with-sidebar { grid-template-columns: 1fr; }
   .form-row    { grid-template-columns: 1fr; }
   .auth-sidebar { width: 360px; padding: var(--sp-8); }
 }
@@ -1567,6 +1586,8 @@ p { line-height: var(--leading-relaxed); }
   .card-body    { padding: var(--sp-4); }
   .card-header  { padding: var(--sp-4); }
   .btn-xl       { padding: var(--sp-3) var(--sp-6); font-size: var(--text-base); }
+  .empty-actions { width: 100%; flex-direction: column; }
+  .empty-actions .btn { width: 100%; }
 }
 
 /* Sidebar overlay for mobile */
