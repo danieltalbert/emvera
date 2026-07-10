@@ -1,9 +1,13 @@
-from datetime import date
+import io
+from datetime import date, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from data_integration.models import Account, Debt
 
@@ -322,3 +326,68 @@ class DebtManagementViewsTest(TestCase):
         response = self.client.get(reverse('debt_management:payoff_custom'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/payoff_custom.html')
+
+
+class SendDueRemindersCommandTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username='reminder-user',
+            password='x',
+            email='reminder@example.com',
+        )
+        self.other_user = User.objects.create_user(
+            username='other-reminder-user',
+            password='x',
+            email='other-reminder@example.com',
+        )
+
+    def create_reminder(self, user, name, due_date):
+        return PaymentReminder.objects.create(
+            user=user,
+            name=name,
+            institution='Codex Card',
+            amount=Decimal('125.00'),
+            due_date=due_date,
+            notify_via_email=True,
+            notify_via_sms=False,
+        )
+
+    def test_dry_run_reports_email_without_sending_or_updating(self):
+        reminder = self.create_reminder(self.user, 'Dry-run card payment', timezone.now().date())
+        stdout = io.StringIO()
+
+        with patch('debt_management.management.commands.send_due_reminders.send_mail') as send_mail:
+            call_command('send_due_reminders', '--dry-run', stdout=stdout)
+
+        output = stdout.getvalue()
+        send_mail.assert_not_called()
+        self.assertIn('[dry-run] would email reminder@example.com', output)
+        self.assertIn('Done. Considered 1, sent 0 email(s), 0 SMS.', output)
+        reminder.refresh_from_db()
+        self.assertIsNone(reminder.last_notified_at)
+
+    def test_email_failure_is_reported_without_stopping_later_reminders(self):
+        today = timezone.now().date()
+        failing = self.create_reminder(self.user, 'Failing card payment', today)
+        succeeding = self.create_reminder(
+            self.other_user,
+            'Succeeding card payment',
+            today + timedelta(days=1),
+        )
+        stdout = io.StringIO()
+
+        with patch(
+            'debt_management.management.commands.send_due_reminders.send_mail',
+            side_effect=[RuntimeError('smtp down'), 1],
+        ) as send_mail:
+            call_command('send_due_reminders', stdout=stdout)
+
+        output = stdout.getvalue()
+        self.assertEqual(send_mail.call_count, 2)
+        self.assertIn('email failed: smtp down', output)
+        self.assertIn('Done. Considered 2, sent 1 email(s), 0 SMS.', output)
+        failing.refresh_from_db()
+        succeeding.refresh_from_db()
+        self.assertIsNone(failing.last_notified_at)
+        self.assertIsNotNone(succeeding.last_notified_at)
