@@ -1,6 +1,6 @@
 # Maintenance Backlog
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Completed
 
@@ -12,12 +12,12 @@ Last updated: 2026-07-09
   - Added ownership coverage for manual debt entry.
   - Added ownership coverage for payment reminders and mark-paid behavior.
   - Added creation and user-isolation coverage for credit score tracking.
+- 2026-07-10 maintenance:
+  - Hardened Plaid transaction sync so same-ID rows from another user are not moved, edited, or deleted.
+  - Added mocked Plaid cursor, replay, and ownership regression coverage.
+  - Added validation coverage for manual account, transaction, and debt entry forms with empty or invalid fields.
 
 ## Next Candidates
 
-1. Add focused tests for Plaid sync idempotency and cursor updates using mocked Plaid responses.
-2. Add export CSV ownership coverage for investment projections tied to another user.
-3. Add competition visibility/authorization tests for dashboard, state, and winner routes when the signed-in user is not a participant.
-4. Add validation tests for manual account and manual debt forms with empty or invalid numeric/date fields.
-5. Review empty states on debt payoff, investment recommendations, and competition pages for consistent copy and responsive layout.
-6. Audit management commands (`plaid_resync`, `send_due_reminders`) for dry-run behavior, user filtering, and safe error reporting.
+1. Review empty states on debt payoff, investment recommendations, and competition pages for consistent copy and responsive layout.
+2. Audit management commands (`plaid_resync`, `send_due_reminders`) for dry-run behavior, user filtering, and safe error reporting.

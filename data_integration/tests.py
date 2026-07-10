@@ -468,6 +468,18 @@ class DataIntegrationViewsTest(TestCase):
         self.assertRedirects(response, reverse('investments:portfolio_overview'))
         self.assertTrue(Account.objects.filter(user=self.user, name='Brokerage').exists())
 
+    def test_manual_account_entry_requires_name_and_type(self):
+        response = self.client.post(reverse('data_integration:manual_account_entry'), {
+            'name': '',
+            'type': '',
+            'institution': 'Local Credit Union',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].has_error('name', 'required'))
+        self.assertTrue(response.context['form'].has_error('type', 'required'))
+        self.assertFalse(Account.objects.filter(user=self.user, institution='Local Credit Union').exists())
+
     def test_manual_transaction_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_transaction_entry'))
         self.assertEqual(response.status_code, 200)
@@ -501,6 +513,23 @@ class DataIntegrationViewsTest(TestCase):
             'account',
             'Select a valid choice. That choice is not one of the available choices.',
         )
+
+    def test_manual_transaction_entry_rejects_invalid_required_fields(self):
+        response = self.client.post(reverse('data_integration:manual_transaction_entry'), {
+            'account': self.account.pk,
+            'date': 'not-a-date',
+            'amount': 'not-a-number',
+            'category': '',
+            'description': 'Invalid transaction',
+            'source': 'manual',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context['form']
+        self.assertTrue(form.has_error('date', 'invalid'))
+        self.assertTrue(form.has_error('amount', 'invalid'))
+        self.assertTrue(form.has_error('category', 'required'))
+        self.assertFalse(Transaction.objects.filter(account=self.account, description='Invalid transaction').exists())
 
     def test_csv_upload_view(self):
         response = self.client.get(reverse('data_integration:csv_upload'))
@@ -548,6 +577,29 @@ class DataIntegrationViewsTest(TestCase):
             'account',
             'Select a valid choice. That choice is not one of the available choices.',
         )
+
+    def test_manual_debt_entry_rejects_invalid_required_fields(self):
+        response = self.client.post(reverse('data_integration:manual_debt_entry'), {
+            'account': self.debt_account.pk,
+            'name': '',
+            'principal': 'not-a-number',
+            'interest_rate': 'bad-rate',
+            'balance': '',
+            'minimum_payment': 'bad-payment',
+            'due_date': 'not-a-date',
+            'as_of': '',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context['form']
+        self.assertTrue(form.has_error('name', 'required'))
+        self.assertTrue(form.has_error('principal', 'invalid'))
+        self.assertTrue(form.has_error('interest_rate', 'invalid'))
+        self.assertTrue(form.has_error('balance', 'required'))
+        self.assertTrue(form.has_error('minimum_payment', 'invalid'))
+        self.assertTrue(form.has_error('due_date', 'invalid'))
+        self.assertTrue(form.has_error('as_of', 'required'))
+        self.assertFalse(Debt.objects.filter(account=self.debt_account, name='').exists())
 
     def test_manual_debt_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_debt_entry'))
