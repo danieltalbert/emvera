@@ -23,8 +23,9 @@ Last updated: 2026-07-10
   - Reused responsive layout helpers on debt dashboard, reminders, credit score, and investment comparison pages to avoid fixed-grid mobile overflow.
   - Replaced the consolidation recommendation detail grid with the responsive card-grid helper.
   - Removed stale imports from the investment recommendation/view modules.
+  - Backed the investment recommendation total/new/reviewed stat cards with real view counts.
 
 ## Next Candidates
 
-1. Add recommendation count/status coverage if reviewed recommendations become user-actionable.
-2. Add browser screenshot coverage for the highest-traffic dashboard pages if visual QA tooling is available.
+1. Add browser screenshot coverage for the highest-traffic dashboard pages if visual QA tooling is available.
+2. Add an explicit recommendation persistence/review workflow if recommendations should be user-actionable.

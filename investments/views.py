@@ -111,7 +111,15 @@ def investment_recommendations(request):
                 recommendations.append(rec)
                 seen.add(key)
 
-    return render(request, 'investments/investment_recommendations.html', {'recommendations': recommendations})
+    total_recommendation_count = len(recommendations)
+    new_recommendation_count = sum(1 for rec in recommendations if not rec.reviewed)
+
+    return render(request, 'investments/investment_recommendations.html', {
+        'recommendations': recommendations,
+        'total_recommendation_count': total_recommendation_count,
+        'new_recommendation_count': new_recommendation_count,
+        'reviewed_recommendation_count': total_recommendation_count - new_recommendation_count,
+    })
 
 
 @login_required

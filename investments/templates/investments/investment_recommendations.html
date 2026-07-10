@@ -24,7 +24,7 @@
     <div class="page-actions">
       {% if recommendations %}
       <span class="badge badge-teal" style="font-size:var(--text-sm);padding:var(--sp-2) var(--sp-3);">
-        {% with recommendations|length as total %}{{ total }} recommendation{{ total|pluralize }}{% endwith %}
+        {{ total_recommendation_count }} recommendation{{ total_recommendation_count|pluralize }}
       </span>
       {% endif %}
     </div>
@@ -33,27 +33,20 @@
 
 {% if recommendations %}
 
-<!-- Count unreviewed -->
-{% with new_count=0 %}
 <div class="card-grid card-grid-3" style="margin-bottom:var(--sp-8);">
   <div class="stat-card teal">
     <span class="stat-label">Total</span>
-    <div class="stat-value">{{ recommendations|length }}</div>
+    <div class="stat-value">{{ total_recommendation_count }}</div>
     <div class="stat-meta"><span>All recommendations</span></div>
   </div>
   <div class="stat-card green">
     <span class="stat-label">New / Unread</span>
-    <div class="stat-value">
-      {% with ns=0 %}
-        {% for rec in recommendations %}{% if not rec.reviewed %}{% with ns=ns|add:1 %}{% endwith %}{% endif %}{% endfor %}
-        {{ recommendations|length }}
-      {% endwith %}
-    </div>
+    <div class="stat-value">{{ new_recommendation_count }}</div>
     <div class="stat-meta"><span>Pending your review</span></div>
   </div>
   <div class="stat-card blue">
     <span class="stat-label">Reviewed</span>
-    <div class="stat-value">—</div>
+    <div class="stat-value">{{ reviewed_recommendation_count }}</div>
     <div class="stat-meta"><span>Acknowledged</span></div>
   </div>
 </div>
@@ -91,7 +84,6 @@
   </div>
   {% endfor %}
 </div>
-{% endwith %}
 
 {% else %}
 
