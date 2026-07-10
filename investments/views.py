@@ -9,6 +9,7 @@ from accounts.require_2fa import require_2fa
 from data_integration.models import Account, Investment
 from .forms import InvestmentProjectionForm
 from .models import InvestmentProjection, InvestmentRecommendation
+from .recommendation_utils import generate_recommendations
 
 
 def _user_investments(user):
@@ -96,9 +97,21 @@ def investment_projections(request):
 @require_2fa
 def investment_recommendations(request):
     investments = _user_investments(request.user)
-    recommendations = InvestmentRecommendation.objects.filter(
+    recommendations = list(InvestmentRecommendation.objects.filter(
         user=request.user, investment__in=investments
-    )
+    ))
+
+    if investments.exists():
+        seen = {
+            (rec.recommendation_type, rec.message, rec.investment_id)
+            for rec in recommendations
+        }
+        for rec in generate_recommendations(request.user):
+            key = (rec.recommendation_type, rec.message, rec.investment_id)
+            if key not in seen:
+                recommendations.append(rec)
+                seen.add(key)
+
     return render(request, 'investments/investment_recommendations.html', {'recommendations': recommendations})
 
 

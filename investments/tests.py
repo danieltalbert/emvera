@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from data_integration.models import Account, Investment
 
-from .models import InvestmentProjection
+from .models import InvestmentProjection, InvestmentRecommendation
 
 
 class AnnualizedReturnTests(TestCase):
@@ -89,6 +89,24 @@ class InvestmentsViewsTest(TestCase):
         self.assertContains(response, 'No recommendations yet')
         self.assertContains(response, 'Add investment holdings first')
         self.assertContains(response, 'Add Investments')
+
+    def test_investment_recommendations_include_generated_portfolio_wide_items(self):
+        Investment.objects.create(
+            account=self.account,
+            name='Total Market Fund',
+            type='stock',
+            value=Decimal('10000.00'),
+            quantity=Decimal('10.0000'),
+            symbol='TMF',
+            as_of=date(2026, 7, 10),
+        )
+
+        response = self.client.get(reverse('investments:investment_recommendations'))
+
+        self.assertContains(response, 'Consider rebalancing.')
+        self.assertContains(response, 'Portfolio-wide')
+        self.assertNotContains(response, 'No recommendations yet')
+        self.assertEqual(InvestmentRecommendation.objects.count(), 0)
 
     def test_export_investments_csv_only_includes_signed_in_user_data(self):
         own_investment = Investment.objects.create(

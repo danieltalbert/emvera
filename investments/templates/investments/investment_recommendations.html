@@ -78,7 +78,7 @@
         <div style="flex:1;min-width:0;">
           <p class="text-base" style="line-height:var(--leading-relaxed);color:var(--color-text-primary);">{{ rec.message }}</p>
           <div style="margin-top:var(--sp-3);display:flex;align-items:center;gap:var(--sp-3);">
-            <span class="text-xs text-muted">{{ rec.investment }}</span>
+            <span class="text-xs text-muted">{% if rec.investment %}{{ rec.investment }}{% else %}Portfolio-wide{% endif %}</span>
             {% if not rec.reviewed %}
             <span class="badge badge-teal">New</span>
             {% else %}
