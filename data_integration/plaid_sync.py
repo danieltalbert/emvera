@@ -105,10 +105,10 @@ def _sync_transactions(user, item: PlaidItem, summary: SyncSummary):
             account = accounts_by_id.get(t.account_id)
             if not account:
                 continue
-            Transaction.objects.update_or_create(
+            _, created = Transaction.objects.update_or_create(
+                account=account,
                 external_id=t.transaction_id,
                 defaults={
-                    'account': account,
                     'date': t.date,
                     'amount': -t.amount,  # Plaid: positive = outflow; we use signed.
                     'category': (t.category or [''])[0] if t.category else '',
@@ -116,17 +116,24 @@ def _sync_transactions(user, item: PlaidItem, summary: SyncSummary):
                     'source': 'api',
                 },
             )
-            summary.transactions_added += 1
+            if created:
+                summary.transactions_added += 1
         for t in resp.modified:
-            Transaction.objects.filter(external_id=t.transaction_id).update(
+            updated = Transaction.objects.filter(
+                account__user=user,
+                external_id=t.transaction_id,
+            ).update(
                 date=t.date,
                 amount=-t.amount,
                 category=(t.category or [''])[0] if t.category else '',
                 description=t.name or '',
             )
-            summary.transactions_modified += 1
+            summary.transactions_modified += updated
         for t in resp.removed:
-            count, _ = Transaction.objects.filter(external_id=t.transaction_id).delete()
+            count, _ = Transaction.objects.filter(
+                account__user=user,
+                external_id=t.transaction_id,
+            ).delete()
             summary.transactions_removed += count
 
         cursor = resp.next_cursor
