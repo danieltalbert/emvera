@@ -1,9 +1,11 @@
 import csv
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from accounts.require_2fa import require_2fa
 from data_integration.models import Account, Investment
@@ -120,6 +122,26 @@ def investment_recommendations(request):
         'new_recommendation_count': new_recommendation_count,
         'reviewed_recommendation_count': total_recommendation_count - new_recommendation_count,
     })
+
+
+@login_required
+@require_2fa
+@require_POST
+def mark_recommendation_reviewed(request, pk):
+    investments = _user_investments(request.user)
+    recommendation = get_object_or_404(
+        InvestmentRecommendation,
+        pk=pk,
+        user=request.user,
+        investment__in=investments,
+    )
+    if recommendation.reviewed:
+        messages.info(request, 'Recommendation was already reviewed.')
+    else:
+        recommendation.reviewed = True
+        recommendation.save(update_fields=['reviewed'])
+        messages.success(request, 'Recommendation marked reviewed.')
+    return redirect('investments:investment_recommendations')
 
 
 @login_required

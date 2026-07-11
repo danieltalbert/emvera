@@ -159,6 +159,99 @@ class InvestmentsViewsTest(TestCase):
         self.assertContains(response, '<div class="stat-value">2</div>', html=True)
         self.assertContains(response, '<div class="stat-value">1</div>', html=True)
 
+    def test_persisted_recommendation_can_be_marked_reviewed(self):
+        investment = Investment.objects.create(
+            account=self.account,
+            name='Target Fund',
+            type='401k',
+            value=Decimal('2500.00'),
+            quantity=Decimal('5.0000'),
+            symbol='TGT',
+            as_of=date(2026, 7, 10),
+        )
+        recommendation = InvestmentRecommendation.objects.create(
+            user=self.user,
+            investment=investment,
+            recommendation_type='increase_contribution',
+            message='Increase monthly contribution.',
+            reviewed=False,
+        )
+
+        page_response = self.client.get(reverse('investments:investment_recommendations'))
+        self.assertContains(page_response, 'Mark Reviewed')
+
+        response = self.client.post(
+            reverse('investments:mark_recommendation_reviewed', args=[recommendation.pk]),
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse('investments:investment_recommendations'))
+        recommendation.refresh_from_db()
+        self.assertTrue(recommendation.reviewed)
+        self.assertContains(response, 'Recommendation marked reviewed.')
+
+    def test_mark_recommendation_reviewed_requires_post(self):
+        investment = Investment.objects.create(
+            account=self.account,
+            name='Target Fund',
+            type='401k',
+            value=Decimal('2500.00'),
+            quantity=Decimal('5.0000'),
+            symbol='TGT',
+            as_of=date(2026, 7, 10),
+        )
+        recommendation = InvestmentRecommendation.objects.create(
+            user=self.user,
+            investment=investment,
+            recommendation_type='increase_contribution',
+            message='Increase monthly contribution.',
+            reviewed=False,
+        )
+
+        response = self.client.get(
+            reverse('investments:mark_recommendation_reviewed', args=[recommendation.pk])
+        )
+
+        self.assertEqual(response.status_code, 405)
+        recommendation.refresh_from_db()
+        self.assertFalse(recommendation.reviewed)
+
+    def test_mark_recommendation_reviewed_rejects_other_users_investment(self):
+        other_user = get_user_model().objects.create_user(
+            username='other-investor',
+            password='x',
+            two_factor_enabled=True,
+        )
+        other_account = Account.objects.create(
+            user=other_user,
+            name='Other Brokerage',
+            type='investment',
+        )
+        other_investment = Investment.objects.create(
+            account=other_account,
+            name='Hidden Fund',
+            type='401k',
+            value=Decimal('5000.00'),
+            quantity=Decimal('10.0000'),
+            symbol='HID',
+            as_of=date(2026, 7, 10),
+        )
+        recommendation = InvestmentRecommendation.objects.create(
+            user=self.user,
+            investment=other_investment,
+            recommendation_type='rebalance',
+            message='This recommendation points at an outside investment.',
+            reviewed=False,
+        )
+
+        response = self.client.post(
+            reverse('investments:mark_recommendation_reviewed', args=[recommendation.pk])
+        )
+
+        self.assertEqual(response.status_code, 404)
+        recommendation.refresh_from_db()
+        self.assertFalse(recommendation.reviewed)
+
     def test_export_investments_csv_only_includes_signed_in_user_data(self):
         own_investment = Investment.objects.create(
             account=self.account,
