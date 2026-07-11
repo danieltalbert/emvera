@@ -27,8 +27,9 @@ Last updated: 2026-07-11
 - 2026-07-11 maintenance:
   - Browser screenshot QA covered portfolio overview, debt dashboard, investment recommendations, and competition dashboard at desktop and mobile sizes.
   - Fixed mobile top-header overflow from the authenticated greeting on narrow investment recommendation pages.
+  - Added a POST-only review workflow for persisted investment recommendations, with owner-scoped coverage.
 
 ## Next Candidates
 
 1. Turn the browser screenshot QA path into repeatable tooling if a stable browser dependency is added to the repo.
-2. Add an explicit recommendation persistence/review workflow if recommendations should be user-actionable.
+2. Decide whether generated portfolio-wide recommendations should be persisted with a nullable investment relationship or a separate recommendation target model.

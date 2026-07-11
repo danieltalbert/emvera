@@ -54,7 +54,7 @@
 <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
   {% for rec in recommendations %}
   <div class="recommendation-card {% if rec.reviewed %}reviewed{% endif %}">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);">
+    <div class="recommendation-card-body">
       <div style="display:flex;gap:var(--sp-4);align-items:flex-start;flex:1;min-width:0;">
         <div class="stat-icon {% if rec.reviewed %}blue{% else %}teal{% endif %}" style="flex-shrink:0;margin-top:2px;">
           {% if rec.reviewed %}
@@ -80,6 +80,12 @@
           </div>
         </div>
       </div>
+      {% if rec.pk and not rec.reviewed %}
+      <form class="recommendation-action" method="post" action="{% url 'investments:mark_recommendation_reviewed' rec.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary btn-sm">Mark Reviewed</button>
+      </form>
+      {% endif %}
     </div>
   </div>
   {% endfor %}

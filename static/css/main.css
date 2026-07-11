@@ -1273,6 +1273,16 @@ p { line-height: var(--leading-relaxed); }
   opacity: 0.6;
   border-style: dashed;
 }
+.recommendation-card-body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.recommendation-action {
+  flex-shrink: 0;
+  margin: 0;
+}
 
 
 /* 20. AUTH PAGES
@@ -1589,6 +1599,9 @@ p { line-height: var(--leading-relaxed); }
   .auth-tagline { font-size: var(--text-xl); }
 
   .stat-value { font-size: var(--text-2xl); }
+  .recommendation-card-body { flex-direction: column; }
+  .recommendation-action,
+  .recommendation-action .btn { width: 100%; }
 
   .data-table th,
   .data-table td { padding: var(--sp-2) var(--sp-3); }
