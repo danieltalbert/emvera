@@ -1,6 +1,6 @@
 # Maintenance Backlog
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 ## Completed
 
@@ -24,8 +24,11 @@ Last updated: 2026-07-10
   - Replaced the consolidation recommendation detail grid with the responsive card-grid helper.
   - Removed stale imports from the investment recommendation/view modules.
   - Backed the investment recommendation total/new/reviewed stat cards with real view counts.
+- 2026-07-11 maintenance:
+  - Browser screenshot QA covered portfolio overview, debt dashboard, investment recommendations, and competition dashboard at desktop and mobile sizes.
+  - Fixed mobile top-header overflow from the authenticated greeting on narrow investment recommendation pages.
 
 ## Next Candidates
 
-1. Add browser screenshot coverage for the highest-traffic dashboard pages if visual QA tooling is available.
+1. Turn the browser screenshot QA path into repeatable tooling if a stable browser dependency is added to the repo.
 2. Add an explicit recommendation persistence/review workflow if recommendations should be user-actionable.

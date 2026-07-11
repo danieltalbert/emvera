@@ -1569,6 +1569,12 @@ p { line-height: var(--leading-relaxed); }
   .mobile-menu-btn { display: flex; }
 
   .top-header { padding: 0 var(--sp-4); }
+  .header-breadcrumb { min-width: 0; }
+  .header-breadcrumb .current {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .main-content { padding: var(--sp-5); }
 
   .card-grid-2,
@@ -1593,6 +1599,7 @@ p { line-height: var(--leading-relaxed); }
   .card-body    { padding: var(--sp-4); }
   .card-header  { padding: var(--sp-4); }
   .btn-xl       { padding: var(--sp-3) var(--sp-6); font-size: var(--text-base); }
+  .header-greeting { display: none; }
   .empty-actions { width: 100%; flex-direction: column; }
   .empty-actions .btn { width: 100%; }
 }
