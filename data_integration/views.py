@@ -6,14 +6,13 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 
 from accounts.require_2fa import require_2fa
 
 from .csv_import import import_transactions
 from .forms import CSVUploadForm, ManualAccountForm, ManualDebtForm, ManualTransactionForm
-from .models import Account, Transaction
 
 SUPPORTED_PLAID_INSTITUTIONS = [
     'Chase', 'Bank of America', 'Wells Fargo', 'Citibank', 'US Bank',

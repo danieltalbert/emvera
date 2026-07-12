@@ -3,7 +3,6 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
