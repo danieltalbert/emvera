@@ -277,3 +277,17 @@ class AuthenticatedRouteSmokeTests(TestCase):
             '<h2 class="section-label">In Progress</h2>',
             html=True,
         )
+
+        dashboard_response = self.client.get(
+            reverse('competition:dashboard', kwargs={'pk': self.lobby_competition.pk})
+        )
+        self.assertContains(dashboard_response, '<h1>Smoke Cup</h1>', html=True)
+
+        active_dashboard_response = self.client.get(
+            reverse('competition:dashboard', kwargs={'pk': self.active_competition.pk})
+        )
+        self.assertContains(
+            active_dashboard_response,
+            '<h1><span class="live-dot"></span>Active Smoke Cup</h1>',
+            html=True,
+        )

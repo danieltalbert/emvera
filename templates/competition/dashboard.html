@@ -26,7 +26,7 @@
   }
   .status-banner.lobby  { background: linear-gradient(135deg, #1a2a4a 0%, #1B3A2D 100%); border: 1px solid rgba(100,180,255,0.2); }
   .status-banner.active { background: linear-gradient(135deg, #1B3A2D 0%, #0d3320 100%); border: 1px solid rgba(50,220,100,0.25); }
-  .status-banner h2 { color: #fff; font-size: 1.25rem; margin: 0 0 4px; }
+  .status-banner h1 { color: #fff; font-size: 1.25rem; margin: 0 0 4px; }
   .status-banner p  { color: rgba(255,255,255,0.65); font-size: 0.85rem; margin: 0; }
   .status-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 
@@ -106,7 +106,7 @@
 {% if competition.status == 'lobby' %}
 <div class="status-banner lobby">
   <div>
-    <h2>{{ competition.name }}</h2>
+    <h1>{{ competition.name }}</h1>
     <p>Waiting for players to join — {{ competition.participants.count }}/{{ competition.max_players }} in lobby</p>
   </div>
   <div class="status-actions">
@@ -132,7 +132,7 @@
 {% elif competition.status == 'active' %}
 <div class="status-banner active">
   <div>
-    <h2><span class="live-dot"></span>{{ competition.name }}</h2>
+    <h1><span class="live-dot"></span>{{ competition.name }}</h1>
     <p>Competition in progress — goal: ${{ competition.investment_goal|floatformat:0 }}</p>
   </div>
   <div class="status-actions">

@@ -30,6 +30,7 @@ Last updated: 2026-07-11
   - Added a POST-only review workflow for persisted investment recommendations, with owner-scoped coverage.
 - 2026-07-12 maintenance:
   - Fixed investment comparison allocation bars to use real user-scoped percentages instead of raw dollar values.
+  - Restored page-level `h1` headings on competition dashboards after browser QA found the status banner used `h2`.
 
 ## Next Candidates
 
