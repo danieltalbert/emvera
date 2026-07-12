@@ -316,6 +316,25 @@ class DebtManagementViewsTest(TestCase):
         self.assertFalse(other_reminder.is_paid)
         self.assertIsNone(other_reminder.paid_on)
 
+    def test_mark_reminder_paid_requires_post(self):
+        reminder = PaymentReminder.objects.create(
+            user=self.user,
+            debt=self.debt,
+            name='Credit card payment',
+            institution='Codex Card',
+            amount=Decimal('125.00'),
+            due_date=date(2026, 8, 1),
+        )
+
+        response = self.client.get(
+            reverse('debt_management:mark_reminder_paid', kwargs={'pk': reminder.pk})
+        )
+
+        self.assertEqual(response.status_code, 405)
+        reminder.refresh_from_db()
+        self.assertFalse(reminder.is_paid)
+        self.assertIsNone(reminder.paid_on)
+
     def test_payoff_avalanche_view(self):
         response = self.client.get(reverse('debt_management:payoff_avalanche'))
         self.assertEqual(response.status_code, 200)

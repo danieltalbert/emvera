@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 from accounts.require_2fa import require_2fa
 from data_integration.models import Debt
@@ -229,9 +230,8 @@ def debt_reminders(request):
 
 @login_required
 @require_2fa
+@require_POST
 def mark_reminder_paid(request, pk):
-    if request.method != 'POST':
-        return redirect('debt_management:debt_reminders')
     try:
         reminder = PaymentReminder.objects.get(pk=pk, user=request.user)
     except PaymentReminder.DoesNotExist:
