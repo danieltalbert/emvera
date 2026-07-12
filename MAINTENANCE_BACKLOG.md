@@ -1,6 +1,6 @@
 # Maintenance Backlog
 
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 ## Completed
 
@@ -31,6 +31,8 @@ Last updated: 2026-07-11
 - 2026-07-12 maintenance:
   - Fixed investment comparison allocation bars to use real user-scoped percentages instead of raw dollar values.
   - Restored page-level `h1` headings on competition dashboards after browser QA found the status banner used `h2`.
+  - Required POST for marking payment reminders paid, with regression coverage that GET leaves reminders unchanged.
+  - Removed stale imports from debt-management and data-integration view modules.
 
 ## Next Candidates
 
