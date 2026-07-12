@@ -28,6 +28,8 @@ Last updated: 2026-07-11
   - Browser screenshot QA covered portfolio overview, debt dashboard, investment recommendations, and competition dashboard at desktop and mobile sizes.
   - Fixed mobile top-header overflow from the authenticated greeting on narrow investment recommendation pages.
   - Added a POST-only review workflow for persisted investment recommendations, with owner-scoped coverage.
+- 2026-07-12 maintenance:
+  - Fixed investment comparison allocation bars to use real user-scoped percentages instead of raw dollar values.
 
 ## Next Candidates
 

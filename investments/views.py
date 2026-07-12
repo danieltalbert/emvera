@@ -148,11 +148,16 @@ def mark_recommendation_reviewed(request, pk):
 @require_2fa
 def investment_comparison(request):
     investments = _user_investments(request.user)
-    comparison = (
+    comparison = list(
         investments.values('type')
         .annotate(total_value=Sum('value'))
         .order_by('-total_value')
     )
+    total_value = sum((row['total_value'] or 0) for row in comparison)
+    for row in comparison:
+        row_value = row['total_value'] or 0
+        row['allocation_pct'] = (row_value / total_value * 100) if total_value else 0
+
     projections = InvestmentProjection.objects.filter(
         user=request.user, investment__in=investments
     )

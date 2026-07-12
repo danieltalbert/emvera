@@ -90,6 +90,58 @@ class InvestmentsViewsTest(TestCase):
         self.assertTemplateUsed(response, 'investments/investment_comparison.html')
         self.assertContains(response, 'layout-with-sidebar')
 
+    def test_investment_comparison_shows_user_scoped_allocations(self):
+        Investment.objects.create(
+            account=self.account,
+            name='Stock Fund',
+            type='stock',
+            value=Decimal('300.00'),
+            quantity=Decimal('3.0000'),
+            symbol='STK',
+            as_of=date(2026, 7, 12),
+        )
+        Investment.objects.create(
+            account=self.account,
+            name='Bond Fund',
+            type='bond',
+            value=Decimal('100.00'),
+            quantity=Decimal('1.0000'),
+            symbol='BND',
+            as_of=date(2026, 7, 12),
+        )
+        other_user = get_user_model().objects.create_user(
+            username='comparison-other',
+            password='x',
+            two_factor_enabled=True,
+        )
+        other_account = Account.objects.create(
+            user=other_user,
+            name='Other Brokerage',
+            type='investment',
+        )
+        Investment.objects.create(
+            account=other_account,
+            name='Hidden Stock Fund',
+            type='stock',
+            value=Decimal('9600.00'),
+            quantity=Decimal('96.0000'),
+            symbol='HID',
+            as_of=date(2026, 7, 12),
+        )
+
+        response = self.client.get(reverse('investments:investment_comparison'))
+
+        self.assertEqual(response.status_code, 200)
+        allocations = {
+            row['type']: row['allocation_pct']
+            for row in response.context['comparison']
+        }
+        self.assertAlmostEqual(float(allocations['stock']), 75.0)
+        self.assertAlmostEqual(float(allocations['bond']), 25.0)
+        self.assertContains(response, '75.0%')
+        self.assertContains(response, '25.0%')
+        self.assertNotContains(response, 'Hidden Stock Fund')
+
     def test_investment_projections_view(self):
         response = self.client.get(reverse('investments:investment_projections'))
         self.assertEqual(response.status_code, 200)
