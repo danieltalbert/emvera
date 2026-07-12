@@ -1,12 +1,27 @@
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from competition.models import Competition, CompetitionParticipant, MiniGame
+from core.settings import env_bool
 from data_integration.models import Account, Debt, Investment
+
+
+class EnvironmentSettingsTests(SimpleTestCase):
+    def test_env_bool_accepts_common_truthy_values(self):
+        for raw_value in ('1', 'true', 'TRUE', 'yes', 'on'):
+            with self.subTest(raw_value=raw_value):
+                with patch.dict('os.environ', {'CODEX_BOOL_SETTING': raw_value}):
+                    self.assertTrue(env_bool('CODEX_BOOL_SETTING'))
+
+    def test_env_bool_uses_default_when_missing(self):
+        with patch.dict('os.environ', {}, clear=True):
+            self.assertTrue(env_bool('CODEX_BOOL_SETTING', True))
+            self.assertFalse(env_bool('CODEX_BOOL_SETTING'))
 
 
 class AuthenticatedRouteSmokeTests(TestCase):

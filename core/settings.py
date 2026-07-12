@@ -14,6 +14,14 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+
+def env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.lower() in {'1', 'true', 'yes', 'on'}
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,9 +29,18 @@ load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = env_bool('DJANGO_DEBUG')
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# Deployment security controls. Defaults stay local-test friendly; production
+# deploys should enable these through environment variables.
+SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT')
+SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS', '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS')
+SECURE_HSTS_PRELOAD = env_bool('DJANGO_SECURE_HSTS_PRELOAD')
+SESSION_COOKIE_SECURE = env_bool('DJANGO_SESSION_COOKIE_SECURE')
+CSRF_COOKIE_SECURE = env_bool('DJANGO_CSRF_COOKIE_SECURE')
 
 
 # Application definition
@@ -143,8 +160,8 @@ if os.environ.get('EMAIL_HOST'):
     EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-    EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False') == 'True'
+    EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
+    EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL')
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
