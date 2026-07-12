@@ -2,6 +2,8 @@
 """
 Views for user data integration:
 """
+import logging
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
@@ -17,6 +19,8 @@ SUPPORTED_PLAID_INSTITUTIONS = [
     'Chase', 'Bank of America', 'Wells Fargo', 'Citibank', 'US Bank',
     'Vanguard', 'Fidelity', 'Charles Schwab', 'Ally Bank', 'Capital One',
 ]
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -40,8 +44,9 @@ def plaid_link_token(request):
         token = create_link_token(request.user)
     except PlaidNotConfigured as exc:
         return JsonResponse({'error': str(exc)}, status=503)
-    except Exception as exc:  # network/credential issues, surface to client
-        return JsonResponse({'error': f'Plaid error: {exc}'}, status=502)
+    except Exception:
+        logger.exception('Failed to create Plaid link token for user %s.', request.user.pk)
+        return JsonResponse({'error': 'Plaid is temporarily unavailable.'}, status=502)
     return JsonResponse({'link_token': token})
 
 
@@ -60,8 +65,9 @@ def plaid_exchange(request):
         item, summary = link_and_sync(request.user, public_token)
     except PlaidNotConfigured as exc:
         return JsonResponse({'error': str(exc)}, status=503)
-    except Exception as exc:
-        return JsonResponse({'error': f'Plaid sync failed: {exc}'}, status=502)
+    except Exception:
+        logger.exception('Failed to exchange Plaid public token for user %s.', request.user.pk)
+        return JsonResponse({'error': 'Plaid sync is temporarily unavailable.'}, status=502)
 
     messages.success(
         request,

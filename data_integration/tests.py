@@ -478,6 +478,18 @@ class DataIntegrationViewsTest(TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertIn('PLAID_CLIENT_ID', response.json()['error'])
 
+    @patch('data_integration.plaid_client.create_link_token')
+    def test_plaid_link_token_redacts_unexpected_errors(self, create_link_token):
+        create_link_token.side_effect = RuntimeError('provider secret leaked')
+
+        with self.assertLogs('data_integration.views', level='ERROR') as logs:
+            response = self.client.post(reverse('data_integration:plaid_link_token'))
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()['error'], 'Plaid is temporarily unavailable.')
+        self.assertNotIn('provider secret leaked', response.content.decode('utf-8'))
+        self.assertIn('Failed to create Plaid link token', '\n'.join(logs.output))
+
     def test_plaid_link_token_rejects_get(self):
         response = self.client.get(reverse('data_integration:plaid_link_token'))
         self.assertEqual(response.status_code, 405)
@@ -495,6 +507,20 @@ class DataIntegrationViewsTest(TestCase):
         })
         self.assertEqual(response.status_code, 503)
         self.assertIn('PLAID_CLIENT_ID', response.json()['error'])
+
+    @patch('data_integration.plaid_sync.link_and_sync')
+    def test_plaid_exchange_redacts_unexpected_errors(self, link_and_sync):
+        link_and_sync.side_effect = RuntimeError('raw access token leaked')
+
+        with self.assertLogs('data_integration.views', level='ERROR') as logs:
+            response = self.client.post(reverse('data_integration:plaid_exchange'), {
+                'public_token': 'public-sandbox-test',
+            })
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()['error'], 'Plaid sync is temporarily unavailable.')
+        self.assertNotIn('raw access token leaked', response.content.decode('utf-8'))
+        self.assertIn('Failed to exchange Plaid public token', '\n'.join(logs.output))
 
     def test_manual_account_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_account_entry'))
