@@ -66,9 +66,11 @@
               <span class="font-mono font-semi">${{ row.total_value|floatformat:2 }}</span>
             </td>
             <td>
-              <!-- Allocation bar placeholder — would need total from view -->
-              <div class="progress-track" style="max-width:120px;">
-                <div class="progress-fill" style="width:{{ row.total_value|default:0 }}%;max-width:100%;"></div>
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <div class="progress-track" style="max-width:120px;flex:1;">
+                  <div class="progress-fill" style="width:{{ row.allocation_pct|floatformat:2 }}%;max-width:100%;"></div>
+                </div>
+                <span class="font-mono text-xs text-muted">{{ row.allocation_pct|floatformat:1 }}%</span>
               </div>
             </td>
           </tr>
