@@ -12,7 +12,7 @@ urlpatterns = [
     path('register/', views.register,                                                           name='register'),
 
     # Password management
-    path('password-change/', auth_views.PasswordChangeView.as_view(success_url='/accounts/profile/'), name='password_change'),
+    path('password-change/', views.change_password, name='password_change'),
     path(
         'password-reset/',
         auth_views.PasswordResetView.as_view(

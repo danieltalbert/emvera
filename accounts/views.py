@@ -48,6 +48,7 @@ def user_login(request):
 
 
 @login_required
+@require_2fa
 def change_password(request):
     if request.method == 'POST':
         form = ChangePasswordForm(user=request.user, data=request.POST)
