@@ -2,6 +2,7 @@ import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import DecimalField, ExpressionWrapper, F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -10,6 +11,19 @@ from accounts.require_2fa import require_2fa
 
 from .forms import CompetitionForm
 from .models import Competition, CompetitionParticipant, MiniGame, MiniGameResult
+
+
+def _competition_leaderboard(competition):
+    total_value = ExpressionWrapper(
+        F('portfolio_value') + F('bonus_earned'),
+        output_field=DecimalField(max_digits=14, decimal_places=2),
+    )
+    return (
+        competition.participants
+        .select_related('user')
+        .annotate(leaderboard_total=total_value)
+        .order_by('-leaderboard_total', '-portfolio_value', '-bonus_earned', 'joined_at')
+    )
 
 
 @login_required
@@ -95,7 +109,7 @@ def competition_dashboard(request, pk):
     if active_mini_game and participant:
         already_played = active_mini_game.results.filter(participant=participant).exists()
 
-    leaderboard = competition.participants.order_by('-portfolio_value', '-bonus_earned')
+    leaderboard = _competition_leaderboard(competition)
 
     return render(request, 'competition/dashboard.html', {
         'competition': competition,
@@ -130,7 +144,7 @@ def competition_state(request, pk):
             'total_value': float(p.total_value),
             'mini_game_wins': p.mini_game_wins,
         }
-        for p in competition.participants.order_by('-portfolio_value', '-bonus_earned')
+        for p in _competition_leaderboard(competition)
     ]
 
     return JsonResponse({
@@ -221,7 +235,7 @@ def submit_score(request, pk, game_pk):
 
 def _check_winner(competition):
     """Finish competition if any participant has reached the goal."""
-    leader = competition.participants.order_by('-portfolio_value').first()
+    leader = _competition_leaderboard(competition).first()
     if leader and leader.total_value >= competition.investment_goal:
         competition.finish()
 
@@ -241,7 +255,7 @@ def end_competition(request, pk):
 @require_2fa
 def competition_winner(request, pk):
     competition = get_object_or_404(Competition, pk=pk, status=Competition.STATUS_FINISHED)
-    leaderboard = competition.participants.order_by('-portfolio_value', '-bonus_earned')
+    leaderboard = _competition_leaderboard(competition)
     winner = leaderboard.first()
     return render(request, 'competition/winner.html', {
         'competition': competition,

@@ -42,6 +42,7 @@ Last updated: 2026-07-13
 - 2026-07-13 afternoon continuation:
   - Rejected stale mini-game score submissions unless both the competition and mini-game are still active.
   - Rejected malformed and negative mini-game scores before creating result rows.
+  - Ranked competition leaders and winners by total value, including mini-game bonuses.
 
 ## Next Candidates
 
