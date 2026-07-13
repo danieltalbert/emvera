@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Two-Factor Authentication Verification</h2>
+<h1>Two-Factor Authentication Verification</h1>
 <p>Enter the 6-digit code from your authenticator app.</p>
 <form method="post">
     {% csrf_token %}
     <label for="code">Code:</label>
-    <input type="text" name="code" maxlength="6" required />
+    <input type="text" id="code" name="code" maxlength="6" required />
     <button type="submit">Verify</button>
 </form>
 {% endblock %}

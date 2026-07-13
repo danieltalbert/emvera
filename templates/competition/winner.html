@@ -150,13 +150,13 @@
   <div class="winner-hero">
     <div class="trophy-icon">🏆</div>
     {% if winner %}
-      <div class="winner-name">{{ winner.user.username }}</div>
+      <h1 class="winner-name">{{ winner.user.username }}</h1>
       <div class="winner-sub">won "{{ competition.name }}" with ${{ winner.total_value|floatformat:2 }}</div>
       {% if is_winner %}
         <div class="you-won-badge">🎉 That's you! Congratulations!</div>
       {% endif %}
     {% else %}
-      <div class="winner-name">Competition Over</div>
+      <h1 class="winner-name">Competition Over</h1>
       <div class="winner-sub">{{ competition.name }}</div>
     {% endif %}
 

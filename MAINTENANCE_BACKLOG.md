@@ -35,8 +35,11 @@ Last updated: 2026-07-13
   - Removed stale imports from debt-management and data-integration view modules.
 - 2026-07-13 maintenance:
   - Added programmatic labels for avalanche and snowball extra-payment controls, with regression coverage.
+- 2026-07-13 deep QA:
+  - Promoted auth, password reset/change, onboarding, 2FA, paintball, and competition results pages to accessible page-level headings.
+  - Added rendered route accessibility smoke coverage for public/authenticated headings, form labels, and button names.
 
 ## Next Candidates
 
-1. Turn the browser screenshot QA path into repeatable tooling if a stable browser dependency is added to the repo.
+1. Turn browser screenshot, keyboard-focus, and color-contrast QA into repeatable tooling if a stable browser dependency is added to the repo.
 2. Decide whether generated portfolio-wide recommendations should be persisted with a nullable investment relationship or a separate recommendation target model.

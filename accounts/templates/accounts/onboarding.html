@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Welcome to PNW Finance Onboarding</h2>
+<h1>Welcome to PNW Finance Onboarding</h1>
 <ol>
     <li>Step 1: Verify Email <span style="color: green;">&#10003; Complete</span></li>
     <li>Step 2: Set up 2FA {% if not twofa_complete %}<a href="{% url 'accounts:two_factor_setup' %}">Start</a>{% else %}<span style="color: green;">&#10003; Complete</span>{% endif %}</li>

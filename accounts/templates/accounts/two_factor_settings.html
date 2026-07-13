@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Two-Factor Authentication Settings</h2>
+<h1>Two-Factor Authentication Settings</h1>
 <p>Current status: {% if user.two_factor_enabled %}Enabled{% else %}Disabled{% endif %}</p>
 {% if user.two_factor_enabled %}
     <form method="post">
