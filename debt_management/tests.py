@@ -339,11 +339,15 @@ class DebtManagementViewsTest(TestCase):
         response = self.client.get(reverse('debt_management:payoff_avalanche'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/payoff_avalanche.html')
+        self.assertContains(response, 'for="id_avalanche_extra"')
+        self.assertContains(response, 'id="id_avalanche_extra"')
 
     def test_payoff_snowball_view(self):
         response = self.client.get(reverse('debt_management:payoff_snowball'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'debt_management/payoff_snowball.html')
+        self.assertContains(response, 'for="id_snowball_extra"')
+        self.assertContains(response, 'id="id_snowball_extra"')
 
     def test_payoff_custom_view(self):
         response = self.client.get(reverse('debt_management:payoff_custom'))

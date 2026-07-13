@@ -136,7 +136,8 @@
       <div class="card-header"><div class="card-title">Extra Monthly Payment</div></div>
       <div class="card-body">
         <form method="get" style="display:flex;gap:var(--sp-2);align-items:center;">
-          <input type="number" name="extra" min="0" step="10" class="form-input font-mono"
+          <label class="sr-only" for="id_snowball_extra">Extra monthly payment</label>
+          <input type="number" name="extra" id="id_snowball_extra" min="0" step="10" class="form-input font-mono"
                  placeholder="$0.00" value="{{ extra_payment|default_if_none:'0' }}">
           <button type="submit" class="btn btn-primary btn-sm">Recalculate</button>
         </form>

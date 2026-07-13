@@ -1,6 +1,6 @@
 # Maintenance Backlog
 
-Last updated: 2026-07-12
+Last updated: 2026-07-13
 
 ## Completed
 
@@ -33,6 +33,8 @@ Last updated: 2026-07-12
   - Restored page-level `h1` headings on competition dashboards after browser QA found the status banner used `h2`.
   - Required POST for marking payment reminders paid, with regression coverage that GET leaves reminders unchanged.
   - Removed stale imports from debt-management and data-integration view modules.
+- 2026-07-13 maintenance:
+  - Added programmatic labels for avalanche and snowball extra-payment controls, with regression coverage.
 
 ## Next Candidates
 
