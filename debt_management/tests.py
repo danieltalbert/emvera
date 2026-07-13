@@ -349,6 +349,28 @@ class DebtManagementViewsTest(TestCase):
         self.assertContains(response, 'for="id_snowball_extra"')
         self.assertContains(response, 'id="id_snowball_extra"')
 
+    def test_payoff_querystring_extra_payment_never_goes_negative(self):
+        for route_name in ('payoff_avalanche', 'payoff_snowball'):
+            with self.subTest(route_name=route_name):
+                response = self.client.get(
+                    reverse(f'debt_management:{route_name}'),
+                    {'extra': '-50.00'},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.context['extra_payment'], Decimal('0.00'))
+
+    def test_payoff_querystring_extra_payment_handles_invalid_values(self):
+        for route_name in ('payoff_avalanche', 'payoff_snowball'):
+            with self.subTest(route_name=route_name):
+                response = self.client.get(
+                    reverse(f'debt_management:{route_name}'),
+                    {'extra': 'not-a-number'},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.context['extra_payment'], Decimal('0.00'))
+
     def test_payoff_custom_view(self):
         response = self.client.get(reverse('debt_management:payoff_custom'))
         self.assertEqual(response.status_code, 200)

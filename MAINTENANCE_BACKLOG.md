@@ -43,6 +43,7 @@ Last updated: 2026-07-13
   - Rejected stale mini-game score submissions unless both the competition and mini-game are still active.
   - Rejected malformed and negative mini-game scores before creating result rows.
   - Ranked competition leaders and winners by total value, including mini-game bonuses.
+  - Normalized negative or invalid payoff extra-payment query values to zero.
 
 ## Next Candidates
 
