@@ -294,6 +294,7 @@ class AuthenticatedRouteSmokeTests(TestCase):
         routes = (
             ('accounts:profile', reverse('accounts:profile'), 'accounts/profile.html'),
             ('accounts:change_password', reverse('accounts:change_password'), 'accounts/change_password.html'),
+            ('accounts:password_change', reverse('accounts:password_change'), 'accounts/change_password.html'),
             ('accounts:onboarding', reverse('accounts:onboarding'), 'accounts/onboarding.html'),
             (
                 'accounts:two_factor_settings',

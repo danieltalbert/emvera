@@ -55,6 +55,11 @@ class ProfileViewTest(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertTemplateUsed(response, 'accounts/profile.html')
 
+	def test_profile_links_to_custom_change_password_route(self):
+		self.client.login(username='testuser', password='testpass')
+		response = self.client.get(reverse('accounts:profile'))
+		self.assertContains(response, f'href="{reverse("accounts:change_password")}"')
+
 	def test_logout_uses_post(self):
 		self.client.login(username='testuser', password='testpass')
 		response = self.client.post(reverse('accounts:logout'))
@@ -142,6 +147,10 @@ class TwoFactorGateTest(TestCase):
 		self.assertRequiresTwoFactorSetup('data_integration:manual_transaction_entry')
 		self.assertRequiresTwoFactorSetup('data_integration:manual_debt_entry')
 		self.assertRequiresTwoFactorSetup('data_integration:csv_upload')
+
+	def test_password_change_requires_two_factor_setup(self):
+		self.assertRequiresTwoFactorSetup('accounts:change_password')
+		self.assertRequiresTwoFactorSetup('accounts:password_change')
 
 	def test_investments_require_two_factor_setup(self):
 		self.assertRequiresTwoFactorSetup('investments:portfolio_overview')
