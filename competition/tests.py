@@ -213,6 +213,33 @@ class CompetitionFlowTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertFalse(MiniGameResult.objects.filter(mini_game=finished_mini_game).exists())
 
+    def test_submit_score_rejects_malformed_or_negative_scores(self):
+        competition = self.create_competition(status=Competition.STATUS_ACTIVE)
+        self.add_participant(competition, self.creator)
+        mini_game = MiniGame.objects.create(competition=competition, bonus_amount=competition.mini_game_bonus)
+        submit_url = reverse('competition:submit_score', kwargs={
+            'pk': competition.pk,
+            'game_pk': mini_game.pk,
+        })
+
+        malformed_response = self.client.post(
+            submit_url,
+            data=json.dumps(['not', 'an', 'object']),
+            content_type='application/json',
+        )
+
+        self.assertEqual(malformed_response.json(), {'ok': False, 'error': 'Invalid score.'})
+        self.assertFalse(MiniGameResult.objects.filter(mini_game=mini_game).exists())
+
+        negative_response = self.client.post(
+            submit_url,
+            data=json.dumps({'score': -1}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(negative_response.json(), {'ok': False, 'error': 'Invalid score.'})
+        self.assertFalse(MiniGameResult.objects.filter(mini_game=mini_game).exists())
+
     def test_outsider_cannot_play_or_submit_mini_game(self):
         competition = self.create_competition(status=Competition.STATUS_ACTIVE)
         self.add_participant(competition, self.creator)

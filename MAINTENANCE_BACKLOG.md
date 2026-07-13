@@ -41,6 +41,7 @@ Last updated: 2026-07-13
   - Unified password-change routes on the branded custom view and required 2FA before password updates.
 - 2026-07-13 afternoon continuation:
   - Rejected stale mini-game score submissions unless both the competition and mini-game are still active.
+  - Rejected malformed and negative mini-game scores before creating result rows.
 
 ## Next Candidates
 

@@ -198,7 +198,11 @@ def submit_score(request, pk, game_pk):
 
     try:
         data = json.loads(request.body)
+        if not isinstance(data, dict):
+            raise ValueError
         score = int(data.get('score', 0))
+        if score < 0:
+            raise ValueError
     except (ValueError, TypeError):
         return JsonResponse({'ok': False, 'error': 'Invalid score.'})
 
