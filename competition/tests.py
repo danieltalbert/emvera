@@ -119,6 +119,54 @@ class CompetitionFlowTests(TestCase):
         self.assertRedirects(response, reverse('competition:dashboard', kwargs={'pk': competition.pk}))
         self.assertEqual(competition.mini_games.filter(status=MiniGame.STATUS_ACTIVE).count(), 1)
 
+    def test_leaderboards_order_by_total_value_including_bonus(self):
+        competition = self.create_competition(status=Competition.STATUS_ACTIVE)
+        creator_participant = self.add_participant(
+            competition,
+            self.creator,
+            portfolio_value=Decimal('1200.00'),
+            bonus_earned=Decimal('0.00'),
+        )
+        joiner_participant = self.add_participant(
+            competition,
+            self.joiner,
+            portfolio_value=Decimal('1000.00'),
+            bonus_earned=Decimal('300.00'),
+        )
+
+        dashboard_response = self.client.get(reverse('competition:dashboard', kwargs={'pk': competition.pk}))
+        self.assertEqual(list(dashboard_response.context['leaderboard'])[:2], [
+            joiner_participant,
+            creator_participant,
+        ])
+
+        state_response = self.client.get(reverse('competition:state', kwargs={'pk': competition.pk}))
+        self.assertEqual(state_response.json()['leaderboard'][0]['username'], 'joiner')
+
+    def test_winner_uses_total_value_including_bonus(self):
+        competition = self.create_competition(status=Competition.STATUS_FINISHED)
+        creator_participant = self.add_participant(
+            competition,
+            self.creator,
+            portfolio_value=Decimal('1200.00'),
+            bonus_earned=Decimal('0.00'),
+        )
+        joiner_participant = self.add_participant(
+            competition,
+            self.joiner,
+            portfolio_value=Decimal('1000.00'),
+            bonus_earned=Decimal('300.00'),
+        )
+
+        self.assertEqual(competition.winner, joiner_participant)
+
+        response = self.client.get(reverse('competition:winner', kwargs={'pk': competition.pk}))
+        self.assertEqual(response.context['winner'], joiner_participant)
+        self.assertEqual(list(response.context['leaderboard'])[:2], [
+            joiner_participant,
+            creator_participant,
+        ])
+
     def test_submit_score_resolves_mini_game_after_all_participants_play(self):
         competition = self.create_competition(status=Competition.STATUS_ACTIVE)
         creator_participant = self.add_participant(competition, self.creator)
@@ -157,6 +205,38 @@ class CompetitionFlowTests(TestCase):
         self.assertEqual(mini_game.winner, joiner_participant)
         self.assertEqual(creator_participant.bonus_earned, Decimal('0.00'))
         self.assertEqual(joiner_participant.bonus_earned, competition.mini_game_bonus)
+
+    def test_mini_game_bonus_can_finish_competition_by_total_value(self):
+        competition = self.create_competition(
+            status=Competition.STATUS_ACTIVE,
+            investment_goal=Decimal('1100.00'),
+            mini_game_bonus=Decimal('150.00'),
+        )
+        self.add_participant(competition, self.creator, portfolio_value=Decimal('1050.00'))
+        self.add_participant(competition, self.joiner, portfolio_value=Decimal('1000.00'))
+        mini_game = MiniGame.objects.create(competition=competition, bonus_amount=competition.mini_game_bonus)
+        submit_url = reverse('competition:submit_score', kwargs={
+            'pk': competition.pk,
+            'game_pk': mini_game.pk,
+        })
+
+        self.client.post(
+            submit_url,
+            data=json.dumps({'score': 5}),
+            content_type='application/json',
+        )
+        competition.refresh_from_db()
+        self.assertEqual(competition.status, Competition.STATUS_ACTIVE)
+
+        self.client.force_login(self.joiner)
+        self.client.post(
+            submit_url,
+            data=json.dumps({'score': 10}),
+            content_type='application/json',
+        )
+
+        competition.refresh_from_db()
+        self.assertEqual(competition.status, Competition.STATUS_FINISHED)
 
     def test_submit_score_rejects_duplicate_entries(self):
         competition = self.create_competition(status=Competition.STATUS_ACTIVE)

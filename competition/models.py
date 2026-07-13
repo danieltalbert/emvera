@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import DecimalField, ExpressionWrapper, F
 from django.utils import timezone
 
 
@@ -37,7 +38,16 @@ class Competition(models.Model):
 
     @property
     def winner(self):
-        return self.participants.order_by('-portfolio_value').first()
+        total_value = ExpressionWrapper(
+            F('portfolio_value') + F('bonus_earned'),
+            output_field=DecimalField(max_digits=14, decimal_places=2),
+        )
+        return (
+            self.participants
+            .annotate(leaderboard_total=total_value)
+            .order_by('-leaderboard_total', '-portfolio_value', '-bonus_earned', 'joined_at')
+            .first()
+        )
 
     def start(self):
         self.status = self.STATUS_ACTIVE
