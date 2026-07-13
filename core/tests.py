@@ -1,14 +1,143 @@
 from datetime import date
 from decimal import Decimal
+from html.parser import HTMLParser
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from competition.models import Competition, CompetitionParticipant, MiniGame
 from core.settings import env_bool
 from data_integration.models import Account, Debt, Investment
+
+
+class RenderedAccessibilityParser(HTMLParser):
+    VOID_TAGS = {
+        'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+        'link', 'meta', 'param', 'source', 'track', 'wbr',
+    }
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.hidden_stack = []
+        self.current_heading = None
+        self.heading_text = []
+        self.visible_h1s = []
+        self.labels_for = set()
+        self.label_depth = 0
+        self.controls = []
+        self.buttons = []
+        self.current_button = None
+        self.button_text = []
+
+    def _attrs(self, attrs):
+        return dict(attrs)
+
+    def _is_hidden(self, attrs):
+        attrs = self._attrs(attrs)
+        style = attrs.get('style', '').replace(' ', '').lower()
+        return (
+            attrs.get('aria-hidden') == 'true'
+            or 'hidden' in attrs
+            or attrs.get('type', '').lower() == 'hidden'
+            or 'display:none' in style
+            or 'visibility:hidden' in style
+        )
+
+    def _is_inside_hidden_content(self):
+        return bool(self.hidden_stack)
+
+    def handle_starttag(self, tag, attrs):
+        if self._is_inside_hidden_content() or self._is_hidden(attrs):
+            if tag not in self.VOID_TAGS:
+                self.hidden_stack.append(tag)
+            return
+
+        attrs = self._attrs(attrs)
+        if tag in {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}:
+            self.current_heading = tag
+            self.heading_text = []
+        elif tag == 'label':
+            self.label_depth += 1
+            if attrs.get('for'):
+                self.labels_for.add(attrs['for'])
+        elif tag in {'input', 'select', 'textarea'}:
+            control_type = attrs.get('type', '').lower()
+            if control_type not in {'hidden', 'submit', 'button', 'reset'}:
+                self.controls.append({
+                    'tag': tag,
+                    'id': attrs.get('id', ''),
+                    'name': attrs.get('name', ''),
+                    'type': control_type,
+                    'aria_label': attrs.get('aria-label', ''),
+                    'aria_labelledby': attrs.get('aria-labelledby', ''),
+                    'title': attrs.get('title', ''),
+                    'wrapped': self.label_depth > 0,
+                })
+        elif tag == 'button':
+            self.current_button = attrs
+            self.button_text = []
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        if tag not in self.VOID_TAGS:
+            self.handle_endtag(tag)
+
+    def handle_endtag(self, tag):
+        if self.hidden_stack:
+            if tag in self.hidden_stack:
+                while self.hidden_stack:
+                    popped = self.hidden_stack.pop()
+                    if popped == tag:
+                        break
+            return
+
+        if tag == self.current_heading:
+            text = ''.join(self.heading_text).strip()
+            if tag == 'h1' and text:
+                self.visible_h1s.append(text)
+            self.current_heading = None
+            self.heading_text = []
+        elif tag == 'label' and self.label_depth:
+            self.label_depth -= 1
+        elif tag == 'button' and self.current_button is not None:
+            self.buttons.append({
+                'text': ''.join(self.button_text).strip(),
+                'aria_label': self.current_button.get('aria-label', ''),
+                'title': self.current_button.get('title', ''),
+            })
+            self.current_button = None
+            self.button_text = []
+
+    def handle_data(self, data):
+        if self._is_inside_hidden_content():
+            return
+        if self.current_heading:
+            self.heading_text.append(data)
+        if self.current_button is not None:
+            self.button_text.append(data)
+
+    def unlabeled_controls(self):
+        return [
+            control for control in self.controls
+            if not (
+                control['wrapped']
+                or control['aria_label']
+                or control['aria_labelledby']
+                or control['title']
+                or (control['id'] and control['id'] in self.labels_for)
+            )
+        ]
+
+    def unnamed_buttons(self):
+        return [
+            button for button in self.buttons
+            if not (button['text'] or button['aria_label'] or button['title'])
+        ]
 
 
 class EnvironmentSettingsTests(SimpleTestCase):
@@ -101,18 +230,76 @@ class AuthenticatedRouteSmokeTests(TestCase):
     def setUp(self):
         self.client.force_login(self.user)
 
+    def assertAccessibleHtml(self, response, route_name):
+        parser = RenderedAccessibilityParser()
+        parser.feed(response.content.decode(response.charset or 'utf-8', errors='replace'))
+        problems = []
+        if not parser.visible_h1s:
+            problems.append('missing visible h1')
+        unlabeled_controls = parser.unlabeled_controls()
+        if unlabeled_controls:
+            problems.append(f'unlabeled controls: {unlabeled_controls}')
+        unnamed_buttons = parser.unnamed_buttons()
+        if unnamed_buttons:
+            problems.append(f'unnamed buttons: {unnamed_buttons}')
+        self.assertFalse(problems, f'{route_name} accessibility smoke failed: {problems}')
+
     def assertPageRenders(self, route_name, url, template_name):
         with self.subTest(route=route_name):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
             self.assertTemplateUsed(response, template_name)
             self.assertIn('text/html', response['Content-Type'])
+            self.assertAccessibleHtml(response, route_name)
+
+    def test_public_auth_pages_have_accessible_page_structure(self):
+        self.client.logout()
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+        routes = (
+            ('accounts:login', reverse('accounts:login'), False),
+            ('accounts:register', reverse('accounts:register'), False),
+            ('accounts:password_reset', reverse('accounts:password_reset'), False),
+            ('accounts:password_reset_done', reverse('accounts:password_reset_done'), False),
+            ('accounts:password_reset_complete', reverse('accounts:password_reset_complete'), False),
+            (
+                'accounts:password_reset_confirm',
+                reverse('accounts:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token}),
+                True,
+            ),
+        )
+        for route_name, url, follow in routes:
+            with self.subTest(route=route_name):
+                response = self.client.get(url, follow=follow)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn('text/html', response['Content-Type'])
+                self.assertAccessibleHtml(response, route_name)
+
+    def test_two_factor_setup_pages_have_accessible_page_structure(self):
+        setup_user = get_user_model().objects.create_user(username='setup-2fa', password='x')
+        self.client.force_login(setup_user)
+
+        setup_response = self.client.get(reverse('accounts:two_factor_setup'))
+        self.assertEqual(setup_response.status_code, 200)
+        self.assertAccessibleHtml(setup_response, 'accounts:two_factor_setup')
+
+        session = self.client.session
+        session['totp_secret'] = 'JBSWY3DPEHPK3PXP'
+        session.save()
+        verify_response = self.client.get(reverse('accounts:two_factor_verify'))
+        self.assertEqual(verify_response.status_code, 200)
+        self.assertAccessibleHtml(verify_response, 'accounts:two_factor_verify')
 
     def test_authenticated_page_routes_render(self):
         routes = (
             ('accounts:profile', reverse('accounts:profile'), 'accounts/profile.html'),
             ('accounts:change_password', reverse('accounts:change_password'), 'accounts/change_password.html'),
             ('accounts:onboarding', reverse('accounts:onboarding'), 'accounts/onboarding.html'),
+            (
+                'accounts:two_factor_settings',
+                reverse('accounts:two_factor_settings'),
+                'accounts/two_factor_settings.html',
+            ),
             (
                 'data_integration:connect_plaid',
                 reverse('data_integration:connect_plaid'),

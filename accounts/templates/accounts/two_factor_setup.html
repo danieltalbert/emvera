@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Two-Factor Authentication Setup</h2>
+<h1>Two-Factor Authentication Setup</h1>
 <p>Scan the QR code below with your authenticator app, then enter the 6-digit code to verify.</p>
 <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" />
 <form method="post">
     {% csrf_token %}
     <label for="code">Enter 6-digit code:</label>
-    <input type="text" name="code" maxlength="6" required />
+    <input type="text" id="code" name="code" maxlength="6" required />
     <button type="submit">Verify</button>
 </form>
 {% endblock %}
