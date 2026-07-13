@@ -173,6 +173,46 @@ class CompetitionFlowTests(TestCase):
         self.assertEqual(response.json(), {'ok': False, 'error': 'Already submitted.'})
         self.assertEqual(mini_game.results.filter(participant=participant).count(), 1)
 
+    def test_submit_score_rejects_inactive_competition_or_mini_game(self):
+        finished_competition = self.create_competition(status=Competition.STATUS_FINISHED)
+        self.add_participant(finished_competition, self.creator)
+        active_mini_game = MiniGame.objects.create(
+            competition=finished_competition,
+            bonus_amount=finished_competition.mini_game_bonus,
+        )
+
+        response = self.client.post(
+            reverse('competition:submit_score', kwargs={
+                'pk': finished_competition.pk,
+                'game_pk': active_mini_game.pk,
+            }),
+            data=json.dumps({'score': 99}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(MiniGameResult.objects.filter(mini_game=active_mini_game).exists())
+
+        active_competition = self.create_competition(status=Competition.STATUS_ACTIVE)
+        self.add_participant(active_competition, self.creator)
+        finished_mini_game = MiniGame.objects.create(
+            competition=active_competition,
+            bonus_amount=active_competition.mini_game_bonus,
+            status=MiniGame.STATUS_FINISHED,
+        )
+
+        response = self.client.post(
+            reverse('competition:submit_score', kwargs={
+                'pk': active_competition.pk,
+                'game_pk': finished_mini_game.pk,
+            }),
+            data=json.dumps({'score': 88}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(MiniGameResult.objects.filter(mini_game=finished_mini_game).exists())
+
     def test_outsider_cannot_play_or_submit_mini_game(self):
         competition = self.create_competition(status=Competition.STATUS_ACTIVE)
         self.add_participant(competition, self.creator)

@@ -184,8 +184,13 @@ def paintball_game(request, pk, game_pk):
 @require_2fa
 @require_POST
 def submit_score(request, pk, game_pk):
-    competition = get_object_or_404(Competition, pk=pk)
-    mini_game = get_object_or_404(MiniGame, pk=game_pk, competition=competition)
+    competition = get_object_or_404(Competition, pk=pk, status=Competition.STATUS_ACTIVE)
+    mini_game = get_object_or_404(
+        MiniGame,
+        pk=game_pk,
+        competition=competition,
+        status=MiniGame.STATUS_ACTIVE,
+    )
     participant = get_object_or_404(CompetitionParticipant, competition=competition, user=request.user)
 
     if mini_game.results.filter(participant=participant).exists():

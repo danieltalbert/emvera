@@ -39,6 +39,8 @@ Last updated: 2026-07-13
   - Promoted auth, password reset/change, onboarding, 2FA, paintball, and competition results pages to accessible page-level headings.
   - Added rendered route accessibility smoke coverage for public/authenticated headings, form labels, and button names.
   - Unified password-change routes on the branded custom view and required 2FA before password updates.
+- 2026-07-13 afternoon continuation:
+  - Rejected stale mini-game score submissions unless both the competition and mini-game are still active.
 
 ## Next Candidates
 
