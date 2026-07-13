@@ -56,9 +56,12 @@ def debt_dashboard(request):
 def _extra_payment_from_request(request) -> Decimal:
     raw = request.GET.get('extra') or request.POST.get('extra_payment') or '0'
     try:
-        return Decimal(raw)
+        extra = Decimal(raw)
     except (ValueError, ArithmeticError):
         return Decimal('0.00')
+    if extra < 0:
+        return Decimal('0.00')
+    return extra
 
 
 @login_required
