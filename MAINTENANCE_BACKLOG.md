@@ -51,6 +51,7 @@ Last updated: 2026-07-14
 - 2026-07-14 afternoon continuation:
   - Required 2FA-enabled users for the two-factor settings page and redirected users back to setup after disabling 2FA.
   - Replaced remaining PNW Finance branding on onboarding and portfolio performance pages with Ridge & River Financial.
+  - Removed unreferenced initial scaffold handoff notes from data integration and debt management app folders.
 
 ## Next Candidates
 
