@@ -311,6 +311,15 @@ class CompetitionFlowTests(TestCase):
         self.assertEqual(malformed_response.json(), {'ok': False, 'error': 'Invalid score.'})
         self.assertFalse(MiniGameResult.objects.filter(mini_game=mini_game).exists())
 
+        missing_score_response = self.client.post(
+            submit_url,
+            data=json.dumps({}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(missing_score_response.json(), {'ok': False, 'error': 'Invalid score.'})
+        self.assertFalse(MiniGameResult.objects.filter(mini_game=mini_game).exists())
+
         negative_response = self.client.post(
             submit_url,
             data=json.dumps({'score': -1}),

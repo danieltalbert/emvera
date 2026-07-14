@@ -1,6 +1,6 @@
 # Maintenance Backlog
 
-Last updated: 2026-07-13
+Last updated: 2026-07-14
 
 ## Completed
 
@@ -44,6 +44,9 @@ Last updated: 2026-07-13
   - Rejected malformed and negative mini-game scores before creating result rows.
   - Ranked competition leaders and winners by total value, including mini-game bonuses.
   - Normalized negative or invalid payoff extra-payment query values to zero.
+- 2026-07-14 maintenance:
+  - Browser DOM QA covered onboarding, portfolio, debt, investment, and competition pages at desktop and mobile sizes with no page-level overflow, missing headings, unlabeled controls, unnamed buttons, or console errors.
+  - Required mini-game score submissions to include an explicit score before creating result rows.
 
 ## Next Candidates
 
