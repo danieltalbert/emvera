@@ -73,6 +73,13 @@ class InvestmentsViewsTest(TestCase):
         response = self.client.get(reverse('investments:investment_growth_chart'))
         self.assertEqual(response.status_code, 200)
 
+    def test_portfolio_performance_uses_current_branding(self):
+        response = self.client.get(reverse('investments:portfolio_performance'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'investments/portfolio_performance.html')
+        self.assertContains(response, 'Portfolio Performance — Ridge &amp; River Financial')
+
     def test_investment_comparison_view_uses_responsive_layout(self):
         Investment.objects.create(
             account=self.account,
