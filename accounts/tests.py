@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from data_integration.models import Account
 
@@ -168,3 +169,39 @@ class TwoFactorGateTest(TestCase):
 	def test_competition_entry_requires_two_factor_setup(self):
 		self.assertRequiresTwoFactorSetup('competition:lobby')
 		self.assertRequiresTwoFactorSetup('competition:create')
+
+
+class TwoFactorSettingsTest(TestCase):
+	def setUp(self):
+		self.enabled_user = get_user_model().objects.create_user(
+			username='enabled2fa', password='testpass', two_factor_enabled=True,
+		)
+		self.disabled_user = get_user_model().objects.create_user(
+			username='disabled2fa', password='testpass', two_factor_enabled=False,
+		)
+
+	def test_settings_redirects_user_without_two_factor_to_setup(self):
+		self.client.force_login(self.disabled_user)
+		response = self.client.get(reverse('accounts:two_factor_settings'))
+		self.assertRedirects(response, reverse('accounts:two_factor_setup'))
+
+	def test_enabled_user_can_view_settings(self):
+		self.client.force_login(self.enabled_user)
+		response = self.client.get(reverse('accounts:two_factor_settings'))
+		self.assertEqual(response.status_code, 200)
+		self.assertTemplateUsed(response, 'accounts/two_factor_settings.html')
+
+	def test_disabling_two_factor_removes_devices_and_returns_to_setup(self):
+		device = TOTPDevice.objects.create(
+			user=self.enabled_user,
+			name='Authenticator App',
+			confirmed=True,
+		)
+		self.client.force_login(self.enabled_user)
+
+		response = self.client.post(reverse('accounts:two_factor_settings'), {'disable': '1'})
+
+		self.assertRedirects(response, reverse('accounts:two_factor_setup'))
+		self.enabled_user.refresh_from_db()
+		self.assertFalse(self.enabled_user.two_factor_enabled)
+		self.assertFalse(TOTPDevice.objects.filter(pk=device.pk).exists())
