@@ -77,6 +77,7 @@ class OnboardingViewTest(TestCase):
 	def test_onboarding_links_to_manual_account_entry(self):
 		response = self.client.get(reverse('accounts:onboarding'))
 		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, 'Welcome to Ridge &amp; River Financial Onboarding', html=True)
 		self.assertContains(
 			response,
 			'<li>Step 3: Connect First Account <a href="/data/manual-account/">Start</a></li>',

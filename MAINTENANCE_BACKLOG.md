@@ -50,6 +50,7 @@ Last updated: 2026-07-14
   - Aligned participant rank calculations with the total-value leaderboard that includes mini-game bonuses.
 - 2026-07-14 afternoon continuation:
   - Required 2FA-enabled users for the two-factor settings page and redirected users back to setup after disabling 2FA.
+  - Replaced remaining PNW Finance branding on onboarding and portfolio performance pages with Ridge & River Financial.
 
 ## Next Candidates
 
