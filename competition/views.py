@@ -214,7 +214,9 @@ def submit_score(request, pk, game_pk):
         data = json.loads(request.body)
         if not isinstance(data, dict):
             raise ValueError
-        score = int(data.get('score', 0))
+        if 'score' not in data:
+            raise ValueError
+        score = int(data['score'])
         if score < 0:
             raise ValueError
     except (ValueError, TypeError):
