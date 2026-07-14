@@ -143,6 +143,11 @@ class CompetitionFlowTests(TestCase):
         state_response = self.client.get(reverse('competition:state', kwargs={'pk': competition.pk}))
         self.assertEqual(state_response.json()['leaderboard'][0]['username'], 'joiner')
 
+        creator_participant.refresh_from_db()
+        joiner_participant.refresh_from_db()
+        self.assertEqual(creator_participant.rank, 2)
+        self.assertEqual(joiner_participant.rank, 1)
+
     def test_winner_uses_total_value_including_bonus(self):
         competition = self.create_competition(status=Competition.STATUS_FINISHED)
         creator_participant = self.add_participant(

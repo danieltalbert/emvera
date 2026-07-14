@@ -80,8 +80,15 @@ class CompetitionParticipant(models.Model):
 
     @property
     def rank(self):
+        total_value = ExpressionWrapper(
+            F('portfolio_value') + F('bonus_earned'),
+            output_field=DecimalField(max_digits=14, decimal_places=2),
+        )
         return (
-            self.competition.participants.filter(portfolio_value__gt=self.portfolio_value).count() + 1
+            self.competition.participants
+            .annotate(leaderboard_total=total_value)
+            .filter(leaderboard_total__gt=self.total_value)
+            .count() + 1
         )
 
     def __str__(self):
