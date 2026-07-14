@@ -48,6 +48,8 @@ Last updated: 2026-07-14
   - Browser DOM QA covered onboarding, portfolio, debt, investment, and competition pages at desktop and mobile sizes with no page-level overflow, missing headings, unlabeled controls, unnamed buttons, or console errors.
   - Required mini-game score submissions to include an explicit score before creating result rows.
   - Aligned participant rank calculations with the total-value leaderboard that includes mini-game bonuses.
+- 2026-07-14 afternoon continuation:
+  - Required 2FA-enabled users for the two-factor settings page and redirected users back to setup after disabling 2FA.
 
 ## Next Candidates
 

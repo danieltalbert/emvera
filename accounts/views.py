@@ -157,6 +157,7 @@ def two_factor_verify(request):
 
 
 @login_required
+@require_2fa
 def two_factor_settings(request):
     user = request.user
     if request.method == 'POST' and request.POST.get('disable'):
@@ -165,5 +166,5 @@ def two_factor_settings(request):
         user.two_factor_enabled = False
         user.save()
         messages.success(request, 'Two-factor authentication disabled.')
-        return redirect('accounts:two_factor_settings')
+        return redirect('accounts:two_factor_setup')
     return render(request, 'accounts/two_factor_settings.html')
