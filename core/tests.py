@@ -413,6 +413,94 @@ class AuthenticatedRouteSmokeTests(TestCase):
         for route_name, url, template_name in routes:
             self.assertPageRenders(route_name, url, template_name)
 
+    def test_no_data_page_routes_keep_accessible_empty_states(self):
+        empty_user = get_user_model().objects.create_user(
+            username='empty-route-smoke',
+            password='testpass',
+            two_factor_enabled=True,
+        )
+        self.client.force_login(empty_user)
+        Competition.objects.all().delete()
+
+        routes = (
+            (
+                'investments:portfolio_overview',
+                reverse('investments:portfolio_overview'),
+                'investments/portfolio_overview.html',
+                'No investments yet',
+            ),
+            (
+                'investments:investment_projections',
+                reverse('investments:investment_projections'),
+                'investments/investment_projections.html',
+                'No projections yet',
+            ),
+            (
+                'investments:investment_recommendations',
+                reverse('investments:investment_recommendations'),
+                'investments/investment_recommendations.html',
+                'No recommendations yet',
+            ),
+            (
+                'investments:investment_comparison',
+                reverse('investments:investment_comparison'),
+                'investments/investment_comparison.html',
+                'Nothing to compare yet',
+            ),
+            (
+                'debt_management:debt_dashboard',
+                reverse('debt_management:debt_dashboard'),
+                'debt_management/debt_dashboard.html',
+                'No debts tracked yet',
+            ),
+            (
+                'debt_management:payoff_avalanche',
+                reverse('debt_management:payoff_avalanche'),
+                'debt_management/payoff_avalanche.html',
+                'No debts to analyze',
+            ),
+            (
+                'debt_management:payoff_snowball',
+                reverse('debt_management:payoff_snowball'),
+                'debt_management/payoff_snowball.html',
+                'No debts to analyze',
+            ),
+            (
+                'debt_management:payoff_custom',
+                reverse('debt_management:payoff_custom'),
+                'debt_management/payoff_custom.html',
+                'No debts to arrange',
+            ),
+            (
+                'debt_management:debt_reminders',
+                reverse('debt_management:debt_reminders'),
+                'debt_management/debt_reminders.html',
+                'No reminders set',
+            ),
+            (
+                'debt_management:consolidation_suggestion',
+                reverse('debt_management:consolidation_suggestion'),
+                'debt_management/consolidation_suggestion.html',
+                'Add your debts to get a recommendation',
+            ),
+            (
+                'debt_management:credit_score_tracking',
+                reverse('debt_management:credit_score_tracking'),
+                'debt_management/credit_score_tracking.html',
+                'No history yet',
+            ),
+            ('competition:lobby', reverse('competition:lobby'), 'competition/lobby.html', 'No competitions yet'),
+        )
+
+        for route_name, url, template_name, empty_copy in routes:
+            with self.subTest(route=route_name):
+                response = self.client.get(url)
+                self.assertContains(response, empty_copy)
+                self.assertEqual(response.status_code, 200)
+                self.assertTemplateUsed(response, template_name)
+                self.assertIn('text/html', response['Content-Type'])
+                self.assertAccessibleHtml(response, route_name)
+
     def test_authenticated_data_routes_return_expected_formats(self):
         checks = (
             (

@@ -1,6 +1,6 @@
 # Maintenance Backlog
 
-Last updated: 2026-07-14
+Last updated: 2026-07-15
 
 ## Completed
 
@@ -52,6 +52,9 @@ Last updated: 2026-07-14
   - Required 2FA-enabled users for the two-factor settings page and redirected users back to setup after disabling 2FA.
   - Replaced remaining PNW Finance branding on onboarding and portfolio performance pages with Ridge & River Financial.
   - Removed unreferenced initial scaffold handoff notes from data integration and debt management app folders.
+- 2026-07-15 deep QA:
+  - Added durable no-data accessibility smoke coverage for investment, debt, and competition empty-state routes.
+  - Browser QA checked those no-data routes at desktop and mobile widths for headings, expected copy, form labels, button names, and horizontal overflow.
 
 ## Next Candidates
 
