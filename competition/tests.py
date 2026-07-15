@@ -62,6 +62,37 @@ class CompetitionFlowTests(TestCase):
         participant = CompetitionParticipant.objects.get(competition=competition, user=self.creator)
         self.assertEqual(participant.portfolio_value, Decimal('1500.00'))
 
+    def test_create_competition_rejects_values_outside_server_bounds(self):
+        response = self.client.post(reverse('competition:create'), {
+            'name': 'Impossible Cup',
+            'description': 'Crafted request below UI limits',
+            'starting_balance': '99',
+            'investment_goal': '499',
+            'mini_game_bonus': '9',
+            'max_players': '1',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context['form']
+        self.assertTrue(form.has_error('starting_balance'))
+        self.assertTrue(form.has_error('investment_goal'))
+        self.assertTrue(form.has_error('mini_game_bonus'))
+        self.assertTrue(form.has_error('max_players'))
+        self.assertFalse(Competition.objects.filter(name='Impossible Cup').exists())
+
+        response = self.client.post(reverse('competition:create'), {
+            'name': 'Oversized Cup',
+            'description': 'Crafted request above UI limits',
+            'starting_balance': '1000',
+            'investment_goal': '5000',
+            'mini_game_bonus': '50',
+            'max_players': '21',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].has_error('max_players'))
+        self.assertFalse(Competition.objects.filter(name='Oversized Cup').exists())
+
     def test_join_competition_requires_post_and_does_not_duplicate_participants(self):
         competition = self.create_competition(max_players=2)
         self.add_participant(competition, self.creator)
