@@ -59,6 +59,7 @@ Last updated: 2026-07-15
   - Added server-side validation for competition create-form numeric bounds so crafted POSTs cannot bypass the UI limits.
   - Added server-side validation for manual debt numeric bounds so crafted POSTs cannot bypass nonnegative balance/payment and APR limits.
   - Added server-side validation so payment reminders reject nonpositive payment amounts.
+  - Removed proven-dead imports from account and investment modules.
 
 ## Next Candidates
 
