@@ -55,6 +55,8 @@ Last updated: 2026-07-15
 - 2026-07-15 deep QA:
   - Added durable no-data accessibility smoke coverage for investment, debt, and competition empty-state routes.
   - Browser QA checked those no-data routes at desktop and mobile widths for headings, expected copy, form labels, button names, and horizontal overflow.
+- 2026-07-15 afternoon continuation:
+  - Added server-side validation for competition create-form numeric bounds so crafted POSTs cannot bypass the UI limits.
 
 ## Next Candidates
 
