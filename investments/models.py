@@ -1,6 +1,6 @@
 
 from django.db import models
-from data_integration.models import Investment, Account
+from data_integration.models import Investment
 from django.conf import settings
 
 class InvestmentRecommendation(models.Model):
