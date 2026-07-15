@@ -282,6 +282,20 @@ class DebtManagementViewsTest(TestCase):
             'Select a valid choice. That choice is not one of the available choices.',
         )
 
+    def test_debt_reminders_reject_nonpositive_amounts(self):
+        response = self.client.post(reverse('debt_management:debt_reminders'), {
+            'debt': self.debt.pk,
+            'name': 'Invalid payment',
+            'institution': '',
+            'amount': '-1.00',
+            'due_date': '2026-08-01',
+            'notify_days_before': '3',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].has_error('amount'))
+        self.assertFalse(PaymentReminder.objects.filter(user=self.user, name='Invalid payment').exists())
+
     def test_mark_reminder_paid_only_updates_signed_in_users_reminder(self):
         own_reminder = PaymentReminder.objects.create(
             user=self.user,

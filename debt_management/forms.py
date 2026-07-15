@@ -37,6 +37,12 @@ class PaymentReminderForm(forms.ModelForm):
             self.fields['debt'].queryset = Debt.objects.filter(account__user=user)
             self.fields['debt'].required = False
 
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        if amount <= 0:
+            raise forms.ValidationError('Amount must be greater than $0.')
+        return amount
+
 
 class CustomPayoffForm(forms.Form):
     extra_payment = forms.DecimalField(
