@@ -57,6 +57,7 @@ Last updated: 2026-07-15
   - Browser QA checked those no-data routes at desktop and mobile widths for headings, expected copy, form labels, button names, and horizontal overflow.
 - 2026-07-15 afternoon continuation:
   - Added server-side validation for competition create-form numeric bounds so crafted POSTs cannot bypass the UI limits.
+  - Added server-side validation for manual debt numeric bounds so crafted POSTs cannot bypass nonnegative balance/payment and APR limits.
 
 ## Next Candidates
 

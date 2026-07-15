@@ -680,6 +680,26 @@ class DataIntegrationViewsTest(TestCase):
         self.assertTrue(form.has_error('as_of', 'required'))
         self.assertFalse(Debt.objects.filter(account=self.debt_account, name='').exists())
 
+    def test_manual_debt_entry_rejects_values_outside_server_bounds(self):
+        response = self.client.post(reverse('data_integration:manual_debt_entry'), {
+            'account': self.debt_account.pk,
+            'name': 'Impossible Debt',
+            'principal': '-1.00',
+            'interest_rate': '101.00',
+            'balance': '-5.00',
+            'minimum_payment': '-10.00',
+            'due_date': '2026-08-15',
+            'as_of': '2026-07-15',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context['form']
+        self.assertTrue(form.has_error('principal'))
+        self.assertTrue(form.has_error('interest_rate'))
+        self.assertTrue(form.has_error('balance'))
+        self.assertTrue(form.has_error('minimum_payment'))
+        self.assertFalse(Debt.objects.filter(account=self.debt_account, name='Impossible Debt').exists())
+
     def test_manual_debt_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_debt_entry'))
         self.assertEqual(response.status_code, 200)
