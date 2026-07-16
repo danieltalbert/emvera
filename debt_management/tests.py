@@ -376,14 +376,15 @@ class DebtManagementViewsTest(TestCase):
 
     def test_payoff_querystring_extra_payment_handles_invalid_values(self):
         for route_name in ('payoff_avalanche', 'payoff_snowball'):
-            with self.subTest(route_name=route_name):
-                response = self.client.get(
-                    reverse(f'debt_management:{route_name}'),
-                    {'extra': 'not-a-number'},
-                )
+            for raw_extra in ('not-a-number', 'NaN', 'Infinity'):
+                with self.subTest(route_name=route_name, raw_extra=raw_extra):
+                    response = self.client.get(
+                        reverse(f'debt_management:{route_name}'),
+                        {'extra': raw_extra},
+                    )
 
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.context['extra_payment'], Decimal('0.00'))
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.context['extra_payment'], Decimal('0.00'))
 
     def test_payoff_custom_view(self):
         response = self.client.get(reverse('debt_management:payoff_custom'))

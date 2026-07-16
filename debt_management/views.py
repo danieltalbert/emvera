@@ -59,7 +59,7 @@ def _extra_payment_from_request(request) -> Decimal:
         extra = Decimal(raw)
     except (ValueError, ArithmeticError):
         return Decimal('0.00')
-    if extra < 0:
+    if not extra.is_finite() or extra < 0:
         return Decimal('0.00')
     return extra
 
