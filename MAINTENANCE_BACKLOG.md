@@ -1,6 +1,6 @@
 # Maintenance Backlog
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## Completed
 
@@ -60,6 +60,8 @@ Last updated: 2026-07-15
   - Added server-side validation for manual debt numeric bounds so crafted POSTs cannot bypass nonnegative balance/payment and APR limits.
   - Added server-side validation so payment reminders reject nonpositive payment amounts.
   - Removed proven-dead imports from account and investment modules.
+- 2026-07-16 maintenance:
+  - Tightened mini-game score parsing so JSON booleans, floats, and decimal strings cannot create result rows.
 
 ## Next Candidates
 

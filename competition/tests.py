@@ -365,6 +365,17 @@ class CompetitionFlowTests(TestCase):
         self.assertEqual(negative_response.json(), {'ok': False, 'error': 'Invalid score.'})
         self.assertFalse(MiniGameResult.objects.filter(mini_game=mini_game).exists())
 
+        for invalid_score in [True, 12.5, '12.5']:
+            with self.subTest(invalid_score=invalid_score):
+                response = self.client.post(
+                    submit_url,
+                    data=json.dumps({'score': invalid_score}),
+                    content_type='application/json',
+                )
+
+                self.assertEqual(response.json(), {'ok': False, 'error': 'Invalid score.'})
+                self.assertFalse(MiniGameResult.objects.filter(mini_game=mini_game).exists())
+
     def test_outsider_cannot_play_or_submit_mini_game(self):
         competition = self.create_competition(status=Competition.STATUS_ACTIVE)
         self.add_participant(competition, self.creator)
