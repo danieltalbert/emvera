@@ -65,6 +65,7 @@ Last updated: 2026-07-16
   - Moved the login password-reset link outside the password field label so the input's accessible name stays concise.
 - 2026-07-16 afternoon continuation:
   - Added a server-side ceiling for mini-game score submissions so oversized crafted payloads cannot create result rows.
+  - Normalized non-finite payoff extra-payment query values to zero so crafted `NaN` or `Infinity` inputs keep debt tools rendering.
 
 ## Next Candidates
 
