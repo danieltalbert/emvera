@@ -66,6 +66,7 @@ Last updated: 2026-07-16
 - 2026-07-16 afternoon continuation:
   - Added a server-side ceiling for mini-game score submissions so oversized crafted payloads cannot create result rows.
   - Normalized non-finite payoff extra-payment query values to zero so crafted `NaN` or `Infinity` inputs keep debt tools rendering.
+  - Made manual transaction entry assign `manual` source server-side and removed the misleading Source selector from the form.
 
 ## Next Candidates
 

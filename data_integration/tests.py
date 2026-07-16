@@ -571,10 +571,24 @@ class DataIntegrationViewsTest(TestCase):
             'amount': '42.50',
             'category': 'Groceries',
             'description': 'Market',
-            'source': 'manual',
         })
         self.assertRedirects(response, reverse('investments:portfolio_overview'))
-        self.assertTrue(Transaction.objects.filter(account=self.account, category='Groceries').exists())
+        transaction = Transaction.objects.get(account=self.account, category='Groceries')
+        self.assertEqual(transaction.source, 'manual')
+
+    def test_manual_transaction_entry_forces_manual_source(self):
+        response = self.client.post(reverse('data_integration:manual_transaction_entry'), {
+            'account': self.account.pk,
+            'date': '2026-07-09',
+            'amount': '42.50',
+            'category': 'Groceries',
+            'description': 'Forged source',
+            'source': 'api',
+        })
+
+        self.assertRedirects(response, reverse('investments:portfolio_overview'))
+        transaction = Transaction.objects.get(account=self.account, description='Forged source')
+        self.assertEqual(transaction.source, 'manual')
 
     def test_manual_transaction_rejects_another_users_account(self):
         response = self.client.post(reverse('data_integration:manual_transaction_entry'), {

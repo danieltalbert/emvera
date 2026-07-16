@@ -100,41 +100,21 @@
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="{{ form.category.id_for_label }}">
-                Category <span class="label-required">*</span>
-              </label>
-              <input
-                type="text"
-                class="form-input {% if form.category.errors %}error{% endif %}"
-                id="{{ form.category.id_for_label }}"
-                name="{{ form.category.html_name }}"
-                value="{{ form.category.value|default:'' }}"
-                placeholder="e.g. Groceries, Rent, Salary"
-              >
-              {% for err in form.category.errors %}
-              <span class="form-error">{{ err }}</span>
-              {% endfor %}
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="{{ form.source.id_for_label }}">
-                Source <span class="label-required">*</span>
-              </label>
-              <select
-                class="form-select {% if form.source.errors %}error{% endif %}"
-                id="{{ form.source.id_for_label }}"
-                name="{{ form.source.html_name }}"
-              >
-                {% for choice in form.source.field.choices %}
-                <option value="{{ choice.0 }}" {% if form.source.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
-                {% endfor %}
-              </select>
-              {% for err in form.source.errors %}
-              <span class="form-error">{{ err }}</span>
-              {% endfor %}
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="{{ form.category.id_for_label }}">
+              Category <span class="label-required">*</span>
+            </label>
+            <input
+              type="text"
+              class="form-input {% if form.category.errors %}error{% endif %}"
+              id="{{ form.category.id_for_label }}"
+              name="{{ form.category.html_name }}"
+              value="{{ form.category.value|default:'' }}"
+              placeholder="e.g. Groceries, Rent, Salary"
+            >
+            {% for err in form.category.errors %}
+            <span class="form-error">{{ err }}</span>
+            {% endfor %}
           </div>
 
           <div class="form-group">
