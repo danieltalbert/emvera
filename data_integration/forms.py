@@ -17,7 +17,7 @@ class ManualAccountForm(forms.ModelForm):
 class ManualTransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        fields = ['account', 'date', 'amount', 'category', 'description', 'source']
+        fields = ['account', 'date', 'amount', 'category', 'description']
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)

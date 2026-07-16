@@ -102,7 +102,9 @@ def manual_transaction_entry(request):
     if request.method == 'POST':
         form = ManualTransactionForm(request.POST, user=request.user)
         if form.is_valid():
-            form.save()
+            transaction = form.save(commit=False)
+            transaction.source = 'manual'
+            transaction.save()
             return redirect('investments:portfolio_overview')
     else:
         form = ManualTransactionForm(user=request.user)
