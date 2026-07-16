@@ -13,6 +13,9 @@ from .forms import CompetitionForm
 from .models import Competition, CompetitionParticipant, MiniGame, MiniGameResult
 
 
+MAX_MINI_GAME_SCORE = 5000
+
+
 def _competition_leaderboard(competition):
     total_value = ExpressionWrapper(
         F('portfolio_value') + F('bonus_earned'),
@@ -225,7 +228,7 @@ def submit_score(request, pk, game_pk):
             score = int(raw_score)
         else:
             raise ValueError
-        if score < 0:
+        if score < 0 or score > MAX_MINI_GAME_SCORE:
             raise ValueError
     except (ValueError, TypeError):
         return JsonResponse({'ok': False, 'error': 'Invalid score.'})
