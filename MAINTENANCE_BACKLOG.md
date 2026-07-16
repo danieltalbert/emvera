@@ -62,6 +62,7 @@ Last updated: 2026-07-16
   - Removed proven-dead imports from account and investment modules.
 - 2026-07-16 maintenance:
   - Tightened mini-game score parsing so JSON booleans, floats, and decimal strings cannot create result rows.
+  - Moved the login password-reset link outside the password field label so the input's accessible name stays concise.
 
 ## Next Candidates
 
