@@ -63,6 +63,8 @@ Last updated: 2026-07-16
 - 2026-07-16 maintenance:
   - Tightened mini-game score parsing so JSON booleans, floats, and decimal strings cannot create result rows.
   - Moved the login password-reset link outside the password field label so the input's accessible name stays concise.
+- 2026-07-16 afternoon continuation:
+  - Added a server-side ceiling for mini-game score submissions so oversized crafted payloads cannot create result rows.
 
 ## Next Candidates
 

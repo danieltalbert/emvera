@@ -365,7 +365,7 @@ class CompetitionFlowTests(TestCase):
         self.assertEqual(negative_response.json(), {'ok': False, 'error': 'Invalid score.'})
         self.assertFalse(MiniGameResult.objects.filter(mini_game=mini_game).exists())
 
-        for invalid_score in [True, 12.5, '12.5']:
+        for invalid_score in [True, 12.5, '12.5', 5001, '5001']:
             with self.subTest(invalid_score=invalid_score):
                 response = self.client.post(
                     submit_url,
