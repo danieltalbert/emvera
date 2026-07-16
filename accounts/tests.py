@@ -33,6 +33,16 @@ class LoginViewTest(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertTemplateUsed(response, 'registration/login.html')
 
+	def test_password_reset_link_is_outside_password_label(self):
+		response = self.client.get(reverse('accounts:login'))
+		content = response.content.decode()
+		label_start = content.index('<label class="form-label" for="id_password">')
+		label_end = content.index('</label>', label_start)
+
+		self.assertIn('Password', content[label_start:label_end])
+		self.assertNotIn('Forgot password?', content[label_start:label_end])
+		self.assertContains(response, 'Forgot password?')
+
 	def test_login_success(self):
 		response = self.client.post(reverse('accounts:login'), {
 			'username': 'testuser',
