@@ -216,7 +216,15 @@ def submit_score(request, pk, game_pk):
             raise ValueError
         if 'score' not in data:
             raise ValueError
-        score = int(data['score'])
+        raw_score = data['score']
+        if isinstance(raw_score, bool):
+            raise ValueError
+        if isinstance(raw_score, int):
+            score = raw_score
+        elif isinstance(raw_score, str) and raw_score.isdecimal():
+            score = int(raw_score)
+        else:
+            raise ValueError
         if score < 0:
             raise ValueError
     except (ValueError, TypeError):
