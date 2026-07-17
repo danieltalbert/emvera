@@ -67,6 +67,8 @@ Last updated: 2026-07-16
   - Added a server-side ceiling for mini-game score submissions so oversized crafted payloads cannot create result rows.
   - Normalized non-finite payoff extra-payment query values to zero so crafted `NaN` or `Infinity` inputs keep debt tools rendering.
   - Made manual transaction entry assign `manual` source server-side and removed the misleading Source selector from the form.
+- 2026-07-17 afternoon continuation:
+  - Kept competitions the signed-in user already joined out of the public Join Now and In Progress lobby lists, with route-smoke coverage for separate joined and spectatable sections.
 
 ## Next Candidates
 

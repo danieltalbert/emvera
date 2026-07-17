@@ -161,6 +161,11 @@ class AuthenticatedRouteSmokeTests(TestCase):
             password='testpass',
             two_factor_enabled=True,
         )
+        cls.other_user = get_user_model().objects.create_user(
+            username='route-smoke-other',
+            password='testpass',
+            two_factor_enabled=True,
+        )
         cls.investment_account = Account.objects.create(
             user=cls.user,
             name='Brokerage',
@@ -201,6 +206,15 @@ class AuthenticatedRouteSmokeTests(TestCase):
             user=cls.user,
             portfolio_value=cls.lobby_competition.starting_balance,
         )
+        cls.joinable_lobby_competition = Competition.objects.create(
+            name='Joinable Smoke Cup',
+            created_by=cls.other_user,
+        )
+        CompetitionParticipant.objects.create(
+            competition=cls.joinable_lobby_competition,
+            user=cls.other_user,
+            portfolio_value=cls.joinable_lobby_competition.starting_balance,
+        )
         cls.active_competition = Competition.objects.create(
             name='Active Smoke Cup',
             created_by=cls.user,
@@ -210,6 +224,16 @@ class AuthenticatedRouteSmokeTests(TestCase):
             competition=cls.active_competition,
             user=cls.user,
             portfolio_value=cls.active_competition.starting_balance,
+        )
+        cls.spectatable_competition = Competition.objects.create(
+            name='Spectatable Smoke Cup',
+            created_by=cls.other_user,
+            status=Competition.STATUS_ACTIVE,
+        )
+        CompetitionParticipant.objects.create(
+            competition=cls.spectatable_competition,
+            user=cls.other_user,
+            portfolio_value=cls.spectatable_competition.starting_balance,
         )
         cls.active_mini_game = MiniGame.objects.create(
             competition=cls.active_competition,
