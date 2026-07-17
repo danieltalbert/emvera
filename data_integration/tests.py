@@ -40,6 +40,8 @@ class CSVHelperTests(SimpleTestCase):
         self.assertEqual(_parse_amount('(42.50)'), Decimal('-42.50'))
         self.assertEqual(_parse_amount('-99'), Decimal('-99'))
         self.assertIsNone(_parse_amount('bad'))
+        self.assertIsNone(_parse_amount('NaN'))
+        self.assertIsNone(_parse_amount('Infinity'))
 
 
 class CSVImportTests(TestCase):
@@ -93,6 +95,17 @@ class CSVImportTests(TestCase):
         self.assertEqual(result.skipped, 2)
         self.assertTrue(any('Line 3' in e for e in result.row_errors))
         self.assertTrue(any('Line 4' in e for e in result.row_errors))
+
+    def test_nonfinite_amounts_are_skipped(self):
+        csv = 'date,amount,category\n2026-01-15,NaN,Adjustment\n2026-01-16,Infinity,Adjustment\n'
+
+        result = self._import(csv)
+
+        self.assertEqual(result.created, 0)
+        self.assertEqual(result.skipped, 2)
+        self.assertTrue(any('Line 2' in e for e in result.row_errors))
+        self.assertTrue(any('Line 3' in e for e in result.row_errors))
+        self.assertFalse(Transaction.objects.filter(account=self.account).exists())
 
     def test_empty_file(self):
         result = self._import('')

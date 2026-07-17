@@ -76,9 +76,12 @@ def _parse_amount(raw: str) -> Decimal | None:
     if raw.startswith('(') and raw.endswith(')'):
         raw = '-' + raw[1:-1]
     try:
-        return Decimal(raw)
+        amount = Decimal(raw)
     except InvalidOperation:
         return None
+    if not amount.is_finite():
+        return None
+    return amount
 
 
 def import_transactions(file_obj, account) -> ImportResult:
