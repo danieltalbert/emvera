@@ -74,6 +74,7 @@ Last updated: 2026-07-16
   - Added payment-reminder coverage for crafted negative notification lead times before reminder scheduling.
   - Added competition create-form validation that requires portfolio goals to be greater than the starting balance.
   - Rejected non-finite CSV transaction amounts such as `NaN` and `Infinity` before import rows are bulk-created.
+  - Returned a clear CSV import error for invalid UTF-8 files instead of raising during decode.
 
 ## Next Candidates
 

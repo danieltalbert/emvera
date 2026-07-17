@@ -87,7 +87,12 @@ def _parse_amount(raw: str) -> Decimal | None:
 def import_transactions(file_obj, account) -> ImportResult:
     """Parse a CSV file-like object and create Transaction rows under `account`."""
     raw = file_obj.read()
-    text = raw.decode('utf-8-sig') if isinstance(raw, bytes) else raw
+    try:
+        text = raw.decode('utf-8-sig') if isinstance(raw, bytes) else raw
+    except UnicodeDecodeError:
+        result = ImportResult()
+        result.row_errors.append('CSV file must be UTF-8 encoded.')
+        return result
     reader = csv.DictReader(io.StringIO(text))
 
     if not reader.fieldnames:
