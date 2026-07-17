@@ -107,6 +107,14 @@ class CSVImportTests(TestCase):
         self.assertTrue(any('Line 3' in e for e in result.row_errors))
         self.assertFalse(Transaction.objects.filter(account=self.account).exists())
 
+    def test_invalid_utf8_file_returns_error_result(self):
+        result = import_transactions(io.BytesIO(b'\xff\xfe\x00'), self.account)
+
+        self.assertEqual(result.created, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.row_errors, ['CSV file must be UTF-8 encoded.'])
+        self.assertFalse(Transaction.objects.filter(account=self.account).exists())
+
     def test_empty_file(self):
         result = self._import('')
         self.assertEqual(result.created, 0)
