@@ -134,11 +134,16 @@ class CompetitionFlowTests(TestCase):
         response = self.client.post(join_url)
         self.assertRedirects(response, reverse('competition:dashboard', kwargs={'pk': competition.pk}))
         response = self.client.post(join_url)
-        self.assertRedirects(response, reverse('competition:lobby'))
+        self.assertRedirects(response, reverse('competition:dashboard', kwargs={'pk': competition.pk}))
 
         self.assertEqual(competition.participants.filter(user=self.joiner).count(), 1)
         participant = competition.participants.get(user=self.joiner)
         self.assertEqual(participant.portfolio_value, competition.starting_balance)
+
+        self.client.force_login(self.outsider)
+        response = self.client.post(join_url)
+        self.assertRedirects(response, reverse('competition:lobby'))
+        self.assertFalse(competition.participants.filter(user=self.outsider).exists())
 
     def test_only_creator_can_start_competition_with_enough_players(self):
         competition = self.create_competition()
