@@ -72,6 +72,7 @@ Last updated: 2026-07-16
   - Redirected repeat join requests from existing lobby participants back to the competition dashboard while preserving full-lobby rejection for new users.
   - Added credit-score tracking coverage for crafted below-minimum and above-maximum scores at the debt-tools route.
   - Added payment-reminder coverage for crafted negative notification lead times before reminder scheduling.
+  - Added competition create-form validation that requires portfolio goals to be greater than the starting balance.
 
 ## Next Candidates
 
