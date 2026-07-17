@@ -313,6 +313,20 @@ class DebtManagementViewsTest(TestCase):
         self.assertTrue(response.context['form'].has_error('amount'))
         self.assertFalse(PaymentReminder.objects.filter(user=self.user, name='Invalid payment').exists())
 
+    def test_debt_reminders_reject_negative_notification_lead_time(self):
+        response = self.client.post(reverse('debt_management:debt_reminders'), {
+            'debt': self.debt.pk,
+            'name': 'Invalid notification window',
+            'institution': '',
+            'amount': '125.00',
+            'due_date': '2026-08-01',
+            'notify_days_before': '-1',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].has_error('notify_days_before'))
+        self.assertFalse(PaymentReminder.objects.filter(user=self.user, name='Invalid notification window').exists())
+
     def test_mark_reminder_paid_only_updates_signed_in_users_reminder(self):
         own_reminder = PaymentReminder.objects.create(
             user=self.user,
