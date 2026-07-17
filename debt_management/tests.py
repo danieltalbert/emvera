@@ -217,6 +217,23 @@ class DebtManagementViewsTest(TestCase):
         self.assertEqual(score.bureau, 'experian')
         self.assertFalse(CreditScore.objects.filter(user=self.other_user).exists())
 
+    def test_credit_score_tracking_rejects_scores_outside_valid_range(self):
+        url = reverse('debt_management:credit_score_tracking')
+
+        for score in ('299', '851'):
+            with self.subTest(score=score):
+                response = self.client.post(url, {
+                    'score': score,
+                    'bureau': 'experian',
+                    'recorded_on': '2026-07-09',
+                    'notes': 'Crafted score',
+                })
+
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.context['form'].has_error('score'))
+
+        self.assertFalse(CreditScore.objects.filter(user=self.user).exists())
+
     def test_credit_score_tracking_only_lists_signed_in_users_scores(self):
         CreditScore.objects.create(
             user=self.user,
