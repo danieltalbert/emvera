@@ -17,6 +17,12 @@ from decimal import Decimal, InvalidOperation
 from .models import Transaction
 
 
+AMOUNT_FIELD = Transaction._meta.get_field('amount')
+MAX_TRANSACTION_AMOUNT = Decimal(
+    f"{'9' * (AMOUNT_FIELD.max_digits - AMOUNT_FIELD.decimal_places)}."
+    f"{'9' * AMOUNT_FIELD.decimal_places}"
+)
+
 COLUMN_ALIASES = {
     'date': {'date', 'transaction date', 'posted date', 'post date'},
     'amount': {'amount', 'value', 'debit', 'transaction amount'},
@@ -80,6 +86,8 @@ def _parse_amount(raw: str) -> Decimal | None:
     except InvalidOperation:
         return None
     if not amount.is_finite():
+        return None
+    if amount > MAX_TRANSACTION_AMOUNT or amount < -MAX_TRANSACTION_AMOUNT:
         return None
     return amount
 
