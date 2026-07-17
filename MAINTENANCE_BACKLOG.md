@@ -69,6 +69,7 @@ Last updated: 2026-07-16
   - Made manual transaction entry assign `manual` source server-side and removed the misleading Source selector from the form.
 - 2026-07-17 afternoon continuation:
   - Kept competitions the signed-in user already joined out of the public Join Now and In Progress lobby lists, with route-smoke coverage for separate joined and spectatable sections.
+  - Redirected repeat join requests from existing lobby participants back to the competition dashboard while preserving full-lobby rejection for new users.
 
 ## Next Candidates
 

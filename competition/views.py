@@ -82,13 +82,16 @@ def create_competition(request):
 @require_POST
 def join_competition(request, pk):
     competition = get_object_or_404(Competition, pk=pk, status=Competition.STATUS_LOBBY)
+    if competition.participants.filter(user=request.user).exists():
+        messages.info(request, f'You are already in "{competition.name}".')
+        return redirect('competition:dashboard', pk=competition.pk)
     if competition.participants.count() >= competition.max_players:
         messages.error(request, 'This competition is full.')
         return redirect('competition:lobby')
-    CompetitionParticipant.objects.get_or_create(
+    CompetitionParticipant.objects.create(
         competition=competition,
         user=request.user,
-        defaults={'portfolio_value': competition.starting_balance},
+        portfolio_value=competition.starting_balance,
     )
     messages.success(request, f'You joined "{competition.name}"!')
     return redirect('competition:dashboard', pk=competition.pk)
