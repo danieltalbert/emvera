@@ -32,11 +32,20 @@ def _competition_leaderboard(competition):
 @login_required
 @require_2fa
 def lobby(request):
-    open_competitions = Competition.objects.filter(status=Competition.STATUS_LOBBY)
-    active_competitions = Competition.objects.filter(status=Competition.STATUS_ACTIVE)
     my_competitions = Competition.objects.filter(
         participants__user=request.user
     ).exclude(status=Competition.STATUS_FINISHED)
+    joined_competition_ids = my_competitions.values('pk')
+    open_competitions = (
+        Competition.objects
+        .filter(status=Competition.STATUS_LOBBY)
+        .exclude(pk__in=joined_competition_ids)
+    )
+    active_competitions = (
+        Competition.objects
+        .filter(status=Competition.STATUS_ACTIVE)
+        .exclude(pk__in=joined_competition_ids)
+    )
     finished = Competition.objects.filter(status=Competition.STATUS_FINISHED)[:5]
 
     return render(request, 'competition/lobby.html', {

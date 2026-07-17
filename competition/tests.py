@@ -26,6 +26,35 @@ class CompetitionFlowTests(TestCase):
         self.assertContains(response, 'Create a virtual portfolio challenge')
         self.assertContains(response, 'Create Competition')
 
+    def test_lobby_keeps_joined_competitions_out_of_public_lists(self):
+        joined_lobby = self.create_competition(name='Joined Lobby')
+        self.add_participant(joined_lobby, self.creator)
+        joinable_lobby = self.create_competition(
+            name='Joinable Lobby',
+            created_by=self.outsider,
+        )
+        self.add_participant(joinable_lobby, self.outsider)
+        joined_active = self.create_competition(
+            name='Joined Active',
+            status=Competition.STATUS_ACTIVE,
+        )
+        self.add_participant(joined_active, self.creator)
+        spectatable_active = self.create_competition(
+            name='Spectatable Active',
+            created_by=self.outsider,
+            status=Competition.STATUS_ACTIVE,
+        )
+        self.add_participant(spectatable_active, self.outsider)
+
+        response = self.client.get(reverse('competition:lobby'))
+
+        self.assertIn(joined_lobby, response.context['my_competitions'])
+        self.assertIn(joined_active, response.context['my_competitions'])
+        self.assertNotIn(joined_lobby, response.context['open_competitions'])
+        self.assertIn(joinable_lobby, response.context['open_competitions'])
+        self.assertNotIn(joined_active, response.context['active_competitions'])
+        self.assertIn(spectatable_active, response.context['active_competitions'])
+
     def create_competition(self, **overrides):
         values = {
             'name': 'Test Cup',
