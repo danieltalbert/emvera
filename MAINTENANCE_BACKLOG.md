@@ -73,6 +73,7 @@ Last updated: 2026-07-16
   - Added credit-score tracking coverage for crafted below-minimum and above-maximum scores at the debt-tools route.
   - Added payment-reminder coverage for crafted negative notification lead times before reminder scheduling.
   - Added competition create-form validation that requires portfolio goals to be greater than the starting balance.
+  - Rejected non-finite CSV transaction amounts such as `NaN` and `Infinity` before import rows are bulk-created.
 
 ## Next Candidates
 
