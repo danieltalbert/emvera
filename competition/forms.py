@@ -47,6 +47,18 @@ class CompetitionForm(forms.ModelForm):
             raise forms.ValidationError('Portfolio goal must be at least $500.')
         return investment_goal
 
+    def clean(self):
+        cleaned_data = super().clean()
+        starting_balance = cleaned_data.get('starting_balance')
+        investment_goal = cleaned_data.get('investment_goal')
+        if (
+            starting_balance is not None
+            and investment_goal is not None
+            and investment_goal <= starting_balance
+        ):
+            self.add_error('investment_goal', 'Portfolio goal must be greater than the starting balance.')
+        return cleaned_data
+
     def clean_mini_game_bonus(self):
         mini_game_bonus = self.cleaned_data['mini_game_bonus']
         if mini_game_bonus < MIN_MINI_GAME_BONUS:

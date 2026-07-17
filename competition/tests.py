@@ -122,6 +122,20 @@ class CompetitionFlowTests(TestCase):
         self.assertTrue(response.context['form'].has_error('max_players'))
         self.assertFalse(Competition.objects.filter(name='Oversized Cup').exists())
 
+    def test_create_competition_rejects_goal_not_above_starting_balance(self):
+        response = self.client.post(reverse('competition:create'), {
+            'name': 'Already Won Cup',
+            'description': 'Crafted request with an already-met goal',
+            'starting_balance': '1000',
+            'investment_goal': '1000',
+            'mini_game_bonus': '50',
+            'max_players': '4',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].has_error('investment_goal'))
+        self.assertFalse(Competition.objects.filter(name='Already Won Cup').exists())
+
     def test_join_competition_requires_post_and_does_not_duplicate_participants(self):
         competition = self.create_competition(max_players=2)
         self.add_participant(competition, self.creator)
