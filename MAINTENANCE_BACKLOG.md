@@ -75,6 +75,7 @@ Last updated: 2026-07-16
   - Added competition create-form validation that requires portfolio goals to be greater than the starting balance.
   - Rejected non-finite CSV transaction amounts such as `NaN` and `Infinity` before import rows are bulk-created.
   - Returned a clear CSV import error for invalid UTF-8 files instead of raising during decode.
+  - Rejected CSV transaction amounts outside the model's decimal storage range before database bulk-create.
 
 ## Next Candidates
 

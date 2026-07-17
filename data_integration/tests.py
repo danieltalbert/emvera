@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .crypto import PREFIX, decrypt, encrypt
-from .csv_import import _parse_amount, _parse_date, _resolve_columns, import_transactions
+from .csv_import import MAX_TRANSACTION_AMOUNT, _parse_amount, _parse_date, _resolve_columns, import_transactions
 from .models import Account, Debt, Investment, PlaidItem, Transaction
 from .plaid_sync import SyncSummary, _sync_transactions
 
@@ -42,6 +42,8 @@ class CSVHelperTests(SimpleTestCase):
         self.assertIsNone(_parse_amount('bad'))
         self.assertIsNone(_parse_amount('NaN'))
         self.assertIsNone(_parse_amount('Infinity'))
+        self.assertIsNone(_parse_amount(str(MAX_TRANSACTION_AMOUNT + Decimal('0.01'))))
+        self.assertIsNone(_parse_amount(str(-MAX_TRANSACTION_AMOUNT - Decimal('0.01'))))
 
 
 class CSVImportTests(TestCase):
@@ -98,6 +100,21 @@ class CSVImportTests(TestCase):
 
     def test_nonfinite_amounts_are_skipped(self):
         csv = 'date,amount,category\n2026-01-15,NaN,Adjustment\n2026-01-16,Infinity,Adjustment\n'
+
+        result = self._import(csv)
+
+        self.assertEqual(result.created, 0)
+        self.assertEqual(result.skipped, 2)
+        self.assertTrue(any('Line 2' in e for e in result.row_errors))
+        self.assertTrue(any('Line 3' in e for e in result.row_errors))
+        self.assertFalse(Transaction.objects.filter(account=self.account).exists())
+
+    def test_out_of_range_amounts_are_skipped(self):
+        csv = (
+            'date,amount,category\n'
+            f'2026-01-15,{MAX_TRANSACTION_AMOUNT + Decimal("0.01")},Adjustment\n'
+            f'2026-01-16,{-MAX_TRANSACTION_AMOUNT - Decimal("0.01")},Adjustment\n'
+        )
 
         result = self._import(csv)
 
