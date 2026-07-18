@@ -98,8 +98,8 @@ class Command(BaseCommand):
             # commit so an SMTP/Twilio timeout does not hold a DB transaction.
             with transaction.atomic():
                 r = (
-                    PaymentReminder.objects.select_for_update()
-                    .select_related('user', 'debt', 'debt__account')
+                    PaymentReminder.objects.select_for_update(of=('self',))
+                    .select_related('user')
                     .get(pk=reminder_id)
                 )
                 window_start = r.due_date - timedelta(days=r.notify_days_before)
