@@ -1,0 +1,20 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Request unavailable{% endblock %} — Emvera</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+<main class="auth-main" style="min-height:100vh;">
+  <div class="auth-form-wrap">
+    <p class="eyebrow">Emvera</p>
+    <h1 class="auth-form-title">{% block heading %}Request unavailable{% endblock %}</h1>
+    <p class="auth-form-subtitle">{% block message %}We could not complete that request.{% endblock %}</p>
+    <a class="btn btn-primary" href="{% url 'home' %}">Return home</a>
+  </div>
+</main>
+</body>
+</html>

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Profile — Ridge &amp; River Financial{% endblock %}
+{% block title %}Profile — Emvera{% endblock %}
 
 {% block breadcrumb_current %}Profile{% endblock %}
 {% block breadcrumb %}
@@ -92,6 +92,32 @@
     <div class="card-footer">
       <a href="{% url 'accounts:change_password' %}" class="btn btn-secondary btn-sm">Change Password</a>
     </div>
+  </div>
+
+  <div class="card" style="margin-bottom:var(--sp-6);">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Contact Details</div>
+        <div class="card-subtitle">SMS reminders require an international E.164 phone number.</div>
+      </div>
+    </div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);">
+        {% for field in form %}
+          <div {% if field.name == 'phone_number' %}style="grid-column:1 / -1;"{% endif %}>
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <div class="form-error">{{ field.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="card-footer">
+        <button type="submit" class="btn btn-primary btn-sm">Save Contact Details</button>
+      </div>
+    </form>
   </div>
 
   <!-- Danger Zone -->

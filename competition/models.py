@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.db.models import DecimalField, ExpressionWrapper, F
 from django.utils import timezone
 
@@ -43,8 +43,7 @@ class Competition(models.Model):
             output_field=DecimalField(max_digits=14, decimal_places=2),
         )
         return (
-            self.participants
-            .annotate(leaderboard_total=total_value)
+            self.participants.annotate(leaderboard_total=total_value)
             .order_by('-leaderboard_total', '-portfolio_value', '-bonus_earned', 'joined_at')
             .first()
         )
@@ -52,12 +51,12 @@ class Competition(models.Model):
     def start(self):
         self.status = self.STATUS_ACTIVE
         self.started_at = timezone.now()
-        self.save()
+        self.save(update_fields=['status', 'started_at'])
 
     def finish(self):
         self.status = self.STATUS_FINISHED
         self.ended_at = timezone.now()
-        self.save()
+        self.save(update_fields=['status', 'ended_at'])
 
 
 class CompetitionParticipant(models.Model):
@@ -85,14 +84,14 @@ class CompetitionParticipant(models.Model):
             output_field=DecimalField(max_digits=14, decimal_places=2),
         )
         return (
-            self.competition.participants
-            .annotate(leaderboard_total=total_value)
+            self.competition.participants.annotate(leaderboard_total=total_value)
             .filter(leaderboard_total__gt=self.total_value)
-            .count() + 1
+            .count()
+            + 1
         )
 
     def __str__(self):
-        return f"{self.user.username} in {self.competition.name}"
+        return f'{self.user.username} in {self.competition.name}'
 
 
 class MiniGame(models.Model):
@@ -115,7 +114,8 @@ class MiniGame(models.Model):
     winner = models.ForeignKey(
         CompetitionParticipant,
         on_delete=models.SET_NULL,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name='mini_game_wins_set',
     )
     bonus_amount = models.DecimalField(max_digits=8, decimal_places=2, default=50.00)
@@ -126,19 +126,36 @@ class MiniGame(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.get_game_type_display()} — {self.competition.name}"
+        return f'{self.get_game_type_display()} — {self.competition.name}'
 
+    @transaction.atomic
     def resolve(self):
         """Determine winner from submitted scores, apply bonus, mark finished."""
-        top = self.results.order_by('-score').first()
+        locked_game = MiniGame.objects.select_for_update().get(pk=self.pk)
+        if locked_game.status == self.STATUS_FINISHED:
+            self.status = locked_game.status
+            self.winner_id = locked_game.winner_id
+            self.finished_at = locked_game.finished_at
+            return
+
+        top = (
+            locked_game.results.select_related('participant')
+            .order_by('-score', 'submitted_at', 'pk')
+            .first()
+        )
         if top:
-            self.winner = top.participant
-            top.participant.bonus_earned += self.bonus_amount
-            top.participant.mini_game_wins += 1
-            top.participant.save()
-        self.status = self.STATUS_FINISHED
-        self.finished_at = timezone.now()
-        self.save()
+            CompetitionParticipant.objects.filter(pk=top.participant_id).update(
+                bonus_earned=F('bonus_earned') + locked_game.bonus_amount,
+                mini_game_wins=F('mini_game_wins') + 1,
+            )
+            locked_game.winner_id = top.participant_id
+        locked_game.status = self.STATUS_FINISHED
+        locked_game.finished_at = timezone.now()
+        locked_game.save(update_fields=['winner', 'status', 'finished_at'])
+
+        self.status = locked_game.status
+        self.winner_id = locked_game.winner_id
+        self.finished_at = locked_game.finished_at
 
 
 class MiniGameResult(models.Model):
@@ -151,4 +168,4 @@ class MiniGameResult(models.Model):
         unique_together = ('mini_game', 'participant')
 
     def __str__(self):
-        return f"{self.participant.user.username}: {self.score} pts"
+        return f'{self.participant.user.username}: {self.score} pts'

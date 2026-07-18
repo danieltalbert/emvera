@@ -1,8 +1,8 @@
 from decimal import Decimal
 
 from django import forms
-from .models import Competition
 
+from .models import Competition
 
 MIN_STARTING_BALANCE = Decimal('100.00')
 MIN_INVESTMENT_GOAL = Decimal('500.00')
@@ -14,10 +14,22 @@ MAX_PLAYERS = 20
 class CompetitionForm(forms.ModelForm):
     class Meta:
         model = Competition
-        fields = ['name', 'description', 'starting_balance', 'investment_goal', 'mini_game_bonus', 'max_players']
+        fields = [
+            'name',
+            'description',
+            'starting_balance',
+            'investment_goal',
+            'mini_game_bonus',
+            'max_players',
+        ]
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'e.g. Friday Night Investing'}),
-            'description': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Optional — describe the competition rules or theme'}),
+            'description': forms.Textarea(
+                attrs={
+                    'rows': 3,
+                    'placeholder': 'Optional — describe the competition rules or theme',
+                }
+            ),
             'starting_balance': forms.NumberInput(attrs={'min': 100, 'step': 100}),
             'investment_goal': forms.NumberInput(attrs={'min': 500, 'step': 100}),
             'mini_game_bonus': forms.NumberInput(attrs={'min': 10, 'step': 10}),
@@ -32,7 +44,7 @@ class CompetitionForm(forms.ModelForm):
         help_texts = {
             'starting_balance': 'Virtual starting amount each player receives.',
             'investment_goal': 'First player to reach this wins the competition.',
-            'mini_game_bonus': 'Amount added to the winner\'s portfolio for each mini-game.',
+            'mini_game_bonus': "Amount added to the winner's portfolio for each mini-game.",
         }
 
     def clean_starting_balance(self):
@@ -56,7 +68,9 @@ class CompetitionForm(forms.ModelForm):
             and investment_goal is not None
             and investment_goal <= starting_balance
         ):
-            self.add_error('investment_goal', 'Portfolio goal must be greater than the starting balance.')
+            self.add_error(
+                'investment_goal', 'Portfolio goal must be greater than the starting balance.'
+            )
         return cleaned_data
 
     def clean_mini_game_bonus(self):

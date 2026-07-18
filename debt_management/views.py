@@ -13,10 +13,10 @@ from .forms import CreditScoreForm, CustomPayoffForm, PaymentReminderForm
 from .models import CreditScore, PaymentReminder
 from .utils import (
     avalanche_plan,
+    custom_plan,
     debts_from_queryset,
     recommend_consolidation,
     snowball_plan,
-    custom_plan,
     total_minimum_payment,
     weighted_average_apr,
 )
@@ -74,7 +74,7 @@ def payoff_avalanche(request):
 
     interest_saved = None
     if plan and baseline and extra > 0:
-        interest_saved = (baseline.total_interest - plan.total_interest)
+        interest_saved = baseline.total_interest - plan.total_interest
 
     context = {
         'plan': plan,
@@ -198,27 +198,36 @@ def debt_reminders(request):
     week_out = today + timedelta(days=7)
     month_out = today + timedelta(days=30)
 
-    open_reminders = PaymentReminder.objects.filter(
-        user=request.user,
-        is_paid=False,
-    ).select_related('debt', 'debt__account').order_by('due_date')
+    open_reminders = (
+        PaymentReminder.objects.filter(
+            user=request.user,
+            is_paid=False,
+        )
+        .select_related('debt', 'debt__account')
+        .order_by('due_date')
+    )
 
     overdue_count = open_reminders.filter(due_date__lt=today).count()
     due_this_week_count = open_reminders.filter(due_date__gte=today, due_date__lte=week_out).count()
-    due_this_month_count = open_reminders.filter(due_date__gte=today, due_date__lte=month_out).count()
+    due_this_month_count = open_reminders.filter(
+        due_date__gte=today, due_date__lte=month_out
+    ).count()
 
     reminders = []
     for r in open_reminders:
         delta_days = (r.due_date - today).days
-        reminders.append({
-            'obj': r,
-            'name': r.name,
-            'institution': r.institution or (r.debt.account.institution if r.debt and r.debt.account else ''),
-            'due_date': r.due_date,
-            'amount': r.amount,
-            'days_until_due': delta_days,
-            'is_overdue': delta_days < 0,
-        })
+        reminders.append(
+            {
+                'obj': r,
+                'name': r.name,
+                'institution': r.institution
+                or (r.debt.account.institution if r.debt and r.debt.account else ''),
+                'due_date': r.due_date,
+                'amount': r.amount,
+                'days_until_due': delta_days,
+                'is_overdue': delta_days < 0,
+            }
+        )
 
     context = {
         'form': form,

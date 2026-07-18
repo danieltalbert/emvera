@@ -1,5 +1,5 @@
 /* =============================================================
-   RIDGE & RIVER FINANCIAL — Pacific Northwest Design System
+   EMVERA — Personal Finance Design System
    =============================================================
    Inspired by the Cascades, Puget Sound, and PNW rainforest.
    Colors: deep forest, slate, mist, stone, amber, teal.
@@ -181,6 +181,24 @@ body {
   line-height: var(--leading-normal);
   color: var(--color-text-primary);
   background-color: var(--color-bg);
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--sp-3);
+  left: var(--sp-3);
+  z-index: 1000;
+  padding: var(--sp-2) var(--sp-4);
+  color: var(--color-text-inverse);
+  background: var(--forest-900);
+  border-radius: var(--r-md);
+  transform: translateY(-160%);
+  transition: transform var(--t-fast);
+}
+
+.skip-link:focus {
+  color: var(--color-text-inverse);
+  transform: translateY(0);
 }
 
 a { color: var(--color-accent); text-decoration: none; transition: color var(--t-fast); }

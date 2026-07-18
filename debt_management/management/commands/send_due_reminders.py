@@ -18,33 +18,35 @@ Run this on a schedule — once a day is plenty:
 SMS is delivered through Twilio if TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and
 TWILIO_FROM_NUMBER are set; otherwise the command logs that SMS is skipped.
 """
+
+import logging
 from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
-from django.template.loader import render_to_string
+from django.db import transaction
 from django.utils import timezone
 
 from debt_management.models import PaymentReminder
 
-
 COOLDOWN_HOURS = 24
+logger = logging.getLogger(__name__)
 
 
 def _build_email_body(reminder, days_until_due):
     if days_until_due < 0:
-        when = f"is overdue by {abs(days_until_due)} day(s)"
+        when = f'is overdue by {abs(days_until_due)} day(s)'
     elif days_until_due == 0:
-        when = "is due today"
+        when = 'is due today'
     else:
-        when = f"is due in {days_until_due} day(s) ({reminder.due_date:%b %d, %Y})"
+        when = f'is due in {days_until_due} day(s) ({reminder.due_date:%b %d, %Y})'
     return (
-        f"Hi {reminder.user.get_short_name() or reminder.user.username},\n\n"
-        f"Your payment for {reminder.name} {when}.\n"
-        f"Amount: ${reminder.amount:,.2f}\n"
-        f"{('Institution: ' + reminder.institution) if reminder.institution else ''}\n\n"
-        "Log in to Ridge & River to review or mark it paid.\n"
+        f'Hi {reminder.user.get_short_name() or reminder.user.username},\n\n'
+        f'Your payment for {reminder.name} {when}.\n'
+        f'Amount: ${reminder.amount:,.2f}\n'
+        f'{("Institution: " + reminder.institution) if reminder.institution else ""}\n\n'
+        'Log in to Emvera to review or mark it paid.\n'
     )
 
 
@@ -63,7 +65,8 @@ def _send_sms(to_number, body, stdout):
     try:
         Client(sid, token).messages.create(to=to_number, from_=from_number, body=body)
     except Exception as exc:
-        stdout.write(f'  SMS failed: {exc}')
+        logger.error('Twilio reminder delivery failed (%s).', type(exc).__name__)
+        stdout.write('  SMS delivery failed.')
         return False
     return True
 
@@ -88,50 +91,121 @@ class Command(BaseCommand):
         sent_sms = 0
         considered = 0
 
-        candidates = PaymentReminder.objects.filter(
-            is_paid=False,
-        ).select_related('user', 'debt', 'debt__account')
+        candidate_ids = PaymentReminder.objects.filter(is_paid=False).values_list('pk', flat=True)
 
-        for r in candidates:
-            window_start = r.due_date - timedelta(days=r.notify_days_before)
-            if today < window_start:
-                continue
-            if r.last_notified_at and r.last_notified_at > cooldown:
-                continue
+        for reminder_id in candidate_ids.iterator():
+            # Claim due channels under a row lock. Provider calls happen after
+            # commit so an SMTP/Twilio timeout does not hold a DB transaction.
+            with transaction.atomic():
+                r = (
+                    PaymentReminder.objects.select_for_update()
+                    .select_related('user', 'debt', 'debt__account')
+                    .get(pk=reminder_id)
+                )
+                window_start = r.due_date - timedelta(days=r.notify_days_before)
+                if r.is_paid or today < window_start:
+                    continue
+
+                email_due = r.notify_via_email and (
+                    r.email_last_notified_at is None or r.email_last_notified_at <= cooldown
+                )
+                sms_due = r.notify_via_sms and (
+                    r.sms_last_notified_at is None or r.sms_last_notified_at <= cooldown
+                )
+                if not email_due and not sms_due:
+                    continue
+
+                previous_email_at = r.email_last_notified_at
+                previous_sms_at = r.sms_last_notified_at
+                previous_last_at = r.last_notified_at
+                if not dry_run:
+                    update_fields = ['last_notified_at', 'updated_at']
+                    r.last_notified_at = now
+                    if email_due:
+                        r.email_last_notified_at = now
+                        update_fields.append('email_last_notified_at')
+                    if sms_due:
+                        r.sms_last_notified_at = now
+                        update_fields.append('sms_last_notified_at')
+                    r.save(update_fields=update_fields)
 
             considered += 1
             days_until = (r.due_date - today).days
             subject = f'Payment reminder: {r.name} ({"overdue" if days_until < 0 else f"due in {days_until} day(s)"})'
             body = _build_email_body(r, days_until)
-            delivery_failed = False
+            email_succeeded = False
+            sms_succeeded = False
+            email_failed = False
+            sms_failed = False
 
-            self.stdout.write(f'- {r.user} -> {r.name} (due {r.due_date}, days_until={days_until})')
+            self.stdout.write(f'- processing reminder {r.pk} (days_until={days_until})')
 
-            if r.notify_via_email and r.user.email:
-                if dry_run:
-                    self.stdout.write(f'  [dry-run] would email {r.user.email}')
+            if email_due:
+                if not r.user.email:
+                    email_failed = True
+                    self.stdout.write('  Email skipped: user has no email address.')
+                elif dry_run:
+                    self.stdout.write('  [dry-run] would send email.')
                 else:
                     try:
-                        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [r.user.email])
-                        sent_email += 1
+                        delivered = send_mail(
+                            subject,
+                            body,
+                            settings.DEFAULT_FROM_EMAIL,
+                            [r.user.email],
+                        )
+                        if delivered == 1:
+                            sent_email += 1
+                            email_succeeded = True
+                        else:
+                            email_failed = True
+                            self.stdout.write(self.style.ERROR('  Email was not accepted.'))
                     except Exception as exc:
-                        delivery_failed = True
-                        self.stdout.write(self.style.ERROR(f'  email failed: {exc}'))
+                        email_failed = True
+                        logger.error(
+                            'Email delivery failed for reminder %s (%s).',
+                            r.pk,
+                            type(exc).__name__,
+                        )
+                        self.stdout.write(self.style.ERROR('  Email delivery failed.'))
 
-            if r.notify_via_sms:
+            if sms_due:
                 phone = getattr(r.user, 'phone_number', '')
                 if not phone:
+                    sms_failed = True
                     self.stdout.write('  SMS skipped: user has no phone number.')
                 elif dry_run:
-                    self.stdout.write(f'  [dry-run] would SMS {phone}')
+                    self.stdout.write('  [dry-run] would send SMS.')
                 else:
                     if _send_sms(phone, f'{subject}\n{body}', self.stdout):
                         sent_sms += 1
+                        sms_succeeded = True
+                    else:
+                        sms_failed = True
 
-            if not dry_run and not delivery_failed:
-                r.last_notified_at = now
-                r.save(update_fields=['last_notified_at', 'updated_at'])
+            if not dry_run and (email_failed or sms_failed):
+                # Release only failed channel claims. A successful email is
+                # therefore not duplicated merely because SMS needs a retry.
+                with transaction.atomic():
+                    current = PaymentReminder.objects.select_for_update().get(pk=r.pk)
+                    update_fields = ['updated_at']
+                    if email_failed and current.email_last_notified_at == now:
+                        current.email_last_notified_at = previous_email_at
+                        update_fields.append('email_last_notified_at')
+                    if sms_failed and current.sms_last_notified_at == now:
+                        current.sms_last_notified_at = previous_sms_at
+                        update_fields.append('sms_last_notified_at')
+                    if (
+                        not email_succeeded
+                        and not sms_succeeded
+                        and current.last_notified_at == now
+                    ):
+                        current.last_notified_at = previous_last_at
+                        update_fields.append('last_notified_at')
+                    current.save(update_fields=update_fields)
 
-        self.stdout.write(self.style.SUCCESS(
-            f'Done. Considered {considered}, sent {sent_email} email(s), {sent_sms} SMS.'
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'Done. Considered {considered}, sent {sent_email} email(s), {sent_sms} SMS.'
+            )
+        )

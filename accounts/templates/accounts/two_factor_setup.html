@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Two-Factor Authentication Setup</h1>
-<p>Scan the QR code below with your authenticator app, then enter the 6-digit code to verify.</p>
-<img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" />
+<p>Scan this QR code with your authenticator app, then enter the current six-digit code. The code must match before 2FA is enabled.</p>
+<img src="data:image/png;base64,{{ qr_code }}" alt="Emvera authenticator setup QR code" />
 <form method="post">
     {% csrf_token %}
     <label for="code">Enter 6-digit code:</label>
-    <input type="text" id="code" name="code" maxlength="6" required />
+    <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required />
     <button type="submit">Verify</button>
 </form>
 {% endblock %}

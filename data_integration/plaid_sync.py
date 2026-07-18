@@ -1,14 +1,16 @@
 """
 Map Plaid responses onto our local Account / Transaction / PlaidItem rows.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from . import plaid_client
 from .models import Account, PlaidItem
-
 
 PLAID_TYPE_MAP = {
     'depository': 'checking',
@@ -25,6 +27,10 @@ class SyncSummary:
     transactions_added: int = 0
     transactions_modified: int = 0
     transactions_removed: int = 0
+
+
+class PlaidItemOwnershipError(RuntimeError):
+    """Raised when a Plaid Item is already linked to a different user."""
 
 
 def _local_account_type(plaid_type: str, subtype: str) -> str:
@@ -45,20 +51,37 @@ def link_and_sync(user, public_token: str) -> tuple[PlaidItem, SyncSummary]:
         # Institution lookup is best-effort; we already have the access token.
         pass
 
-    item, _ = PlaidItem.objects.get_or_create(
-        item_id=exchange['item_id'],
-        defaults={'user': user, 'institution_name': institution},
-    )
-    item.user = user
-    item.institution_name = institution
-    item.set_access_token(exchange['access_token'])
-    item.save()
+    # The Item lock remains held through provider synchronization so a web
+    # relink and scheduled resync cannot advance the same cursor concurrently.
+    # This deliberately trades a longer transaction for deterministic writes;
+    # the demo's low sync volume makes that safer than cursor corruption.
+    with transaction.atomic():
+        item = PlaidItem.objects.select_for_update().filter(item_id=exchange['item_id']).first()
+        if item is None:
+            try:
+                with transaction.atomic():
+                    item = PlaidItem.objects.create(
+                        item_id=exchange['item_id'],
+                        user=user,
+                        institution_name=institution,
+                    )
+            except IntegrityError:
+                item = PlaidItem.objects.select_for_update().get(item_id=exchange['item_id'])
 
-    summary = SyncSummary()
-    _sync_accounts(user, item, summary)
-    _sync_transactions(user, item, summary)
-    item.last_synced_at = datetime.utcnow()
-    item.save(update_fields=['last_synced_at'])
+        if item.user_id != user.pk:
+            raise PlaidItemOwnershipError(
+                'This bank connection is already linked to another account.'
+            )
+
+        item.institution_name = institution
+        item.set_access_token(exchange['access_token'])
+        item.save()
+
+        summary = SyncSummary()
+        _sync_accounts(user, item, summary)
+        _sync_transactions(user, item, summary)
+        item.last_synced_at = timezone.now()
+        item.save(update_fields=['last_synced_at'])
     return item, summary
 
 
@@ -101,6 +124,7 @@ def _sync_transactions(user, item: PlaidItem, summary: SyncSummary):
             TransactionsSyncRequest(access_token=access_token, cursor=cursor)
         )
         from .models import Transaction
+
         for t in resp.added:
             account = accounts_by_id.get(t.account_id)
             if not account:

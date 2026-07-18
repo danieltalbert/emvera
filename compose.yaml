@@ -1,0 +1,55 @@
+services:
+  web:
+    build: .
+    init: true
+    restart: unless-stopped
+    ports:
+      # Loopback-only keeps Gunicorn behind the local browser or a host proxy.
+      - "127.0.0.1:8000:8000"
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-docker-demo-only-change-before-deploying}
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,web
+      DATABASE_URL: postgresql://emvera:emvera-local@db:5432/emvera
+      DJANGO_DB_SSLMODE: disable
+      RUN_MIGRATIONS: "true"
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-3}
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+      EMAIL_USE_TLS: "False"
+      DEFAULT_FROM_EMAIL: Emvera <noreply@emvera.local>
+      PLAID_CLIENT_ID: ${PLAID_CLIENT_ID:-}
+      PLAID_SECRET: ${PLAID_SECRET:-}
+      PLAID_ENV: sandbox
+      PLAID_PRODUCTS: transactions
+      PLAID_TOKEN_ENCRYPTION_KEY: ${PLAID_TOKEN_ENCRYPTION_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: emvera
+      POSTGRES_USER: emvera
+      POSTGRES_PASSWORD: emvera-local
+    volumes:
+      - emvera-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emvera -d emvera"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    ports:
+      # Mailpit contains activation/reset links and must never be public.
+      - "127.0.0.1:8025:8025"
+
+volumes:
+  emvera-postgres:

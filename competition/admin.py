@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import Competition, CompetitionParticipant, MiniGame, MiniGameResult
 
 
@@ -22,6 +23,7 @@ class CompetitionAdmin(admin.ModelAdmin):
 
     def participant_count(self, obj):
         return obj.participants.count()
+
     participant_count.short_description = 'Players'
 
 

@@ -1,33 +1,34 @@
-# data_integration/README.md
-
 # Data Integration App
 
-This app integrates user financial data from APIs (Plaid), manual entry, and CSV upload.
+This app owns Emvera's account, transaction, holding, debt, CSV-import, and
+Plaid Sandbox ingestion boundary. It is intentionally separate from the debt
+and investment presentation layers so provider payloads are normalized before
+domain features consume them.
 
 ## Models
-- **Account**: User's financial accounts (checking, savings, credit, investment, debt)
-- **Transaction**: Transactions linked to accounts
-- **Investment**: Investment holdings
-- **Debt**: Debt accounts and balances
 
-## API Integration
-- Uses Plaid API (https://plaid.com/docs/). You must set the following environment variables:
-  - `PLAID_CLIENT_ID`
-  - `PLAID_SECRET`
-  - `PLAID_ENV` (sandbox, development, or production)
-  - `PLAID_PRODUCTS` (e.g., transactions, investments)
-  - `PLAID_REDIRECT_URI` (if using OAuth)
+- **Account**: a user-owned checking, savings, credit, investment, or debt account
+- **Transaction**: an account-scoped imported or manually entered transaction
+- **Investment**: an account-scoped holding snapshot
+- **Debt**: an account-scoped balance and repayment inputs
+- **PlaidItem**: a user-owned provider Item with an encrypted server-side token
 
-## Manual Entry
-- Users can add accounts and transactions by hand via forms
+## Ingestion paths
 
-## CSV Upload
-- Users can upload CSV files to bulk-import transactions
+- Manual forms assign ownership server-side.
+- CSV uploads validate encoding, headers, dates, finite decimal ranges, and the selected account's owner before bulk creation.
+- Plaid Link tokens and public-token exchange happen through OTP-protected POST endpoints.
+- Plaid Items cannot be reassigned when two users present the same provider Item identifier.
+- Transaction sync is cursor-based and filters updates/removals through the signed-in owner.
 
-## Setup
-- Add `data_integration` to `INSTALLED_APPS` in your Django settings
-- Run migrations
+## Configuration
 
-## Extensibility
-- Models are designed for use by other apps (debt management, investment tracking, etc.)
+See [`docs/INTEGRATIONS.md`](../docs/INTEGRATIONS.md) for current provider
+status and environment variables. Provider secrets belong in the ignored
+`.env` or a deployment secret manager, never in this app or its tests.
 
+## Verification
+
+```powershell
+python manage.py test data_integration
+```

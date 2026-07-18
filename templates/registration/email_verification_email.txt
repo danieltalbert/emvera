@@ -1,0 +1,7 @@
+Hi {{ user.get_short_name|default:user.username }},
+
+Verify your email address to activate your Emvera account:
+
+{{ verification_url }}
+
+If you did not create this account, you can ignore this message.

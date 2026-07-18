@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Connect Bank — Ridge &amp; River Financial{% endblock %}
+{% block title %}Connect Bank — Emvera{% endblock %}
 
 {% block breadcrumb_current %}Connect Bank{% endblock %}
 {% block breadcrumb %}
@@ -30,10 +30,10 @@
       <path d="M10 9v5M10 6.5v.5" stroke="var(--forest-600)" stroke-width="1.5" stroke-linecap="round"/>
     </svg>
     <div>
-      <div class="info-panel-title">Bank-level security</div>
+      <div class="info-panel-title">Plaid-hosted authentication</div>
       <div class="info-panel-body">
-        Ridge &amp; River uses Plaid to connect to your bank using the same 256-bit encryption your bank uses.
-        We never store your login credentials.
+        Emvera launches Plaid Link for institution authentication, so bank login
+        credentials are not collected or stored by this application.
       </div>
     </div>
   </div>
@@ -42,7 +42,7 @@
     <div class="card-header">
       <div class="card-title">Launch Plaid Link</div>
       {% if plaid_configured %}
-        <span class="badge badge-teal">Secure</span>
+        <span class="badge badge-teal">Sandbox ready</span>
       {% else %}
         <span class="badge badge-amber">Not configured</span>
       {% endif %}
@@ -100,23 +100,18 @@
     </div>
   </div>
 
-  <!-- Supported institutions hint -->
+  <!-- Keep provider claims tied to the configured Sandbox product instead of
+       implying that this demo can connect arbitrary live institutions. -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title">What you can connect</div>
+      <div class="card-title">What this demo connects</div>
     </div>
     <div class="card-body">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--sp-3);">
-        {% for institution in supported_institutions %}
-        <div style="display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);background:var(--color-surface-alt);border-radius:var(--r-md);border:1px solid var(--color-border-light);">
-          <div style="width:8px;height:8px;border-radius:50%;background:var(--teal-400);flex-shrink:0;"></div>
-          <span class="text-sm text-secondary">{{ institution }}</span>
-        </div>
-        {% endfor %}
-        <div style="display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);background:var(--color-surface-alt);border-radius:var(--r-md);border:1px dashed var(--color-border);">
-          <span class="text-xs text-muted">+ 12,000 more institutions</span>
-        </div>
-      </div>
+      <p class="text-sm text-secondary" style="margin:0;line-height:var(--leading-relaxed);">
+        Plaid Link presents provider-supplied Sandbox institutions and test credentials.
+        Emvera imports account metadata and Transactions data; no real bank account is
+        required or recommended for this release.
+      </p>
     </div>
   </div>
 

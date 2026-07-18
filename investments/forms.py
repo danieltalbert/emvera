@@ -1,5 +1,7 @@
 from django import forms
+
 from .models import InvestmentProjection
+
 
 class InvestmentProjectionForm(forms.ModelForm):
     class Meta:

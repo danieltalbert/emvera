@@ -6,21 +6,21 @@ Accepts the canonical columns documented on the upload page
 aliases banks export. Validates each row independently so a single bad
 row doesn't kill an otherwise good file.
 """
+
 from __future__ import annotations
 
 import csv
 import io
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from .models import Transaction
 
-
 AMOUNT_FIELD = Transaction._meta.get_field('amount')
 MAX_TRANSACTION_AMOUNT = Decimal(
-    f"{'9' * (AMOUNT_FIELD.max_digits - AMOUNT_FIELD.decimal_places)}."
-    f"{'9' * AMOUNT_FIELD.decimal_places}"
+    f'{"9" * (AMOUNT_FIELD.max_digits - AMOUNT_FIELD.decimal_places)}.'
+    f'{"9" * AMOUNT_FIELD.decimal_places}'
 )
 
 COLUMN_ALIASES = {
@@ -142,14 +142,16 @@ def import_transactions(file_obj, account) -> ImportResult:
             result.row_errors.append(f'Line {line_no}: missing category.')
             continue
 
-        rows_to_create.append(Transaction(
-            account=account,
-            date=d,
-            amount=amount,
-            category=category[:100],
-            description=description[:255],
-            source='csv',
-        ))
+        rows_to_create.append(
+            Transaction(
+                account=account,
+                date=d,
+                amount=amount,
+                category=category[:100],
+                description=description[:255],
+                source='csv',
+            )
+        )
 
     if rows_to_create:
         Transaction.objects.bulk_create(rows_to_create)

@@ -9,9 +9,8 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.testing import force_login_with_otp
 from data_integration.models import Account, Debt
-
-from .models import CreditScore, PaymentReminder
 from debt_management.utils import (
     add_months,
     avalanche_plan,
@@ -22,6 +21,8 @@ from debt_management.utils import (
     total_minimum_payment,
     weighted_average_apr,
 )
+
+from .models import CreditScore, PaymentReminder
 
 
 def _debt(id_, name, balance, rate, minimum):
@@ -39,7 +40,9 @@ class MinimumPaymentEstimateTests(SimpleTestCase):
         self.assertEqual(estimate_minimum_payment(Decimal('100'), Decimal('20')), Decimal('25.00'))
 
     def test_percentage_kicks_in_for_large_balances(self):
-        self.assertEqual(estimate_minimum_payment(Decimal('5000'), Decimal('20')), Decimal('100.00'))
+        self.assertEqual(
+            estimate_minimum_payment(Decimal('5000'), Decimal('20')), Decimal('100.00')
+        )
 
     def test_zero_balance(self):
         self.assertEqual(estimate_minimum_payment(Decimal('0'), Decimal('20')), Decimal('0.00'))
@@ -59,9 +62,9 @@ class AddMonthsTests(SimpleTestCase):
 class AvalancheVsSnowballTests(SimpleTestCase):
     def setUp(self):
         self.debts = [
-            _debt(1, 'Card A', '4200',  '24.99', '100'),
-            _debt(2, 'Card B', '800',   '14.99', '40'),
-            _debt(3, 'Loan',   '12000', '7.5',   '220'),
+            _debt(1, 'Card A', '4200', '24.99', '100'),
+            _debt(2, 'Card B', '800', '14.99', '40'),
+            _debt(3, 'Loan', '12000', '7.5', '220'),
         ]
 
     def test_snowball_orders_smallest_balance_first(self):
@@ -112,7 +115,7 @@ class AggregateHelperTests(SimpleTestCase):
     def test_weighted_average_apr(self):
         debts = [
             _debt(1, 'A', '1000', '20', '25'),
-            _debt(2, 'B', '3000', '5',  '50'),
+            _debt(2, 'B', '3000', '5', '50'),
         ]
         self.assertEqual(weighted_average_apr(debts), Decimal('8.75'))
 
@@ -122,7 +125,7 @@ class AggregateHelperTests(SimpleTestCase):
     def test_total_minimum_payment(self):
         debts = [
             _debt(1, 'A', '1000', '20', '25'),
-            _debt(2, 'B', '3000', '5',  '50'),
+            _debt(2, 'B', '3000', '5', '50'),
         ]
         self.assertEqual(total_minimum_payment(debts), Decimal('75.00'))
 
@@ -150,6 +153,7 @@ class DebtManagementViewsTest(TestCase):
         self.user = get_user_model().objects.create_user(
             username='testuser',
             password='testpass',
+            email='testuser@example.com',
             two_factor_enabled=True,
         )
         self.other_user = get_user_model().objects.create_user(
@@ -189,7 +193,7 @@ class DebtManagementViewsTest(TestCase):
             due_date=date(2026, 8, 1),
             as_of=date(2026, 7, 9),
         )
-        self.client.login(username='testuser', password='testpass')
+        force_login_with_otp(self.client, self.user)
 
     def test_debt_dashboard_view(self):
         response = self.client.get(reverse('debt_management:debt_dashboard'))
@@ -204,12 +208,15 @@ class DebtManagementViewsTest(TestCase):
         self.assertContains(response, 'layout-with-leading-sidebar')
 
     def test_credit_score_tracking_logs_score_for_signed_in_user(self):
-        response = self.client.post(reverse('debt_management:credit_score_tracking'), {
-            'score': '721',
-            'bureau': 'experian',
-            'recorded_on': '2026-07-09',
-            'notes': 'FICO update',
-        })
+        response = self.client.post(
+            reverse('debt_management:credit_score_tracking'),
+            {
+                'score': '721',
+                'bureau': 'experian',
+                'recorded_on': '2026-07-09',
+                'notes': 'FICO update',
+            },
+        )
 
         self.assertRedirects(response, reverse('debt_management:credit_score_tracking'))
         score = CreditScore.objects.get(user=self.user)
@@ -222,12 +229,15 @@ class DebtManagementViewsTest(TestCase):
 
         for score in ('299', '851'):
             with self.subTest(score=score):
-                response = self.client.post(url, {
-                    'score': score,
-                    'bureau': 'experian',
-                    'recorded_on': '2026-07-09',
-                    'notes': 'Crafted score',
-                })
+                response = self.client.post(
+                    url,
+                    {
+                        'score': score,
+                        'bureau': 'experian',
+                        'recorded_on': '2026-07-09',
+                        'notes': 'Crafted score',
+                    },
+                )
 
                 self.assertEqual(response.status_code, 200)
                 self.assertTrue(response.context['form'].has_error('score'))
@@ -267,29 +277,71 @@ class DebtManagementViewsTest(TestCase):
         self.assertContains(response, 'layout-with-sidebar')
 
     def test_debt_reminders_create_for_selected_user_debt(self):
-        response = self.client.post(reverse('debt_management:debt_reminders'), {
-            'debt': self.debt.pk,
-            'name': 'Credit card payment',
-            'institution': '',
-            'amount': '125.00',
-            'due_date': '2026-08-01',
-            'notify_days_before': '3',
-        })
+        response = self.client.post(
+            reverse('debt_management:debt_reminders'),
+            {
+                'debt': self.debt.pk,
+                'name': 'Credit card payment',
+                'institution': '',
+                'amount': '125.00',
+                'due_date': '2026-08-01',
+                'notify_via_email': 'on',
+                'notify_days_before': '3',
+            },
+        )
 
         self.assertRedirects(response, reverse('debt_management:debt_reminders'))
         reminder = PaymentReminder.objects.get(user=self.user, debt=self.debt)
         self.assertEqual(reminder.amount, Decimal('125.00'))
         self.assertEqual(reminder.institution, 'Codex Card')
 
+    def test_debt_reminders_require_a_reachable_delivery_channel(self):
+        response = self.client.post(
+            reverse('debt_management:debt_reminders'),
+            {
+                'debt': self.debt.pk,
+                'name': 'Unreachable payment',
+                'institution': '',
+                'amount': '125.00',
+                'due_date': '2026-08-01',
+                'notify_days_before': '3',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.assertFalse(PaymentReminder.objects.filter(name='Unreachable payment').exists())
+
+    def test_debt_reminders_reject_sms_without_profile_phone_number(self):
+        response = self.client.post(
+            reverse('debt_management:debt_reminders'),
+            {
+                'debt': self.debt.pk,
+                'name': 'SMS payment',
+                'institution': '',
+                'amount': '125.00',
+                'due_date': '2026-08-01',
+                'notify_via_sms': 'on',
+                'notify_days_before': '3',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].has_error('notify_via_sms'))
+        self.assertFalse(PaymentReminder.objects.filter(name='SMS payment').exists())
+
     def test_debt_reminders_reject_another_users_debt(self):
-        response = self.client.post(reverse('debt_management:debt_reminders'), {
-            'debt': self.other_debt.pk,
-            'name': 'Wrong payment',
-            'institution': '',
-            'amount': '75.00',
-            'due_date': '2026-08-01',
-            'notify_days_before': '3',
-        })
+        response = self.client.post(
+            reverse('debt_management:debt_reminders'),
+            {
+                'debt': self.other_debt.pk,
+                'name': 'Wrong payment',
+                'institution': '',
+                'amount': '75.00',
+                'due_date': '2026-08-01',
+                'notify_days_before': '3',
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(PaymentReminder.objects.filter(debt=self.other_debt).exists())
@@ -300,32 +352,44 @@ class DebtManagementViewsTest(TestCase):
         )
 
     def test_debt_reminders_reject_nonpositive_amounts(self):
-        response = self.client.post(reverse('debt_management:debt_reminders'), {
-            'debt': self.debt.pk,
-            'name': 'Invalid payment',
-            'institution': '',
-            'amount': '-1.00',
-            'due_date': '2026-08-01',
-            'notify_days_before': '3',
-        })
+        response = self.client.post(
+            reverse('debt_management:debt_reminders'),
+            {
+                'debt': self.debt.pk,
+                'name': 'Invalid payment',
+                'institution': '',
+                'amount': '-1.00',
+                'due_date': '2026-08-01',
+                'notify_days_before': '3',
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['form'].has_error('amount'))
-        self.assertFalse(PaymentReminder.objects.filter(user=self.user, name='Invalid payment').exists())
+        self.assertFalse(
+            PaymentReminder.objects.filter(user=self.user, name='Invalid payment').exists()
+        )
 
     def test_debt_reminders_reject_negative_notification_lead_time(self):
-        response = self.client.post(reverse('debt_management:debt_reminders'), {
-            'debt': self.debt.pk,
-            'name': 'Invalid notification window',
-            'institution': '',
-            'amount': '125.00',
-            'due_date': '2026-08-01',
-            'notify_days_before': '-1',
-        })
+        response = self.client.post(
+            reverse('debt_management:debt_reminders'),
+            {
+                'debt': self.debt.pk,
+                'name': 'Invalid notification window',
+                'institution': '',
+                'amount': '125.00',
+                'due_date': '2026-08-01',
+                'notify_days_before': '-1',
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['form'].has_error('notify_days_before'))
-        self.assertFalse(PaymentReminder.objects.filter(user=self.user, name='Invalid notification window').exists())
+        self.assertFalse(
+            PaymentReminder.objects.filter(
+                user=self.user, name='Invalid notification window'
+            ).exists()
+        )
 
     def test_mark_reminder_paid_only_updates_signed_in_users_reminder(self):
         own_reminder = PaymentReminder.objects.create(
@@ -428,7 +492,7 @@ class DebtManagementViewsTest(TestCase):
             password='testpass',
             two_factor_enabled=True,
         )
-        self.client.force_login(empty_user)
+        force_login_with_otp(self.client, empty_user)
 
         for route_name, expected_copy in (
             ('payoff_avalanche', 'dated avalanche payoff plan'),
@@ -477,10 +541,13 @@ class SendDueRemindersCommandTests(TestCase):
 
         output = stdout.getvalue()
         send_mail.assert_not_called()
-        self.assertIn('[dry-run] would email reminder@example.com', output)
+        self.assertIn('[dry-run] would send email.', output)
+        self.assertNotIn('reminder@example.com', output)
+        self.assertNotIn('Dry-run card payment', output)
         self.assertIn('Done. Considered 1, sent 0 email(s), 0 SMS.', output)
         reminder.refresh_from_db()
         self.assertIsNone(reminder.last_notified_at)
+        self.assertIsNone(reminder.email_last_notified_at)
 
     def test_email_failure_is_reported_without_stopping_later_reminders(self):
         today = timezone.now().date()
@@ -500,9 +567,80 @@ class SendDueRemindersCommandTests(TestCase):
 
         output = stdout.getvalue()
         self.assertEqual(send_mail.call_count, 2)
-        self.assertIn('email failed: smtp down', output)
+        self.assertIn('Email delivery failed.', output)
         self.assertIn('Done. Considered 2, sent 1 email(s), 0 SMS.', output)
         failing.refresh_from_db()
         succeeding.refresh_from_db()
         self.assertIsNone(failing.last_notified_at)
+        self.assertIsNone(failing.email_last_notified_at)
         self.assertIsNotNone(succeeding.last_notified_at)
+        self.assertIsNotNone(succeeding.email_last_notified_at)
+
+    def test_failed_sms_does_not_mark_reminder_notified(self):
+        self.user.phone_number = '+15555550123'
+        self.user.save(update_fields=['phone_number'])
+        reminder = PaymentReminder.objects.create(
+            user=self.user,
+            name='SMS-only payment',
+            institution='Codex Card',
+            amount=Decimal('125.00'),
+            due_date=timezone.now().date(),
+            notify_via_email=False,
+            notify_via_sms=True,
+        )
+
+        with patch(
+            'debt_management.management.commands.send_due_reminders._send_sms',
+            return_value=False,
+        ):
+            call_command('send_due_reminders', stdout=io.StringIO())
+
+        reminder.refresh_from_db()
+        self.assertIsNone(reminder.last_notified_at)
+        self.assertIsNone(reminder.sms_last_notified_at)
+
+    def test_partial_delivery_retries_only_the_failed_channel(self):
+        self.user.phone_number = '+15555550123'
+        self.user.save(update_fields=['phone_number'])
+        reminder = PaymentReminder.objects.create(
+            user=self.user,
+            name='Two-channel payment',
+            institution='Codex Card',
+            amount=Decimal('125.00'),
+            due_date=timezone.now().date(),
+            notify_via_email=True,
+            notify_via_sms=True,
+        )
+
+        with (
+            patch(
+                'debt_management.management.commands.send_due_reminders.send_mail',
+                return_value=1,
+            ) as send_mail,
+            patch(
+                'debt_management.management.commands.send_due_reminders._send_sms',
+                return_value=False,
+            ) as send_sms,
+        ):
+            call_command('send_due_reminders', stdout=io.StringIO())
+
+        send_mail.assert_called_once()
+        send_sms.assert_called_once()
+        reminder.refresh_from_db()
+        self.assertIsNotNone(reminder.email_last_notified_at)
+        self.assertIsNone(reminder.sms_last_notified_at)
+        self.assertIsNotNone(reminder.last_notified_at)
+
+        with (
+            patch('debt_management.management.commands.send_due_reminders.send_mail') as send_mail,
+            patch(
+                'debt_management.management.commands.send_due_reminders._send_sms',
+                return_value=True,
+            ) as send_sms,
+        ):
+            call_command('send_due_reminders', stdout=io.StringIO())
+
+        send_mail.assert_not_called()
+        send_sms.assert_called_once()
+        reminder.refresh_from_db()
+        self.assertIsNotNone(reminder.sms_last_notified_at)

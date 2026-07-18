@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Create Account — Ridge &amp; River Financial</title>
+  <title>Create Account — Emvera</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -18,23 +18,23 @@
   <aside class="auth-sidebar" aria-hidden="true">
     <div class="auth-sidebar-content">
       <div class="auth-brand">
-        <div class="auth-brand-mark">R&amp;R</div>
+        <div class="auth-brand-mark">E</div>
         <div class="auth-brand-name">
-          Ridge &amp; River Financial
-          <span>Your Pacific Northwest wealth companion</span>
+          Emvera
+          <span>Personal finance, made understandable</span>
         </div>
       </div>
 
       <h1 class="auth-tagline">Take the first step toward financial clarity.</h1>
       <p class="auth-desc">
-        Join Ridge &amp; River to get a clear picture of your net worth, tackle debt strategically,
+        Join Emvera to get a clear picture of your net worth, tackle debt strategically,
         and grow your investments with confidence.
       </p>
 
       <div class="auth-features">
         <div class="auth-feature">
           <div class="auth-feature-dot"></div>
-          <span>Free to start — no credit card required</span>
+          <span>Sandbox-friendly — no real bank account required for a demo</span>
         </div>
         <div class="auth-feature">
           <div class="auth-feature-dot"></div>
@@ -42,13 +42,13 @@
         </div>
         <div class="auth-feature">
           <div class="auth-feature-dot"></div>
-          <span>Your data is private and never sold</span>
+          <span>Two-factor authentication protects financial views</span>
         </div>
       </div>
     </div>
 
     <div class="auth-footer">
-      <span>© 2025 Ridge &amp; River Financial</span>
+      <span>&copy; {% now "Y" %} Emvera</span>
     </div>
   </aside>
 
@@ -99,7 +99,7 @@
             <label class="form-label" for="id_email">Email Address</label>
             <input type="email" class="form-input {% if form.email.errors %}error{% endif %}"
               id="id_email" name="email"
-              value="{{ form.email.value|default:'' }}" placeholder="jane@example.com" autocomplete="email">
+              value="{{ form.email.value|default:'' }}" placeholder="jane@example.com" autocomplete="email" required>
             {% for err in form.email.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
           </div>
 
@@ -107,7 +107,7 @@
             <label class="form-label" for="id_password1">Password</label>
             <input type="password" class="form-input {% if form.password1.errors %}error{% endif %}"
               id="id_password1" name="password1"
-              placeholder="At least 8 characters" autocomplete="new-password">
+              placeholder="At least 12 characters" autocomplete="new-password">
             {% for err in form.password1.errors %}<span class="form-error">{{ err }}</span>{% endfor %}
           </div>
 

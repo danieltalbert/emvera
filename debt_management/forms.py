@@ -32,8 +32,10 @@ class PaymentReminderForm(forms.ModelForm):
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
         if user is not None:
             from data_integration.models import Debt
+
             self.fields['debt'].queryset = Debt.objects.filter(account__user=user)
             self.fields['debt'].required = False
 
@@ -43,6 +45,18 @@ class PaymentReminderForm(forms.ModelForm):
             raise forms.ValidationError('Amount must be greater than $0.')
         return amount
 
+    def clean(self):
+        cleaned_data = super().clean()
+        notify_email = cleaned_data.get('notify_via_email')
+        notify_sms = cleaned_data.get('notify_via_sms')
+        if not notify_email and not notify_sms:
+            raise forms.ValidationError('Choose email, SMS, or both for this reminder.')
+        if notify_email and self.user is not None and not self.user.email:
+            self.add_error('notify_via_email', 'Add an email address to your profile first.')
+        if notify_sms and self.user is not None and not self.user.phone_number:
+            self.add_error('notify_via_sms', 'Add a phone number to your profile first.')
+        return cleaned_data
+
 
 class CustomPayoffForm(forms.Form):
     extra_payment = forms.DecimalField(
@@ -50,10 +64,12 @@ class CustomPayoffForm(forms.Form):
         max_digits=12,
         decimal_places=2,
         required=False,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-input font-mono',
-            'placeholder': '$0.00',
-            'step': '10',
-        }),
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-input font-mono',
+                'placeholder': '$0.00',
+                'step': '10',
+            }
+        ),
     )
     order = forms.CharField(required=False, widget=forms.HiddenInput())
