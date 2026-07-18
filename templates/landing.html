@@ -1,0 +1,142 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Emvera is a security-focused personal finance prototype for account aggregation, debt planning, portfolio analysis, and friendly investing competitions.">
+  <meta property="og:title" content="Emvera — Understand your financial picture">
+  <meta property="og:description" content="A Django personal-finance engineering project built for secure sandbox demonstrations.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#10291f">
+  <title>Emvera — Understand your financial picture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/landing.css' %}">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header class="site-header">
+    <a class="brand" href="{% url 'home' %}" aria-label="Emvera home">
+      <span class="brand-mark" aria-hidden="true">E</span>
+      <span>Emvera</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#capabilities">Capabilities</a>
+      <a href="#engineering">Engineering</a>
+      <a href="{% url 'accounts:login' %}">Sign in</a>
+      <a class="button button-small" href="{% url 'accounts:register' %}">Try the sandbox flow</a>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Personal finance engineering, without the black box</p>
+        <h1>See the whole financial picture. Understand every step.</h1>
+        <p class="hero-lede">
+          Emvera brings account data, debt payoff planning, portfolio analysis, and friendly
+          investing competitions into one user-scoped Django application.
+        </p>
+        <div class="hero-actions">
+          <a class="button" href="{% url 'accounts:register' %}">Create a demo account</a>
+          <a class="button button-secondary" href="#engineering">Explore the architecture</a>
+        </div>
+        <p class="demo-note">Designed for Plaid Sandbox and synthetic data. No real-money trading is performed.</p>
+      </div>
+
+      <div class="product-preview" aria-label="Example Emvera dashboard summary">
+        <div class="preview-topline">
+          <div>
+            <span class="preview-label">Demo portfolio</span>
+            <strong>$42,680.24</strong>
+          </div>
+          <span class="status-pill">Sandbox data</span>
+        </div>
+        <div class="chart" aria-hidden="true">
+          <svg viewBox="0 0 520 180" role="img">
+            <defs>
+              <linearGradient id="chart-fill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stop-color="#63d49b" stop-opacity=".35"/>
+                <stop offset="1" stop-color="#63d49b" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path class="chart-fill" d="M0 148 C54 145 62 105 110 112 S174 134 214 82 S285 99 325 58 S394 76 430 38 S492 46 520 18 L520 180 L0 180 Z"/>
+            <path class="chart-line" d="M0 148 C54 145 62 105 110 112 S174 134 214 82 S285 99 325 58 S394 76 430 38 S492 46 520 18"/>
+          </svg>
+        </div>
+        <div class="preview-grid">
+          <div><span>Accounts</span><strong>4</strong></div>
+          <div><span>Debt plan</span><strong>Avalanche</strong></div>
+          <div><span>2FA</span><strong>Verified</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof" aria-label="Project proof points">
+      <div><strong>204</strong><span>Django regression tests in the release suite</span></div>
+      <div><strong>24</strong><span>Authenticated route smoke checks</span></div>
+      <div><strong>2</strong><span>Responsive QA viewports</span></div>
+      <div><strong>0</strong><span>Real accounts needed for the demo</span></div>
+    </section>
+
+    <section class="section" id="capabilities">
+      <div class="section-heading">
+        <p class="eyebrow">Capabilities</p>
+        <h2>Useful workflows, connected by clear trust boundaries.</h2>
+      </div>
+      <div class="card-grid">
+        <article class="feature-card">
+          <span class="card-index">01</span>
+          <h3>Account aggregation</h3>
+          <p>Connect a Plaid Sandbox institution or import clean CSV data, with every row scoped to its owner.</p>
+        </article>
+        <article class="feature-card">
+          <span class="card-index">02</span>
+          <h3>Debt planning</h3>
+          <p>Compare avalanche, snowball, and custom payoff schedules with explicit assumptions and validation.</p>
+        </article>
+        <article class="feature-card">
+          <span class="card-index">03</span>
+          <h3>Portfolio analysis</h3>
+          <p>Review holdings, projections, allocations, and rule-based recommendations without presenting them as financial advice.</p>
+        </article>
+        <article class="feature-card">
+          <span class="card-index">04</span>
+          <h3>Learning competitions</h3>
+          <p>Run virtual portfolio challenges and mini-games that never place live brokerage orders.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section engineering" id="engineering">
+      <div class="section-heading">
+        <p class="eyebrow">Engineering posture</p>
+        <h2>Built to be inspected, tested, and explained.</h2>
+      </div>
+      <div class="engineering-grid">
+        <div class="stack-list">
+          <div><span>Backend</span><strong>Django 6 · PostgreSQL · Gunicorn</strong></div>
+          <div><span>Security</span><strong>Email activation · TOTP challenge · owner scoping</strong></div>
+          <div><span>Operations</span><strong>Docker · health probes · deployment checks</strong></div>
+          <div><span>Integration</span><strong>Plaid Sandbox · optional Twilio reminders</strong></div>
+        </div>
+        <div class="boundary-note">
+          <h3>Honest by design</h3>
+          <p>
+            Emvera does not claim live trading, brokerage execution, or predictive ML in this shipping baseline.
+            Sandbox integrations and synthetic fixtures make the implemented data flow demonstrable without risking real funds.
+          </p>
+          <a href="{% url 'accounts:register' %}">Walk through the secure onboarding flow →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>&copy; {% now "Y" %} Emvera</span>
+    <span>Educational prototype · Not financial advice</span>
+  </footer>
+</body>
+</html>

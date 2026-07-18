@@ -1,0 +1,39 @@
+name: emvera-preview
+
+# Single-host sandbox preview for a small Lightsail VM. This is intentionally
+# separate from the local Mailpit stack and is not a high-availability design.
+services:
+  web:
+    build: .
+    init: true
+    restart: unless-stopped
+    env_file:
+      - ${EMVERA_ENV_FILE:-.env.production}
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY in .env.production}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env.production}
+      DJANGO_DB_SSLMODE: disable
+      EMAIL_HOST: ${EMAIL_HOST:?set EMAIL_HOST in .env.production}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env.production}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+    volumes:
+      - emvera-preview-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  emvera-preview-postgres:

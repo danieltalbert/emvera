@@ -3,22 +3,43 @@ from decimal import Decimal
 from html.parser import HTMLParser
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from django_otp.plugins.otp_totp.models import TOTPDevice
 
+from accounts.testing import force_login_with_otp
 from competition.models import Competition, CompetitionParticipant, MiniGame
-from core.settings import env_bool
-from data_integration.models import Account, Debt, Investment
+from core.settings import env_bool, env_list
+from data_integration.models import Account, Debt, Investment, PlaidItem
+
+from .checks import (
+    production_allowed_hosts_check,
+    production_database_backend_check,
+    production_database_tls_check,
+)
 
 
 class RenderedAccessibilityParser(HTMLParser):
     VOID_TAGS = {
-        'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-        'link', 'meta', 'param', 'source', 'track', 'wbr',
+        'area',
+        'base',
+        'br',
+        'col',
+        'embed',
+        'hr',
+        'img',
+        'input',
+        'link',
+        'meta',
+        'param',
+        'source',
+        'track',
+        'wbr',
     }
 
     def __init__(self):
@@ -68,16 +89,18 @@ class RenderedAccessibilityParser(HTMLParser):
         elif tag in {'input', 'select', 'textarea'}:
             control_type = attrs.get('type', '').lower()
             if control_type not in {'hidden', 'submit', 'button', 'reset'}:
-                self.controls.append({
-                    'tag': tag,
-                    'id': attrs.get('id', ''),
-                    'name': attrs.get('name', ''),
-                    'type': control_type,
-                    'aria_label': attrs.get('aria-label', ''),
-                    'aria_labelledby': attrs.get('aria-labelledby', ''),
-                    'title': attrs.get('title', ''),
-                    'wrapped': self.label_depth > 0,
-                })
+                self.controls.append(
+                    {
+                        'tag': tag,
+                        'id': attrs.get('id', ''),
+                        'name': attrs.get('name', ''),
+                        'type': control_type,
+                        'aria_label': attrs.get('aria-label', ''),
+                        'aria_labelledby': attrs.get('aria-labelledby', ''),
+                        'title': attrs.get('title', ''),
+                        'wrapped': self.label_depth > 0,
+                    }
+                )
         elif tag == 'button':
             self.current_button = attrs
             self.button_text = []
@@ -105,11 +128,13 @@ class RenderedAccessibilityParser(HTMLParser):
         elif tag == 'label' and self.label_depth:
             self.label_depth -= 1
         elif tag == 'button' and self.current_button is not None:
-            self.buttons.append({
-                'text': ''.join(self.button_text).strip(),
-                'aria_label': self.current_button.get('aria-label', ''),
-                'title': self.current_button.get('title', ''),
-            })
+            self.buttons.append(
+                {
+                    'text': ''.join(self.button_text).strip(),
+                    'aria_label': self.current_button.get('aria-label', ''),
+                    'title': self.current_button.get('title', ''),
+                }
+            )
             self.current_button = None
             self.button_text = []
 
@@ -123,7 +148,8 @@ class RenderedAccessibilityParser(HTMLParser):
 
     def unlabeled_controls(self):
         return [
-            control for control in self.controls
+            control
+            for control in self.controls
             if not (
                 control['wrapped']
                 or control['aria_label']
@@ -135,7 +161,8 @@ class RenderedAccessibilityParser(HTMLParser):
 
     def unnamed_buttons(self):
         return [
-            button for button in self.buttons
+            button
+            for button in self.buttons
             if not (button['text'] or button['aria_label'] or button['title'])
         ]
 
@@ -151,6 +178,188 @@ class EnvironmentSettingsTests(SimpleTestCase):
         with patch.dict('os.environ', {}, clear=True):
             self.assertTrue(env_bool('CODEX_BOOL_SETTING', True))
             self.assertFalse(env_bool('CODEX_BOOL_SETTING'))
+
+    def test_env_list_trims_values_and_drops_empty_entries(self):
+        with patch.dict(
+            'os.environ',
+            {'CODEX_LIST_SETTING': 'alpha, beta, ,gamma '},
+        ):
+            self.assertEqual(
+                env_list('CODEX_LIST_SETTING'),
+                ['alpha', 'beta', 'gamma'],
+            )
+
+    def test_deployment_check_rejects_sqlite(self):
+        with patch.object(
+            settings,
+            'DATABASES',
+            {'default': {'ENGINE': 'django.db.backends.sqlite3'}},
+        ):
+            errors = production_database_backend_check(None)
+
+        self.assertEqual([error.id for error in errors], ['emvera.E005'])
+
+    def test_deployment_check_accepts_postgresql(self):
+        with patch.object(
+            settings,
+            'DATABASES',
+            {'default': {'ENGINE': 'django.db.backends.postgresql'}},
+        ):
+            self.assertEqual(production_database_backend_check(None), [])
+
+    def test_deployment_check_rejects_unencrypted_postgresql(self):
+        with patch.object(
+            settings,
+            'DATABASES',
+            {
+                'default': {
+                    'ENGINE': 'django.db.backends.postgresql',
+                    'OPTIONS': {'sslmode': 'disable'},
+                }
+            },
+        ):
+            errors = production_database_tls_check(None)
+
+        self.assertEqual([error.id for error in errors], ['emvera.E007'])
+
+    def test_deployment_check_accepts_required_postgresql_tls(self):
+        with patch.object(
+            settings,
+            'DATABASES',
+            {
+                'default': {
+                    'ENGINE': 'django.db.backends.postgresql',
+                    'OPTIONS': {'sslmode': 'require'},
+                }
+            },
+        ):
+            self.assertEqual(production_database_tls_check(None), [])
+
+    @override_settings(ALLOWED_HOSTS=['*'])
+    def test_deployment_check_rejects_wildcard_host(self):
+        errors = production_allowed_hosts_check(None)
+
+        self.assertEqual([error.id for error in errors], ['emvera.E006'])
+
+    @override_settings(ALLOWED_HOSTS=['emvera.example.com'])
+    def test_deployment_check_accepts_explicit_host(self):
+        self.assertEqual(production_allowed_hosts_check(None), [])
+
+
+class PublicAndOperationalRouteTests(TestCase):
+    def test_landing_page_is_public_and_describes_sandbox_boundary(self):
+        response = self.client.get(reverse('home'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'landing.html')
+        self.assertContains(response, 'Plaid Sandbox')
+        self.assertContains(response, 'No real-money trading is performed')
+
+    def test_liveness_probe_does_not_require_database_details(self):
+        response = self.client.get(reverse('healthz'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'status': 'ok'})
+
+    @override_settings(SECURE_SSL_REDIRECT=True)
+    def test_private_http_liveness_probe_is_exempt_from_tls_redirect(self):
+        response = self.client.get(reverse('healthz'))
+
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(ALLOWED_HOSTS=['demo.example.com'], SECURE_SSL_REDIRECT=True)
+    def test_private_ip_probe_bypasses_host_validation_only_for_exact_probe(self):
+        response = self.client.get(reverse('healthz'), HTTP_HOST='10.0.0.25:8000')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'status': 'ok'})
+
+    @override_settings(SECURE_SSL_REDIRECT=True)
+    def test_user_route_still_redirects_to_https(self):
+        response = self.client.get(reverse('home'))
+
+        self.assertEqual(response.status_code, 301)
+        self.assertTrue(response['Location'].startswith('https://'))
+
+    def test_readiness_probe_checks_the_default_database(self):
+        response = self.client.get(reverse('readyz'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'status': 'ready'})
+
+    @override_settings(DEBUG=False)
+    def test_custom_not_found_page_avoids_internal_details(self):
+        response = self.client.get('/definitely-not-a-real-route/')
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTemplateUsed(response, '404.html')
+        self.assertContains(response, 'That page does not exist', status_code=404)
+
+
+class AdminSecurityTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.superuser = get_user_model().objects.create_superuser(
+            username='admin-security-test',
+            email='admin@example.com',
+            password='AdminTestPass123!',
+        )
+
+    def test_password_only_superuser_session_cannot_open_admin(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse('admin:index'))
+
+        self.assertRedirects(
+            response,
+            f'{reverse("admin:login")}?next={reverse("admin:index")}',
+        )
+
+    def test_otp_verified_superuser_session_can_open_admin(self):
+        force_login_with_otp(self.client, self.superuser)
+
+        response = self.client.get(reverse('admin:index'))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_existing_totp_seed_and_qr_are_hidden_from_admin(self):
+        target = get_user_model().objects.create_user(username='admin-device-target')
+        device = TOTPDevice.objects.create(user=target, name='Private device', confirmed=True)
+        force_login_with_otp(self.client, self.superuser)
+
+        change_response = self.client.get(
+            reverse('admin:otp_totp_totpdevice_change', args=[device.pk])
+        )
+        config_response = self.client.get(
+            reverse('admin:otp_totp_totpdevice_config', kwargs={'pk': device.pk})
+        )
+        qr_response = self.client.get(
+            reverse('admin:otp_totp_totpdevice_qrcode', kwargs={'pk': device.pk})
+        )
+        add_response = self.client.get(reverse('admin:otp_totp_totpdevice_add'))
+
+        self.assertEqual(change_response.status_code, 200)
+        self.assertNotContains(change_response, device.key)
+        self.assertEqual(config_response.status_code, 403)
+        self.assertEqual(qr_response.status_code, 403)
+        self.assertEqual(add_response.status_code, 403)
+
+    def test_plaid_admin_exposes_status_not_identifiers_or_ciphertext(self):
+        target = get_user_model().objects.create_user(username='plaid-admin-target')
+        item = PlaidItem(user=target, item_id='provider-item-sensitive-id')
+        item.set_access_token('provider-access-sensitive-token')
+        item.save()
+        stored_ciphertext = item.access_token
+        force_login_with_otp(self.client, self.superuser)
+
+        response = self.client.get(
+            reverse('admin:data_integration_plaiditem_change', args=[item.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Encrypted token present')
+        self.assertNotContains(response, item.item_id)
+        self.assertNotContains(response, stored_ciphertext)
 
 
 class AuthenticatedRouteSmokeTests(TestCase):
@@ -252,7 +461,7 @@ class AuthenticatedRouteSmokeTests(TestCase):
         )
 
     def setUp(self):
-        self.client.force_login(self.user)
+        force_login_with_otp(self.client, self.user)
 
     def assertAccessibleHtml(self, response, route_name):
         parser = RenderedAccessibilityParser()
@@ -285,10 +494,17 @@ class AuthenticatedRouteSmokeTests(TestCase):
             ('accounts:register', reverse('accounts:register'), False),
             ('accounts:password_reset', reverse('accounts:password_reset'), False),
             ('accounts:password_reset_done', reverse('accounts:password_reset_done'), False),
-            ('accounts:password_reset_complete', reverse('accounts:password_reset_complete'), False),
+            (
+                'accounts:password_reset_complete',
+                reverse('accounts:password_reset_complete'),
+                False,
+            ),
+            ('accounts:verification_sent', reverse('accounts:verification_sent'), False),
             (
                 'accounts:password_reset_confirm',
-                reverse('accounts:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token}),
+                reverse(
+                    'accounts:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token}
+                ),
                 True,
             ),
         )
@@ -307,9 +523,26 @@ class AuthenticatedRouteSmokeTests(TestCase):
         self.assertEqual(setup_response.status_code, 200)
         self.assertAccessibleHtml(setup_response, 'accounts:two_factor_setup')
 
-        session = self.client.session
-        session['totp_secret'] = 'JBSWY3DPEHPK3PXP'
-        session.save()
+        self.client.logout()
+        challenge_user = get_user_model().objects.create_user(
+            username='verify-2fa',
+            password='x',
+            two_factor_enabled=True,
+        )
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+
+        TOTPDevice.objects.create(
+            user=challenge_user,
+            name='Authenticator App',
+            confirmed=True,
+        )
+        self.client.post(
+            reverse('accounts:login'),
+            {
+                'username': 'verify-2fa',
+                'password': 'x',
+            },
+        )
         verify_response = self.client.get(reverse('accounts:two_factor_verify'))
         self.assertEqual(verify_response.status_code, 200)
         self.assertAccessibleHtml(verify_response, 'accounts:two_factor_verify')
@@ -317,8 +550,16 @@ class AuthenticatedRouteSmokeTests(TestCase):
     def test_authenticated_page_routes_render(self):
         routes = (
             ('accounts:profile', reverse('accounts:profile'), 'accounts/profile.html'),
-            ('accounts:change_password', reverse('accounts:change_password'), 'accounts/change_password.html'),
-            ('accounts:password_change', reverse('accounts:password_change'), 'accounts/change_password.html'),
+            (
+                'accounts:change_password',
+                reverse('accounts:change_password'),
+                'accounts/change_password.html',
+            ),
+            (
+                'accounts:password_change',
+                reverse('accounts:password_change'),
+                'accounts/change_password.html',
+            ),
             ('accounts:onboarding', reverse('accounts:onboarding'), 'accounts/onboarding.html'),
             (
                 'accounts:two_factor_settings',
@@ -443,7 +684,7 @@ class AuthenticatedRouteSmokeTests(TestCase):
             password='testpass',
             two_factor_enabled=True,
         )
-        self.client.force_login(empty_user)
+        force_login_with_otp(self.client, empty_user)
         Competition.objects.all().delete()
 
         routes = (
@@ -513,7 +754,12 @@ class AuthenticatedRouteSmokeTests(TestCase):
                 'debt_management/credit_score_tracking.html',
                 'No history yet',
             ),
-            ('competition:lobby', reverse('competition:lobby'), 'competition/lobby.html', 'No competitions yet'),
+            (
+                'competition:lobby',
+                reverse('competition:lobby'),
+                'competition/lobby.html',
+                'No competitions yet',
+            ),
         )
 
         for route_name, url, template_name, empty_copy in routes:

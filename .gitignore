@@ -1,6 +1,18 @@
 # Environment & secrets
 .env
+.env.*
 *.env
+!.env.example
+.envrc
+credentials.json
+secrets.json
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc
+.pypirc
+.aws/
 
 # Python
 __pycache__/

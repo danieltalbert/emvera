@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Welcome to Ridge &amp; River Financial Onboarding</h1>
+<h1>Welcome to Emvera</h1>
 <ol>
-    <li>Step 1: Verify Email <span style="color: green;">&#10003; Complete</span></li>
+    <li>Step 1: Verify Email {% if email_verified %}<span style="color: green;">&#10003; Complete</span>{% else %}<a href="{% url 'accounts:verification_sent' %}">Verify</a>{% endif %}</li>
     <li>Step 2: Set up 2FA {% if not twofa_complete %}<a href="{% url 'accounts:two_factor_setup' %}">Start</a>{% else %}<span style="color: green;">&#10003; Complete</span>{% endif %}</li>
     <li>Step 3: Connect First Account {% if account_connected %}<span style="color: green;">&#10003; Complete</span>{% else %}<a href="{% url 'data_integration:manual_account_entry' %}">Start</a>{% endif %}</li>
 </ol>

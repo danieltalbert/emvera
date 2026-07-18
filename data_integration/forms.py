@@ -2,17 +2,19 @@
 from decimal import Decimal
 
 from django import forms
-from .models import Account, Debt, Transaction
 
+from .models import Account, Debt, Transaction
 
 MIN_MONEY_VALUE = Decimal('0.00')
 MIN_INTEREST_RATE = Decimal('0.00')
 MAX_INTEREST_RATE = Decimal('100.00')
 
+
 class ManualAccountForm(forms.ModelForm):
     class Meta:
         model = Account
         fields = ['name', 'type', 'institution']
+
 
 class ManualTransactionForm(forms.ModelForm):
     class Meta:
@@ -23,6 +25,7 @@ class ManualTransactionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user is not None:
             self.fields['account'].queryset = Account.objects.filter(user=user)
+
 
 class ManualDebtForm(forms.ModelForm):
     class Meta:
@@ -72,6 +75,7 @@ class ManualDebtForm(forms.ModelForm):
         if minimum_payment is not None and minimum_payment < MIN_MONEY_VALUE:
             raise forms.ValidationError('Minimum payment cannot be negative.')
         return minimum_payment
+
 
 class CSVUploadForm(forms.Form):
     account = forms.ModelChoiceField(queryset=Account.objects.none())

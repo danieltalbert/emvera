@@ -5,9 +5,10 @@ These supplement the shared Debt model in data_integration with:
 - CreditScore: per-user history of credit score values for trend tracking.
 - PaymentReminder: user-defined payment reminders, optionally linked to a Debt.
 """
-from django.db import models
+
 from django.conf import settings
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
 
 from data_integration.models import Debt
 
@@ -38,7 +39,7 @@ class CreditScore(models.Model):
         ordering = ['-recorded_on', '-created_at']
 
     def __str__(self):
-        return f"{self.user} — {self.score} ({self.recorded_on})"
+        return f'{self.user} — {self.score} ({self.recorded_on})'
 
     @property
     def band(self):
@@ -75,6 +76,8 @@ class PaymentReminder(models.Model):
     notify_via_email = models.BooleanField(default=True)
     notify_via_sms = models.BooleanField(default=False)
     notify_days_before = models.PositiveSmallIntegerField(default=3)
+    email_last_notified_at = models.DateTimeField(null=True, blank=True)
+    sms_last_notified_at = models.DateTimeField(null=True, blank=True)
     last_notified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -83,4 +86,4 @@ class PaymentReminder(models.Model):
         ordering = ['due_date']
 
     def __str__(self):
-        return f"{self.name} — {self.amount} due {self.due_date}"
+        return f'{self.name} — {self.amount} due {self.due_date}'

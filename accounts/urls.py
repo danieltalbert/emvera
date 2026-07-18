@@ -1,16 +1,17 @@
-from django.urls import path
 from django.contrib.auth import views as auth_views
-from django.urls import reverse_lazy
+from django.urls import path, reverse_lazy
+
 from . import views
 
 app_name = 'accounts'
 
 urlpatterns = [
     # Authentication
-    path('login/',    views.user_login,    name='login'),
-    path('logout/',   auth_views.LogoutView.as_view(next_page='/accounts/login/'),              name='logout'),
-    path('register/', views.register,                                                           name='register'),
-
+    path('login/', views.user_login, name='login'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='/accounts/login/'), name='logout'),
+    path('register/', views.register, name='register'),
+    path('verify-email/sent/', views.verification_sent, name='verification_sent'),
+    path('verify-email/<uidb64>/<token>/', views.verify_email, name='verify_email'),
     # Password management
     path('password-change/', views.change_password, name='password_change'),
     path(
@@ -45,12 +46,10 @@ urlpatterns = [
         ),
         name='password_reset_complete',
     ),
-
     # Profile
     path('profile/', views.profile, name='profile'),
     path('change-password/', views.change_password, name='change_password'),
     path('onboarding/', views.onboarding, name='onboarding'),
-
     # 2FA
     path('two-factor/setup/', views.two_factor_setup, name='two_factor_setup'),
     path('two-factor/verify/', views.two_factor_verify, name='two_factor_verify'),

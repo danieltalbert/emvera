@@ -2,6 +2,7 @@
 """
 Views for user data integration:
 """
+
 import logging
 
 from django.contrib import messages
@@ -14,11 +15,6 @@ from accounts.require_2fa import require_2fa
 from .csv_import import import_transactions
 from .forms import CSVUploadForm, ManualAccountForm, ManualDebtForm, ManualTransactionForm
 
-SUPPORTED_PLAID_INSTITUTIONS = [
-    'Chase', 'Bank of America', 'Wells Fargo', 'Citibank', 'US Bank',
-    'Vanguard', 'Fidelity', 'Charles Schwab', 'Ally Bank', 'Capital One',
-]
-
 logger = logging.getLogger(__name__)
 
 
@@ -26,11 +22,15 @@ logger = logging.getLogger(__name__)
 @require_2fa
 def connect_plaid(request):
     from .plaid_client import is_configured
-    return render(request, 'data_integration/connect_plaid.html', {
-        'plaid_configured': is_configured(),
-        'linked_items': request.user.plaid_items.all(),
-        'supported_institutions': SUPPORTED_PLAID_INSTITUTIONS,
-    })
+
+    return render(
+        request,
+        'data_integration/connect_plaid.html',
+        {
+            'plaid_configured': is_configured(),
+            'linked_items': request.user.plaid_items.all(),
+        },
+    )
 
 
 @login_required
@@ -39,12 +39,13 @@ def plaid_link_token(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required.'}, status=405)
     from .plaid_client import PlaidNotConfigured, create_link_token
+
     try:
         token = create_link_token(request.user)
     except PlaidNotConfigured as exc:
         return JsonResponse({'error': str(exc)}, status=503)
-    except Exception:
-        logger.exception('Failed to create Plaid link token for user %s.', request.user.pk)
+    except Exception as exc:
+        logger.error('Failed to create Plaid link token (%s).', type(exc).__name__)
         return JsonResponse({'error': 'Plaid is temporarily unavailable.'}, status=502)
     return JsonResponse({'link_token': token})
 
@@ -59,13 +60,20 @@ def plaid_exchange(request):
         return JsonResponse({'error': 'public_token is required.'}, status=400)
 
     from .plaid_client import PlaidNotConfigured
-    from .plaid_sync import link_and_sync
+    from .plaid_sync import PlaidItemOwnershipError, link_and_sync
+
     try:
         item, summary = link_and_sync(request.user, public_token)
+    except PlaidItemOwnershipError:
+        logger.warning('Rejected a cross-user Plaid Item link attempt.')
+        return JsonResponse(
+            {'error': 'This bank connection is already linked to another account.'},
+            status=409,
+        )
     except PlaidNotConfigured as exc:
         return JsonResponse({'error': str(exc)}, status=503)
-    except Exception:
-        logger.exception('Failed to exchange Plaid public token for user %s.', request.user.pk)
+    except Exception as exc:
+        logger.error('Failed to exchange Plaid public token (%s).', type(exc).__name__)
         return JsonResponse({'error': 'Plaid sync is temporarily unavailable.'}, status=502)
 
     messages.success(
@@ -73,12 +81,15 @@ def plaid_exchange(request):
         f'Linked {item.institution_name or "your bank"} — '
         f'{summary.accounts_created} new account(s), {summary.transactions_added} transaction(s).',
     )
-    return JsonResponse({
-        'item_id': item.item_id,
-        'institution': item.institution_name,
-        'accounts_created': summary.accounts_created,
-        'transactions_added': summary.transactions_added,
-    })
+    return JsonResponse(
+        {
+            'item_id': item.item_id,
+            'institution': item.institution_name,
+            'accounts_created': summary.accounts_created,
+            'transactions_added': summary.transactions_added,
+        }
+    )
+
 
 @login_required
 @require_2fa
@@ -96,6 +107,7 @@ def manual_account_entry(request):
         form = ManualAccountForm()
     return render(request, 'data_integration/manual_account_entry.html', {'form': form})
 
+
 @login_required
 @require_2fa
 def manual_transaction_entry(request):
@@ -109,6 +121,7 @@ def manual_transaction_entry(request):
     else:
         form = ManualTransactionForm(user=request.user)
     return render(request, 'data_integration/manual_transaction_entry.html', {'form': form})
+
 
 @login_required
 @require_2fa
@@ -146,7 +159,11 @@ def csv_upload(request):
                 messages.warning(request, 'File contained no rows.')
     else:
         form = CSVUploadForm(user=request.user)
-    return render(request, 'data_integration/csv_upload.html', {
-        'form': form,
-        'import_result': import_result,
-    })
+    return render(
+        request,
+        'data_integration/csv_upload.html',
+        {
+            'form': form,
+            'import_result': import_result,
+        },
+    )

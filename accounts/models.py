@@ -1,5 +1,8 @@
-from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.db.models import Q
+from django.db.models.functions import Lower
+
 
 class CustomUser(AbstractUser):
     profile_complete = models.BooleanField(default=False)
@@ -12,3 +15,10 @@ class CustomUser(AbstractUser):
 
     class Meta:
         app_label = 'accounts'
+        constraints = [
+            models.UniqueConstraint(
+                Lower('email'),
+                condition=~Q(email=''),
+                name='unique_customuser_email_ci',
+            )
+        ]

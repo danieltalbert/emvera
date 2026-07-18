@@ -1,0 +1,143 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Django / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: emvera_ci
+          POSTGRES_USER: emvera_ci
+          POSTGRES_PASSWORD: emvera_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U emvera_ci -d emvera_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    env:
+      DJANGO_SECRET_KEY: ci-only-secret-for-tests-never-used-outside-github-actions
+      DJANGO_DEBUG: "True"
+      DJANGO_ALLOWED_HOSTS: testserver,localhost,127.0.0.1
+      DATABASE_URL: postgresql://emvera_ci:emvera_ci@127.0.0.1:5432/emvera_ci
+      DJANGO_DB_SSLMODE: disable
+      PLAID_ENV: sandbox
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --requirement requirements-dev.txt
+
+      - name: Verify dependency resolution
+        run: python -m pip check
+
+      - name: Enforce Python style and static analysis
+        run: |
+          ruff format --check .
+          ruff check .
+
+      - name: Run Django checks
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+
+      - name: Run test suite
+        run: python manage.py test --verbosity 2
+
+      - name: Compile Python sources
+        run: python -m compileall -q accounts competition core data_integration debt_management investments
+
+      - name: Build static assets
+        env:
+          DJANGO_DEBUG: "False"
+          EMAIL_HOST: localhost
+          EMAIL_USE_TLS: "False"
+        run: python manage.py collectstatic --noinput --clear
+
+      - name: Enforce deployment checks
+        env:
+          DJANGO_SECRET_KEY: ci-only-9VkF7mS2qL8xB4nD6pR1tY3wC5hJ0uA7eG9kM2zX4vN6sQ8P3cT5
+          DJANGO_DEBUG: "False"
+          DJANGO_ALLOWED_HOSTS: emvera.example.com
+          DJANGO_CSRF_TRUSTED_ORIGINS: https://emvera.example.com
+          DATABASE_URL: postgresql://emvera:ci-only@database.example.com:5432/emvera
+          DJANGO_DB_SSLMODE: require
+          DJANGO_SECURE_SSL_REDIRECT: "True"
+          DJANGO_SECURE_HSTS_SECONDS: "31536000"
+          DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: "True"
+          DJANGO_SECURE_HSTS_PRELOAD: "True"
+          DJANGO_SESSION_COOKIE_SECURE: "True"
+          DJANGO_CSRF_COOKIE_SECURE: "True"
+          EMAIL_HOST: localhost
+          EMAIL_USE_TLS: "False"
+        run: python manage.py check --deploy --fail-level WARNING
+
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Audit pinned dependencies
+        run: |
+          python -m pip install --upgrade pip pip-audit==2.10.1
+          python -m pip_audit --requirement requirements.txt --strict
+
+  container-build:
+    name: Container build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        env:
+          EMVERA_ENV_FILE: .env.example
+          DATABASE_URL: postgresql://emvera:preview@db:5432/emvera
+          EMAIL_HOST: localhost
+        run: |
+          docker compose config --quiet
+          docker compose --env-file .env.example --file compose.preview.yaml config --quiet
+
+      - name: Build production image
+        run: docker build --tag emvera:ci .

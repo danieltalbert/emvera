@@ -15,12 +15,13 @@ queryset or arbitrary user input. The shape of a "debt" dict is:
 The minimum-payment heuristic — used when the Debt model doesn't store one —
 is max($25, 2% of balance), which mirrors a typical credit card statement.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from calendar import monthrange
+from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable
 
 
@@ -56,14 +57,16 @@ def debts_from_queryset(qs) -> list[dict]:
         rate = Decimal(d.interest_rate or 0)
         stored_min = getattr(d, 'minimum_payment', None)
         minimum = Decimal(stored_min) if stored_min else estimate_minimum_payment(balance, rate)
-        out.append({
-            'id': d.pk,
-            'name': d.name,
-            'balance': balance,
-            'interest_rate': rate,
-            'minimum_payment': minimum,
-            'due_date': d.due_date,
-        })
+        out.append(
+            {
+                'id': d.pk,
+                'name': d.name,
+                'balance': balance,
+                'interest_rate': rate,
+                'minimum_payment': minimum,
+                'due_date': d.due_date,
+            }
+        )
     return out
 
 
@@ -108,15 +111,17 @@ def _simulate(
     for d in debts:
         if Decimal(d['balance']) <= 0:
             continue
-        remaining.append({
-            **d,
-            'balance': Decimal(d['balance']),
-            'interest_rate': Decimal(d['interest_rate']),
-            'minimum_payment': Decimal(d['minimum_payment']),
-            'paid_interest': Decimal('0.00'),
-            'paid_total': Decimal('0.00'),
-            'starting_balance': Decimal(d['balance']),
-        })
+        remaining.append(
+            {
+                **d,
+                'balance': Decimal(d['balance']),
+                'interest_rate': Decimal(d['interest_rate']),
+                'minimum_payment': Decimal(d['minimum_payment']),
+                'paid_interest': Decimal('0.00'),
+                'paid_total': Decimal('0.00'),
+                'starting_balance': Decimal(d['balance']),
+            }
+        )
 
     plan = PayoffPlan(strategy=order_key.__name__, extra_payment=Decimal(extra_payment or 0))
     if not remaining:
@@ -142,7 +147,7 @@ def _simulate(
             d['balance'] -= payment
             d['paid_total'] += payment
             # Any minimum-payment shortfall (balance < min) leaves cash for the priority debt.
-            leftover += (d['minimum_payment'] - payment)
+            leftover += d['minimum_payment'] - payment
 
         # Target the highest-priority surviving debt with the leftover.
         priority = sorted(remaining, key=order_key)
@@ -175,16 +180,18 @@ def _simulate(
         finished_order.append(d)
 
     for d in finished_order:
-        plan.steps.append(PayoffStep(
-            debt_id=d['id'],
-            name=d['name'],
-            starting_balance=d['starting_balance'].quantize(CENTS),
-            interest_rate=d['interest_rate'],
-            months_to_payoff=d['months_to_payoff'],
-            total_interest=d['paid_interest'].quantize(CENTS),
-            total_paid=d['paid_total'].quantize(CENTS),
-            payoff_date=d.get('payoff_date'),
-        ))
+        plan.steps.append(
+            PayoffStep(
+                debt_id=d['id'],
+                name=d['name'],
+                starting_balance=d['starting_balance'].quantize(CENTS),
+                interest_rate=d['interest_rate'],
+                months_to_payoff=d['months_to_payoff'],
+                total_interest=d['paid_interest'].quantize(CENTS),
+                total_paid=d['paid_total'].quantize(CENTS),
+                payoff_date=d.get('payoff_date'),
+            )
+        )
         plan.total_interest += d['paid_interest']
         plan.total_paid += d['paid_total']
 
@@ -217,7 +224,9 @@ def snowball_plan(debts: Iterable[dict], extra_payment=Decimal('0.00'), start=No
     return plan
 
 
-def custom_plan(debts: Iterable[dict], order_ids: list, extra_payment=Decimal('0.00'), start=None) -> PayoffPlan:
+def custom_plan(
+    debts: Iterable[dict], order_ids: list, extra_payment=Decimal('0.00'), start=None
+) -> PayoffPlan:
     """
     Honour a user-supplied ordering of debt IDs. Anything not in the list keeps
     its original relative order at the end.

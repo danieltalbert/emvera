@@ -1,26 +1,48 @@
 import io
 import os
 import sys
-from types import ModuleType, SimpleNamespace
 from datetime import date, timedelta
 from decimal import Decimal
+from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
+from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from .crypto import PREFIX, decrypt, encrypt
-from .csv_import import MAX_TRANSACTION_AMOUNT, _parse_amount, _parse_date, _resolve_columns, import_transactions
-from .models import Account, Debt, Investment, PlaidItem, Transaction
-from .plaid_sync import SyncSummary, _sync_transactions
+from accounts.testing import force_login_with_otp
 
+from . import plaid_client
+from .checks import production_plaid_configuration_check
+from .crypto import (
+    DEDICATED_PREFIX,
+    PREFIX,
+    TokenDecryptionError,
+    decrypt,
+    encrypt,
+)
+from .csv_import import (
+    MAX_TRANSACTION_AMOUNT,
+    _parse_amount,
+    _parse_date,
+    _resolve_columns,
+    import_transactions,
+)
+from .models import Account, Debt, Investment, PlaidItem, Transaction
+from .plaid_sync import (
+    PlaidItemOwnershipError,
+    SyncSummary,
+    _sync_transactions,
+    link_and_sync,
+)
 
 # ---------- CSV importer ----------
+
 
 class CSVHelperTests(SimpleTestCase):
     def test_resolve_columns_accepts_aliases(self):
@@ -86,12 +108,7 @@ class CSVImportTests(TestCase):
         self.assertTrue(any('Missing required column' in e for e in result.row_errors))
 
     def test_per_row_errors_listed_with_line_numbers(self):
-        csv = (
-            'date,amount,category\n'
-            '2026-01-15,10.00,Coffee\n'
-            'bad,bad,bad\n'
-            '2026-01-17,,Lunch\n'
-        )
+        csv = 'date,amount,category\n2026-01-15,10.00,Coffee\nbad,bad,bad\n2026-01-17,,Lunch\n'
         result = self._import(csv)
         self.assertEqual(result.created, 1)
         self.assertEqual(result.skipped, 2)
@@ -140,6 +157,57 @@ class CSVImportTests(TestCase):
 
 # ---------- Crypto helper + PlaidItem token round-trip ----------
 
+
+class FakeLinkClient:
+    def __init__(self):
+        self.request = None
+
+    def link_token_create(self, request):
+        self.request = request
+        return SimpleNamespace(link_token='link-sandbox-test')
+
+
+class PlaidClientConfigurationTests(SimpleTestCase):
+    def test_unknown_environment_is_not_silently_treated_as_sandbox(self):
+        with patch.dict(
+            os.environ,
+            {
+                'PLAID_CLIENT_ID': 'client-id',
+                'PLAID_SECRET': 'secret',
+                'PLAID_ENV': 'typo-environment',
+            },
+            clear=True,
+        ):
+            self.assertFalse(plaid_client.is_configured())
+            with self.assertRaisesMessage(
+                plaid_client.PlaidNotConfigured,
+                'PLAID_ENV must be sandbox, development, or production.',
+            ):
+                plaid_client._client()
+
+    def test_link_token_includes_configured_oauth_redirect(self):
+        fake_client = FakeLinkClient()
+        user = SimpleNamespace(pk=42)
+        with (
+            patch.object(plaid_client, '_client', return_value=fake_client),
+            patch.dict(
+                os.environ,
+                {
+                    'PLAID_PRODUCTS': 'transactions',
+                    'PLAID_REDIRECT_URI': 'https://example.com/plaid/oauth/',
+                },
+                clear=False,
+            ),
+        ):
+            token = plaid_client.create_link_token(user)
+
+        self.assertEqual(token, 'link-sandbox-test')
+        self.assertEqual(
+            fake_client.request.redirect_uri,
+            'https://example.com/plaid/oauth/',
+        )
+
+
 class CryptoRoundTripTests(SimpleTestCase):
     def test_round_trip(self):
         original = 'access-sandbox-abc123'
@@ -156,6 +224,83 @@ class CryptoRoundTripTests(SimpleTestCase):
         # Pre-encryption rows are stored without the prefix.
         self.assertEqual(decrypt('plaintext-legacy'), 'plaintext-legacy')
 
+    def test_dedicated_key_encrypts_with_versioned_prefix(self):
+        key = Fernet.generate_key().decode('ascii')
+        with override_settings(
+            PLAID_TOKEN_ENCRYPTION_KEY=key,
+            PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[],
+        ):
+            ciphertext = encrypt('access-sandbox-dedicated')
+
+            self.assertTrue(ciphertext.startswith(DEDICATED_PREFIX))
+            self.assertEqual(decrypt(ciphertext), 'access-sandbox-dedicated')
+
+    def test_legacy_secret_key_ciphertext_remains_readable_during_migration(self):
+        with override_settings(
+            PLAID_TOKEN_ENCRYPTION_KEY='',
+            PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[],
+        ):
+            legacy_ciphertext = encrypt('access-sandbox-legacy')
+
+        with override_settings(
+            PLAID_TOKEN_ENCRYPTION_KEY=Fernet.generate_key().decode('ascii'),
+            PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[],
+        ):
+            self.assertEqual(decrypt(legacy_ciphertext), 'access-sandbox-legacy')
+
+    def test_previous_dedicated_key_supports_safe_rotation(self):
+        old_key = Fernet.generate_key().decode('ascii')
+        new_key = Fernet.generate_key().decode('ascii')
+        with override_settings(
+            PLAID_TOKEN_ENCRYPTION_KEY=old_key,
+            PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[],
+        ):
+            old_ciphertext = encrypt('access-sandbox-rotating')
+
+        with override_settings(
+            PLAID_TOKEN_ENCRYPTION_KEY=new_key,
+            PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[old_key],
+        ):
+            self.assertEqual(decrypt(old_ciphertext), 'access-sandbox-rotating')
+
+    def test_unreadable_ciphertext_fails_closed(self):
+        with override_settings(
+            PLAID_TOKEN_ENCRYPTION_KEY=Fernet.generate_key().decode('ascii'),
+            PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[],
+        ):
+            with self.assertRaises(TokenDecryptionError):
+                decrypt(f'{DEDICATED_PREFIX}not-a-valid-token')
+
+
+class PlaidDeploymentCheckTests(SimpleTestCase):
+    @override_settings(
+        PLAID_TOKEN_ENCRYPTION_KEY='',
+        PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[],
+    )
+    @patch.dict(
+        os.environ,
+        {
+            'PLAID_CLIENT_ID': 'sandbox-client',
+            'PLAID_SECRET': 'sandbox-secret',
+            'PLAID_ENV': 'sandbox',
+        },
+        clear=False,
+    )
+    def test_configured_plaid_requires_independent_encryption_key(self):
+        errors = production_plaid_configuration_check(None)
+
+        self.assertIn('emvera.E003', {error.id for error in errors})
+
+    @override_settings(
+        PLAID_TOKEN_ENCRYPTION_KEY='invalid-key',
+        PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[],
+    )
+    @patch.dict(os.environ, {'PLAID_CLIENT_ID': '', 'PLAID_SECRET': ''}, clear=False)
+    def test_invalid_fernet_key_is_rejected_even_before_plaid_is_enabled(self):
+        errors = production_plaid_configuration_check(None)
+
+        self.assertIn('emvera.E004', {error.id for error in errors})
+
 
 class PlaidItemTokenTests(TestCase):
     def test_token_is_encrypted_at_rest(self):
@@ -169,6 +314,29 @@ class PlaidItemTokenTests(TestCase):
         self.assertTrue(reloaded.access_token.startswith(PREFIX))
         self.assertNotIn('secret', reloaded.access_token)
         self.assertEqual(reloaded.get_access_token(), 'access-sandbox-secret')
+
+    def test_rotation_command_rewrites_legacy_ciphertext(self):
+        user = get_user_model().objects.create_user(username='rotate', password='x')
+        with override_settings(
+            PLAID_TOKEN_ENCRYPTION_KEY='',
+            PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[],
+        ):
+            item = PlaidItem(user=user, item_id='item-rotate')
+            item.set_access_token('access-sandbox-rotate')
+            item.save()
+            self.assertFalse(item.access_token.startswith(DEDICATED_PREFIX))
+
+        output = io.StringIO()
+        with override_settings(
+            PLAID_TOKEN_ENCRYPTION_KEY=Fernet.generate_key().decode('ascii'),
+            PLAID_TOKEN_ENCRYPTION_PREVIOUS_KEYS=[],
+        ):
+            call_command('reencrypt_plaid_tokens', stdout=output)
+            item.refresh_from_db()
+            self.assertTrue(item.access_token.startswith(DEDICATED_PREFIX))
+            self.assertEqual(item.get_access_token(), 'access-sandbox-rotate')
+
+        self.assertIn('Re-encrypted 1 token(s).', output.getvalue())
 
 
 class FakeTransactionsSyncRequest:
@@ -221,7 +389,9 @@ class PlaidSyncTests(TestCase):
             'plaid.model.transactions_sync_request': sync_request_module,
         }
 
-    def response(self, *, added=(), modified=(), removed=(), next_cursor='cursor-next', has_more=False):
+    def response(
+        self, *, added=(), modified=(), removed=(), next_cursor='cursor-next', has_more=False
+    ):
         return SimpleNamespace(
             added=list(added),
             modified=list(modified),
@@ -243,21 +413,25 @@ class PlaidSyncTests(TestCase):
     def run_sync(self, responses):
         client = FakePlaidTransactionsClient(responses)
         summary = SyncSummary()
-        with patch.dict(sys.modules, self.plaid_modules()), \
-             patch('data_integration.plaid_client._client', return_value=client):
+        with (
+            patch.dict(sys.modules, self.plaid_modules()),
+            patch('data_integration.plaid_client._client', return_value=client),
+        ):
             _sync_transactions(self.user, self.item, summary)
         self.item.refresh_from_db()
         return client, summary
 
     def test_sync_transactions_persists_cursor_across_pages(self):
-        client, summary = self.run_sync([
-            self.response(
-                added=[self.plaid_transaction('tx-1')],
-                next_cursor='cursor-1',
-                has_more=True,
-            ),
-            self.response(next_cursor='cursor-2'),
-        ])
+        client, summary = self.run_sync(
+            [
+                self.response(
+                    added=[self.plaid_transaction('tx-1')],
+                    next_cursor='cursor-1',
+                    has_more=True,
+                ),
+                self.response(next_cursor='cursor-2'),
+            ]
+        )
 
         self.assertEqual([request.cursor for request in client.requests], ['cursor-0', 'cursor-1'])
         self.assertEqual(self.item.cursor, 'cursor-2')
@@ -277,14 +451,18 @@ class PlaidSyncTests(TestCase):
             source='api',
         )
 
-        _, summary = self.run_sync([
-            self.response(
-                added=[self.plaid_transaction('tx-existing', amount=14.56)],
-                next_cursor='cursor-1',
-            ),
-        ])
+        _, summary = self.run_sync(
+            [
+                self.response(
+                    added=[self.plaid_transaction('tx-existing', amount=14.56)],
+                    next_cursor='cursor-1',
+                ),
+            ]
+        )
 
-        self.assertEqual(Transaction.objects.filter(account=self.account, external_id='tx-existing').count(), 1)
+        self.assertEqual(
+            Transaction.objects.filter(account=self.account, external_id='tx-existing').count(), 1
+        )
         transaction = Transaction.objects.get(account=self.account, external_id='tx-existing')
         self.assertEqual(transaction.amount, Decimal('-14.56'))
         self.assertEqual(transaction.category, 'Groceries')
@@ -301,18 +479,22 @@ class PlaidSyncTests(TestCase):
             source='api',
         )
 
-        _, summary = self.run_sync([
-            self.response(
-                added=[self.plaid_transaction('tx-shared', amount=20.00)],
-                next_cursor='cursor-1',
-            ),
-        ])
+        _, summary = self.run_sync(
+            [
+                self.response(
+                    added=[self.plaid_transaction('tx-shared', amount=20.00)],
+                    next_cursor='cursor-1',
+                ),
+            ]
+        )
 
         other_transaction.refresh_from_db()
         self.assertEqual(other_transaction.account, self.other_account)
         self.assertEqual(other_transaction.amount, Decimal('-99.00'))
         self.assertEqual(Transaction.objects.filter(external_id='tx-shared').count(), 2)
-        self.assertTrue(Transaction.objects.filter(account=self.account, external_id='tx-shared').exists())
+        self.assertTrue(
+            Transaction.objects.filter(account=self.account, external_id='tx-shared').exists()
+        )
         self.assertEqual(summary.transactions_added, 1)
 
     def test_sync_transactions_does_not_modify_or_remove_another_users_rows(self):
@@ -335,13 +517,15 @@ class PlaidSyncTests(TestCase):
             source='api',
         )
 
-        _, summary = self.run_sync([
-            self.response(
-                modified=[self.plaid_transaction('tx-modified', amount=20.00)],
-                removed=[SimpleNamespace(transaction_id='tx-removed')],
-                next_cursor='cursor-1',
-            ),
-        ])
+        _, summary = self.run_sync(
+            [
+                self.response(
+                    modified=[self.plaid_transaction('tx-modified', amount=20.00)],
+                    removed=[SimpleNamespace(transaction_id='tx-removed')],
+                    next_cursor='cursor-1',
+                ),
+            ]
+        )
 
         modified.refresh_from_db()
         removed.refresh_from_db()
@@ -370,19 +554,48 @@ class PlaidSyncTests(TestCase):
             source='api',
         )
 
-        _, summary = self.run_sync([
-            self.response(
-                modified=[self.plaid_transaction('tx-modified', amount=20.00)],
-                removed=[SimpleNamespace(transaction_id='tx-removed')],
-                next_cursor='cursor-1',
-            ),
-        ])
+        _, summary = self.run_sync(
+            [
+                self.response(
+                    modified=[self.plaid_transaction('tx-modified', amount=20.00)],
+                    removed=[SimpleNamespace(transaction_id='tx-removed')],
+                    next_cursor='cursor-1',
+                ),
+            ]
+        )
 
         modified = Transaction.objects.get(account=self.account, external_id='tx-modified')
         self.assertEqual(modified.amount, Decimal('-20.00'))
-        self.assertFalse(Transaction.objects.filter(account=self.account, external_id='tx-removed').exists())
+        self.assertFalse(
+            Transaction.objects.filter(account=self.account, external_id='tx-removed').exists()
+        )
         self.assertEqual(summary.transactions_modified, 1)
         self.assertEqual(summary.transactions_removed, 1)
+
+    @patch('data_integration.plaid_sync._sync_transactions')
+    @patch('data_integration.plaid_sync._sync_accounts', return_value={})
+    @patch('data_integration.plaid_client.get_institution_name', return_value='Sandbox Bank')
+    @patch('data_integration.plaid_client.exchange_public_token')
+    def test_link_rejects_cross_user_item_without_changing_owner_or_token(
+        self,
+        exchange_public_token,
+        _get_institution_name,
+        _sync_accounts_mock,
+        _sync_transactions_mock,
+    ):
+        exchange_public_token.return_value = {
+            'item_id': self.item.item_id,
+            'access_token': 'attacker-token',
+        }
+
+        with self.assertRaises(PlaidItemOwnershipError):
+            link_and_sync(self.other_user, 'public-sandbox-token')
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.user, self.user)
+        self.assertEqual(self.item.get_access_token(), 'access-sync')
+        _sync_accounts_mock.assert_not_called()
+        _sync_transactions_mock.assert_not_called()
 
 
 class PlaidResyncCommandTests(TestCase):
@@ -407,7 +620,9 @@ class PlaidResyncCommandTests(TestCase):
 
         output = stdout.getvalue()
         self.assertIn('Syncing 1 item(s)...', output)
-        self.assertIn('- resync-user / Ridge Bank', output)
+        self.assertIn(f'- processing linked item {self.item.pk}', output)
+        self.assertNotIn('resync-user', output)
+        self.assertNotIn('Ridge Bank', output)
         self.assertNotIn('other-resync-user', output)
         self.item.refresh_from_db()
         self.assertIsNone(self.item.last_synced_at)
@@ -424,8 +639,10 @@ class PlaidResyncCommandTests(TestCase):
 
         output = stdout.getvalue()
         self.assertIn('Syncing 1 item(s)...', output)
-        self.assertIn('- other-resync-user / River Bank', output)
-        self.assertNotIn('- resync-user / Ridge Bank', output)
+        self.assertIn(f'- processing linked item {self.other_item.pk}', output)
+        self.assertNotIn('other-resync-user', output)
+        self.assertNotIn('River Bank', output)
+        self.assertNotIn(f'- processing linked item {self.item.pk}', output)
         self.other_item.refresh_from_db()
         self.assertLess(self.other_item.last_synced_at, timezone.now() - timedelta(hours=24))
 
@@ -436,6 +653,7 @@ class PlaidResyncCommandTests(TestCase):
 
 
 # ---------- Legacy model + view tests, kept passing ----------
+
 
 class AccountModelTest(TestCase):
     def setUp(self):
@@ -451,8 +669,12 @@ class TransactionModelTest(TestCase):
         self.user = get_user_model().objects.create_user(username='m2', password='x')
         self.account = Account.objects.create(user=self.user, name='Test Checking', type='checking')
         self.transaction = Transaction.objects.create(
-            account=self.account, date='2026-03-18', amount=100.00,
-            category='Groceries', description='Test', source='manual',
+            account=self.account,
+            date='2026-03-18',
+            amount=100.00,
+            category='Groceries',
+            description='Test',
+            source='manual',
         )
 
     def test_transaction_str(self):
@@ -462,10 +684,17 @@ class TransactionModelTest(TestCase):
 class InvestmentModelTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username='m3', password='x')
-        self.account = Account.objects.create(user=self.user, name='Test Investment', type='investment')
+        self.account = Account.objects.create(
+            user=self.user, name='Test Investment', type='investment'
+        )
         self.investment = Investment.objects.create(
-            account=self.account, name='Test Fund', type='mutual',
-            value=1000.00, quantity=10, symbol='TST', as_of='2026-03-18',
+            account=self.account,
+            name='Test Fund',
+            type='mutual',
+            value=1000.00,
+            quantity=10,
+            symbol='TST',
+            as_of='2026-03-18',
         )
 
     def test_investment_str(self):
@@ -477,8 +706,13 @@ class DebtModelTest(TestCase):
         self.user = get_user_model().objects.create_user(username='m4', password='x')
         self.account = Account.objects.create(user=self.user, name='Test Debt', type='debt')
         self.debt = Debt.objects.create(
-            account=self.account, name='Test Loan', principal=5000.00,
-            interest_rate=5.0, balance=4500.00, due_date='2026-04-01', as_of='2026-03-18',
+            account=self.account,
+            name='Test Loan',
+            principal=5000.00,
+            interest_rate=5.0,
+            balance=4500.00,
+            due_date='2026-04-01',
+            as_of='2026-03-18',
         )
 
     def test_debt_str(self):
@@ -488,22 +722,32 @@ class DebtModelTest(TestCase):
 class DataIntegrationViewsTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
-            username='viewer', password='x', two_factor_enabled=True,
+            username='viewer',
+            password='x',
+            two_factor_enabled=True,
         )
         self.account = Account.objects.create(user=self.user, name='Checking', type='checking')
         self.other_user = get_user_model().objects.create_user(
-            username='other-viewer', password='x', two_factor_enabled=True,
+            username='other-viewer',
+            password='x',
+            two_factor_enabled=True,
         )
         self.other_account = Account.objects.create(
-            user=self.other_user, name='Other Checking', type='checking',
+            user=self.other_user,
+            name='Other Checking',
+            type='checking',
         )
         self.debt_account = Account.objects.create(
-            user=self.user, name='Auto Loan', type='debt',
+            user=self.user,
+            name='Auto Loan',
+            type='debt',
         )
         self.other_debt_account = Account.objects.create(
-            user=self.other_user, name='Other Auto Loan', type='debt',
+            user=self.other_user,
+            name='Other Auto Loan',
+            type='debt',
         )
-        self.client.login(username='viewer', password='x')
+        force_login_with_otp(self.client, self.user)
 
     def test_connect_plaid_view(self):
         response = self.client.get(reverse('data_integration:connect_plaid'))
@@ -540,9 +784,12 @@ class DataIntegrationViewsTest(TestCase):
 
     @patch.dict(os.environ, {'PLAID_CLIENT_ID': '', 'PLAID_SECRET': ''})
     def test_plaid_exchange_returns_configuration_error_when_unconfigured(self):
-        response = self.client.post(reverse('data_integration:plaid_exchange'), {
-            'public_token': 'public-sandbox-test',
-        })
+        response = self.client.post(
+            reverse('data_integration:plaid_exchange'),
+            {
+                'public_token': 'public-sandbox-test',
+            },
+        )
         self.assertEqual(response.status_code, 503)
         self.assertIn('PLAID_CLIENT_ID', response.json()['error'])
 
@@ -551,14 +798,36 @@ class DataIntegrationViewsTest(TestCase):
         link_and_sync.side_effect = RuntimeError('raw access token leaked')
 
         with self.assertLogs('data_integration.views', level='ERROR') as logs:
-            response = self.client.post(reverse('data_integration:plaid_exchange'), {
-                'public_token': 'public-sandbox-test',
-            })
+            response = self.client.post(
+                reverse('data_integration:plaid_exchange'),
+                {
+                    'public_token': 'public-sandbox-test',
+                },
+            )
 
         self.assertEqual(response.status_code, 502)
         self.assertEqual(response.json()['error'], 'Plaid sync is temporarily unavailable.')
         self.assertNotIn('raw access token leaked', response.content.decode('utf-8'))
         self.assertIn('Failed to exchange Plaid public token', '\n'.join(logs.output))
+
+    @patch('data_integration.plaid_sync.link_and_sync')
+    def test_plaid_exchange_returns_stable_conflict_for_cross_user_item(self, sync):
+        sync.side_effect = PlaidItemOwnershipError('sensitive ownership detail')
+
+        with self.assertLogs('data_integration.views', level='WARNING'):
+            response = self.client.post(
+                reverse('data_integration:plaid_exchange'),
+                {
+                    'public_token': 'public-sandbox-test',
+                },
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.json()['error'],
+            'This bank connection is already linked to another account.',
+        )
+        self.assertNotIn('sensitive ownership detail', response.content.decode('utf-8'))
 
     def test_manual_account_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_account_entry'))
@@ -566,36 +835,47 @@ class DataIntegrationViewsTest(TestCase):
         self.assertTemplateUsed(response, 'data_integration/manual_account_entry.html')
 
     def test_manual_account_entry_redirects_incomplete_user_to_onboarding(self):
-        response = self.client.post(reverse('data_integration:manual_account_entry'), {
-            'name': 'Savings',
-            'type': 'savings',
-            'institution': 'Local Credit Union',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_account_entry'),
+            {
+                'name': 'Savings',
+                'type': 'savings',
+                'institution': 'Local Credit Union',
+            },
+        )
         self.assertRedirects(response, reverse('accounts:onboarding'))
         self.assertTrue(Account.objects.filter(user=self.user, name='Savings').exists())
 
     def test_manual_account_entry_redirects_complete_user_to_portfolio(self):
         self.user.profile_complete = True
         self.user.save()
-        response = self.client.post(reverse('data_integration:manual_account_entry'), {
-            'name': 'Brokerage',
-            'type': 'investment',
-            'institution': 'Local Broker',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_account_entry'),
+            {
+                'name': 'Brokerage',
+                'type': 'investment',
+                'institution': 'Local Broker',
+            },
+        )
         self.assertRedirects(response, reverse('investments:portfolio_overview'))
         self.assertTrue(Account.objects.filter(user=self.user, name='Brokerage').exists())
 
     def test_manual_account_entry_requires_name_and_type(self):
-        response = self.client.post(reverse('data_integration:manual_account_entry'), {
-            'name': '',
-            'type': '',
-            'institution': 'Local Credit Union',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_account_entry'),
+            {
+                'name': '',
+                'type': '',
+                'institution': 'Local Credit Union',
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['form'].has_error('name', 'required'))
         self.assertTrue(response.context['form'].has_error('type', 'required'))
-        self.assertFalse(Account.objects.filter(user=self.user, institution='Local Credit Union').exists())
+        self.assertFalse(
+            Account.objects.filter(user=self.user, institution='Local Credit Union').exists()
+        )
 
     def test_manual_transaction_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_transaction_entry'))
@@ -603,40 +883,49 @@ class DataIntegrationViewsTest(TestCase):
         self.assertTemplateUsed(response, 'data_integration/manual_transaction_entry.html')
 
     def test_manual_transaction_entry_redirects_to_portfolio(self):
-        response = self.client.post(reverse('data_integration:manual_transaction_entry'), {
-            'account': self.account.pk,
-            'date': '2026-07-09',
-            'amount': '42.50',
-            'category': 'Groceries',
-            'description': 'Market',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_transaction_entry'),
+            {
+                'account': self.account.pk,
+                'date': '2026-07-09',
+                'amount': '42.50',
+                'category': 'Groceries',
+                'description': 'Market',
+            },
+        )
         self.assertRedirects(response, reverse('investments:portfolio_overview'))
         transaction = Transaction.objects.get(account=self.account, category='Groceries')
         self.assertEqual(transaction.source, 'manual')
 
     def test_manual_transaction_entry_forces_manual_source(self):
-        response = self.client.post(reverse('data_integration:manual_transaction_entry'), {
-            'account': self.account.pk,
-            'date': '2026-07-09',
-            'amount': '42.50',
-            'category': 'Groceries',
-            'description': 'Forged source',
-            'source': 'api',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_transaction_entry'),
+            {
+                'account': self.account.pk,
+                'date': '2026-07-09',
+                'amount': '42.50',
+                'category': 'Groceries',
+                'description': 'Forged source',
+                'source': 'api',
+            },
+        )
 
         self.assertRedirects(response, reverse('investments:portfolio_overview'))
         transaction = Transaction.objects.get(account=self.account, description='Forged source')
         self.assertEqual(transaction.source, 'manual')
 
     def test_manual_transaction_rejects_another_users_account(self):
-        response = self.client.post(reverse('data_integration:manual_transaction_entry'), {
-            'account': self.other_account.pk,
-            'date': '2026-07-09',
-            'amount': '42.50',
-            'category': 'Leaked',
-            'description': 'Wrong account',
-            'source': 'manual',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_transaction_entry'),
+            {
+                'account': self.other_account.pk,
+                'date': '2026-07-09',
+                'amount': '42.50',
+                'category': 'Leaked',
+                'description': 'Wrong account',
+                'source': 'manual',
+            },
+        )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Transaction.objects.filter(account=self.other_account).exists())
         self.assertFormError(
@@ -646,21 +935,28 @@ class DataIntegrationViewsTest(TestCase):
         )
 
     def test_manual_transaction_entry_rejects_invalid_required_fields(self):
-        response = self.client.post(reverse('data_integration:manual_transaction_entry'), {
-            'account': self.account.pk,
-            'date': 'not-a-date',
-            'amount': 'not-a-number',
-            'category': '',
-            'description': 'Invalid transaction',
-            'source': 'manual',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_transaction_entry'),
+            {
+                'account': self.account.pk,
+                'date': 'not-a-date',
+                'amount': 'not-a-number',
+                'category': '',
+                'description': 'Invalid transaction',
+                'source': 'manual',
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         form = response.context['form']
         self.assertTrue(form.has_error('date', 'invalid'))
         self.assertTrue(form.has_error('amount', 'invalid'))
         self.assertTrue(form.has_error('category', 'required'))
-        self.assertFalse(Transaction.objects.filter(account=self.account, description='Invalid transaction').exists())
+        self.assertFalse(
+            Transaction.objects.filter(
+                account=self.account, description='Invalid transaction'
+            ).exists()
+        )
 
     def test_csv_upload_view(self):
         response = self.client.get(reverse('data_integration:csv_upload'))
@@ -678,16 +974,21 @@ class DataIntegrationViewsTest(TestCase):
             content_type='text/csv',
         )
 
-        response = self.client.post(reverse('data_integration:csv_upload'), {
-            'account': self.account.pk,
-            'file': upload,
-        })
+        response = self.client.post(
+            reverse('data_integration:csv_upload'),
+            {
+                'account': self.account.pk,
+                'file': upload,
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'data_integration/csv_upload.html')
         self.assertContains(response, 'Imported 2 transaction(s).')
         self.assertEqual(Transaction.objects.filter(account=self.account, source='csv').count(), 2)
-        self.assertTrue(Transaction.objects.filter(account=self.account, category='Groceries').exists())
+        self.assertTrue(
+            Transaction.objects.filter(account=self.account, category='Groceries').exists()
+        )
 
     def test_csv_upload_rejects_another_users_account(self):
         upload = SimpleUploadedFile(
@@ -696,10 +997,13 @@ class DataIntegrationViewsTest(TestCase):
             content_type='text/csv',
         )
 
-        response = self.client.post(reverse('data_integration:csv_upload'), {
-            'account': self.other_account.pk,
-            'file': upload,
-        })
+        response = self.client.post(
+            reverse('data_integration:csv_upload'),
+            {
+                'account': self.other_account.pk,
+                'file': upload,
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Transaction.objects.filter(account=self.other_account).exists())
@@ -710,16 +1014,19 @@ class DataIntegrationViewsTest(TestCase):
         )
 
     def test_manual_debt_entry_rejects_invalid_required_fields(self):
-        response = self.client.post(reverse('data_integration:manual_debt_entry'), {
-            'account': self.debt_account.pk,
-            'name': '',
-            'principal': 'not-a-number',
-            'interest_rate': 'bad-rate',
-            'balance': '',
-            'minimum_payment': 'bad-payment',
-            'due_date': 'not-a-date',
-            'as_of': '',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_debt_entry'),
+            {
+                'account': self.debt_account.pk,
+                'name': '',
+                'principal': 'not-a-number',
+                'interest_rate': 'bad-rate',
+                'balance': '',
+                'minimum_payment': 'bad-payment',
+                'due_date': 'not-a-date',
+                'as_of': '',
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         form = response.context['form']
@@ -733,16 +1040,19 @@ class DataIntegrationViewsTest(TestCase):
         self.assertFalse(Debt.objects.filter(account=self.debt_account, name='').exists())
 
     def test_manual_debt_entry_rejects_values_outside_server_bounds(self):
-        response = self.client.post(reverse('data_integration:manual_debt_entry'), {
-            'account': self.debt_account.pk,
-            'name': 'Impossible Debt',
-            'principal': '-1.00',
-            'interest_rate': '101.00',
-            'balance': '-5.00',
-            'minimum_payment': '-10.00',
-            'due_date': '2026-08-15',
-            'as_of': '2026-07-15',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_debt_entry'),
+            {
+                'account': self.debt_account.pk,
+                'name': 'Impossible Debt',
+                'principal': '-1.00',
+                'interest_rate': '101.00',
+                'balance': '-5.00',
+                'minimum_payment': '-10.00',
+                'due_date': '2026-08-15',
+                'as_of': '2026-07-15',
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         form = response.context['form']
@@ -750,7 +1060,9 @@ class DataIntegrationViewsTest(TestCase):
         self.assertTrue(form.has_error('interest_rate'))
         self.assertTrue(form.has_error('balance'))
         self.assertTrue(form.has_error('minimum_payment'))
-        self.assertFalse(Debt.objects.filter(account=self.debt_account, name='Impossible Debt').exists())
+        self.assertFalse(
+            Debt.objects.filter(account=self.debt_account, name='Impossible Debt').exists()
+        )
 
     def test_manual_debt_entry_view(self):
         response = self.client.get(reverse('data_integration:manual_debt_entry'))
@@ -758,16 +1070,19 @@ class DataIntegrationViewsTest(TestCase):
         self.assertTemplateUsed(response, 'data_integration/manual_debt_entry.html')
 
     def test_manual_debt_entry_creates_debt_for_selected_account(self):
-        response = self.client.post(reverse('data_integration:manual_debt_entry'), {
-            'account': self.debt_account.pk,
-            'name': 'Auto Loan Balance',
-            'principal': '24000.00',
-            'interest_rate': '6.25',
-            'balance': '19000.00',
-            'minimum_payment': '425.00',
-            'due_date': '2026-08-15',
-            'as_of': '2026-07-09',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_debt_entry'),
+            {
+                'account': self.debt_account.pk,
+                'name': 'Auto Loan Balance',
+                'principal': '24000.00',
+                'interest_rate': '6.25',
+                'balance': '19000.00',
+                'minimum_payment': '425.00',
+                'due_date': '2026-08-15',
+                'as_of': '2026-07-09',
+            },
+        )
 
         self.assertRedirects(response, reverse('debt_management:debt_dashboard'))
         debt = Debt.objects.get(account=self.debt_account, name='Auto Loan Balance')
@@ -775,16 +1090,19 @@ class DataIntegrationViewsTest(TestCase):
         self.assertEqual(debt.minimum_payment, Decimal('425.00'))
 
     def test_manual_debt_entry_rejects_another_users_account(self):
-        response = self.client.post(reverse('data_integration:manual_debt_entry'), {
-            'account': self.other_debt_account.pk,
-            'name': 'Leaked Loan',
-            'principal': '24000.00',
-            'interest_rate': '6.25',
-            'balance': '19000.00',
-            'minimum_payment': '425.00',
-            'due_date': '2026-08-15',
-            'as_of': '2026-07-09',
-        })
+        response = self.client.post(
+            reverse('data_integration:manual_debt_entry'),
+            {
+                'account': self.other_debt_account.pk,
+                'name': 'Leaked Loan',
+                'principal': '24000.00',
+                'interest_rate': '6.25',
+                'balance': '19000.00',
+                'minimum_payment': '425.00',
+                'due_date': '2026-08-15',
+                'as_of': '2026-07-09',
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Debt.objects.filter(account=self.other_debt_account).exists())

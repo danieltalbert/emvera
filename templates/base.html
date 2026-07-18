@@ -4,8 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Emvera personal-finance sandbox dashboard">
   <meta name="theme-color" content="#1B3A2D">
-  <title>{% block title %}Ridge &amp; River Financial{% endblock %}</title>
+  <title>{% block title %}Emvera{% endblock %}</title>
 
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,9 +17,10 @@
   {% block extra_css %}{% endblock %}
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
 <!-- Sidebar overlay (mobile) -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
 
 <div class="app-layout">
 
@@ -26,11 +28,11 @@
   <nav class="sidebar" id="sidebar" aria-label="Main navigation">
 
     <!-- Brand / Logo -->
-    <a href="{% url 'investments:portfolio_overview' %}" class="sidebar-logo" aria-label="Ridge & River Financial home">
-      <div class="logo-mark">R&amp;R</div>
+    <a href="{% url 'investments:portfolio_overview' %}" class="sidebar-logo" aria-label="Emvera dashboard home">
+      <div class="logo-mark" aria-hidden="true">E</div>
       <div class="logo-text">
-        <span class="logo-primary">Ridge &amp; River</span>
-        <span class="logo-secondary">Financial</span>
+        <span class="logo-primary">Emvera</span>
+        <span class="logo-secondary">Financial sandbox</span>
       </div>
     </a>
 
@@ -290,8 +292,8 @@
 
     <!-- Footer -->
     <footer class="app-footer" role="contentinfo">
-      <span>© 2025 Ridge &amp; River Financial</span>
-      <span>Built with care in the Pacific Northwest</span>
+      <span>&copy; {% now "Y" %} Emvera</span>
+      <span>Educational prototype &middot; Not financial advice</span>
     </footer>
 
   </div>
@@ -304,18 +306,25 @@
   const sidebar   = document.getElementById('sidebar');
   const overlay   = document.getElementById('sidebarOverlay');
   const menuBtn   = document.getElementById('mobileMenuBtn');
+  let previouslyFocused = null;
 
   function openSidebar() {
+    previouslyFocused = document.activeElement;
     sidebar.classList.add('open');
     overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
     menuBtn.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
+    const firstLink = sidebar.querySelector('a, button');
+    if (firstLink) firstLink.focus();
   }
-  function closeSidebar() {
+  function closeSidebar(restoreFocus) {
     sidebar.classList.remove('open');
     overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
     menuBtn.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
+    if (restoreFocus && previouslyFocused) previouslyFocused.focus();
   }
 
   if (menuBtn) {
@@ -324,12 +333,12 @@
     });
   }
   if (overlay) {
-    overlay.addEventListener('click', closeSidebar);
+    overlay.addEventListener('click', function () { closeSidebar(true); });
   }
 
   // Close sidebar on Escape
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
+    if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar(true);
   });
 })();
 </script>
