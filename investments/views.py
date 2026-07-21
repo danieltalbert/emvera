@@ -68,7 +68,12 @@ def portfolio_performance(request):
 @require_2fa
 def portfolio_overview(request):
     investments = _user_investments(request.user).order_by('-as_of')
-    return render(request, 'investments/portfolio_overview.html', {'investments': investments})
+    total_value = investments.aggregate(total=Sum('value'))['total'] or 0
+    return render(
+        request,
+        'investments/portfolio_overview.html',
+        {'investments': investments, 'total_value': total_value},
+    )
 
 
 @login_required

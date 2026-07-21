@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">Emvera social preview</title>
+  <desc id="desc">A dark green portfolio card for Emvera, a secure Django personal-finance sandbox.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b211d"/>
+      <stop offset="1" stop-color="#123c34"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#75d5c7"/>
+      <stop offset="1" stop-color="#3d9d98"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" rx="36" fill="url(#bg)"/>
+  <circle cx="1120" cy="90" r="240" fill="#75d5c7" opacity=".06"/>
+  <circle cx="1180" cy="610" r="300" fill="#3d9d98" opacity=".08"/>
+  <rect x="74" y="66" width="74" height="74" rx="22" fill="url(#mark)"/>
+  <text x="111" y="118" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="47" font-weight="700" fill="#08231e">E</text>
+  <text x="170" y="119" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="31" font-weight="650" fill="#dff9f3">EMVERA</text>
+  <text x="76" y="260" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="65" font-weight="750" fill="#ffffff">Personal finance,</text>
+  <text x="76" y="332" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="65" font-weight="750" fill="#ffffff">engineered around trust.</text>
+  <text x="78" y="389" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="25" fill="#b8d8d0">Django · PostgreSQL · Plaid Sandbox · TOTP · Docker</text>
+  <g transform="translate(76 465)">
+    <rect width="235" height="92" rx="18" fill="#ffffff" opacity=".08" stroke="#8de0d2" stroke-opacity=".18"/>
+    <text x="24" y="38" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#a7c9c1">VERIFICATION</text>
+    <text x="24" y="70" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="27" font-weight="700" fill="#ffffff">205 tests</text>
+  </g>
+  <g transform="translate(329 465)">
+    <rect width="260" height="92" rx="18" fill="#ffffff" opacity=".08" stroke="#8de0d2" stroke-opacity=".18"/>
+    <text x="24" y="38" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#a7c9c1">DATA BOUNDARY</text>
+    <text x="24" y="70" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="27" font-weight="700" fill="#ffffff">Sandbox only</text>
+  </g>
+  <g transform="translate(607 465)">
+    <rect width="285" height="92" rx="18" fill="#ffffff" opacity=".08" stroke="#8de0d2" stroke-opacity=".18"/>
+    <text x="24" y="38" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#a7c9c1">SECURITY</text>
+    <text x="24" y="70" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="27" font-weight="700" fill="#ffffff">Owner-scoped data</text>
+  </g>
+</svg>

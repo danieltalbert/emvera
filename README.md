@@ -1,6 +1,7 @@
 # Emvera
 
 [![Backend CI](https://github.com/danieltalbert/emvera/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/danieltalbert/emvera/actions/workflows/backend-ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-3d9d98.svg)](LICENSE)
 
 Emvera is a Django personal-finance engineering project that combines account aggregation, debt-planning tools, portfolio analysis, and virtual investing competitions. The current release is deliberately designed for **Plaid Sandbox and synthetic data**: it demonstrates the end-to-end data flow without connecting real financial accounts or placing real trades.
 
@@ -45,6 +46,14 @@ flowchart LR
 ```
 
 The detailed trust boundaries and data flow are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Product tour
+
+All screenshots use synthetic portfolio and debt data.
+
+| Landing page | Portfolio workflow | Debt workflow |
+| --- | --- | --- |
+| ![Emvera landing page](docs/assets/landing.png) | ![Synthetic investment portfolio](docs/assets/portfolio.png) | ![Synthetic debt dashboard](docs/assets/debt-dashboard.png) |
 
 ## Run locally
 
@@ -96,7 +105,7 @@ ruff format --check .
 ruff check .
 ```
 
-The current release suite contains 204 tests. CI repeats it against PostgreSQL on Python 3.12 and 3.13, builds manifest-backed static assets, runs Django's hardened deployment checks, compiles the source tree, and audits pinned dependencies.
+The current release suite contains 205 tests. CI repeats it against PostgreSQL on Python 3.12 and 3.13, builds manifest-backed static assets, runs Django's hardened deployment checks, compiles the source tree, and audits pinned dependencies.
 
 ## Repository guide
 
@@ -117,3 +126,7 @@ docs/               architecture, demo, deployment, and integration notes
 Never commit `.env`, API credentials, access tokens, production data, or authenticator secrets. The deployment-specific settings and launch checklist are in [DEPLOYMENT.md](DEPLOYMENT.md); vulnerability reporting is covered by [SECURITY.md](SECURITY.md).
 
 The repository is ready for a sandbox demonstration. A public launch still requires a real hosting target, managed secrets, SMTP credentials, a dedicated production database, monitoring, backups, and the explicit go-live review documented in the deployment guide.
+
+## License and release
+
+The source code is available under the [MIT License](LICENSE). Emvera does not include or relicense third-party financial data. Release notes are maintained in [CHANGELOG.md](CHANGELOG.md); intentionally retired product experiments are summarized in [docs/ARCHIVED_EXPERIMENTS.md](docs/ARCHIVED_EXPERIMENTS.md).
