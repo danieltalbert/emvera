@@ -63,11 +63,7 @@
         </svg>
       </div>
     </div>
-    {% if investments %}
-    <div class="stat-value">${{ investments.0.value|default:"0.00" }}</div>
-    {% else %}
-    <div class="stat-value">$0.00</div>
-    {% endif %}
+    <div class="stat-value">${{ total_value|floatformat:2 }}</div>
     <div class="stat-meta"><span>Total market value</span></div>
   </div>
 

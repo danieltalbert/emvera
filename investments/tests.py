@@ -91,6 +91,47 @@ class InvestmentsViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'investments/portfolio_overview.html')
 
+    def test_portfolio_overview_sums_only_current_users_holdings(self):
+        Investment.objects.create(
+            account=self.account,
+            name='Stock Fund',
+            type='stock',
+            value=Decimal('300.00'),
+            quantity=Decimal('3.0000'),
+            symbol='STK',
+            as_of=date(2026, 7, 20),
+        )
+        Investment.objects.create(
+            account=self.account,
+            name='Bond Fund',
+            type='bond',
+            value=Decimal('100.00'),
+            quantity=Decimal('1.0000'),
+            symbol='BND',
+            as_of=date(2026, 7, 20),
+        )
+        other_user = get_user_model().objects.create_user(
+            username='portfolio-other', password='x', two_factor_enabled=True
+        )
+        other_account = Account.objects.create(
+            user=other_user, name='Other Brokerage', type='investment'
+        )
+        Investment.objects.create(
+            account=other_account,
+            name='Hidden Holding',
+            type='stock',
+            value=Decimal('9600.00'),
+            quantity=Decimal('96.0000'),
+            symbol='HID',
+            as_of=date(2026, 7, 20),
+        )
+
+        response = self.client.get(reverse('investments:portfolio_overview'))
+
+        self.assertEqual(response.context['total_value'], Decimal('400.00'))
+        self.assertContains(response, '$400.00')
+        self.assertNotContains(response, '$9600.00')
+
     def test_investment_growth_chart_view(self):
         response = self.client.get(reverse('investments:investment_growth_chart'))
         self.assertEqual(response.status_code, 200)
