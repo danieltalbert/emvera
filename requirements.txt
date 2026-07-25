@@ -13,7 +13,7 @@ cryptography==49.0.0
 
 # Plaid is used for the sandbox bank-link demo. Credentials stay in environment
 # secrets and are never sent to the browser.
-plaid-python==40.1.0
+plaid-python==42.0.0
 
 # SMS reminders are optional and remain inactive without Twilio credentials.
 twilio==9.10.9
