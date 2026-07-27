@@ -7,6 +7,8 @@ Emvera is a Django personal-finance engineering project that combines account ag
 
 > **Project boundary:** Emvera is an educational prototype, not a bank, broker, or financial adviser. The shipping branch does not execute brokerage orders, process payments, or present predictive ML as a finished capability.
 
+![Emvera portfolio overview: personal finance engineered around trust](docs/assets/social-preview.png)
+
 ## Why this project exists
 
 Financial applications are interesting because ordinary product choices become security and data-integrity choices. Emvera focuses on those seams:
@@ -54,6 +56,12 @@ All screenshots use synthetic portfolio and debt data.
 | Landing page | Portfolio workflow | Debt workflow |
 | --- | --- | --- |
 | ![Emvera landing page](docs/assets/landing.png) | ![Synthetic investment portfolio](docs/assets/portfolio.png) | ![Synthetic debt dashboard](docs/assets/debt-dashboard.png) |
+
+What to notice in the tour:
+
+- The product boundary is visible before authentication, so demonstration claims are not hidden in technical documentation.
+- Portfolio and debt screens use synthetic records while exercising the same owner-scoped application paths as imported or Sandbox data.
+- Dense financial information is grouped around decisions and next actions rather than presented as an undifferentiated data table.
 
 ## Run locally
 
