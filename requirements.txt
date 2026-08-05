@@ -9,7 +9,7 @@ dj-database-url==3.1.2
 python-dotenv==1.2.2
 Pillow==12.3.0
 qrcode==8.2
-cryptography==49.0.0
+cryptography==50.0.0
 
 # Plaid is used for the sandbox bank-link demo. Credentials stay in environment
 # secrets and are never sent to the browser.
