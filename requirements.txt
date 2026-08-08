@@ -1,6 +1,6 @@
 # Direct runtime dependencies are pinned so local, CI, and production installs
 # resolve the same versions. Dependabot keeps these pins current.
-Django==6.0.7
+Django==6.0.8
 django-otp==1.7.0
 gunicorn==26.0.0
 whitenoise==6.12.0
